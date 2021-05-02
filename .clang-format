@@ -1,0 +1,5 @@
+BasedOnStyle: Chromium
+Standard: Latest
+UseTab: Never
+IndentWidth: 4
+ColumnLimit: 120

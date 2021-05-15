@@ -25,6 +25,7 @@ add_library(aribcaption
         src/decoder/b24_codesets.hpp
         src/decoder/b24_colors.hpp
         src/decoder/b24_controlsets.hpp
+        src/decoder/b24_conv_tables.hpp
         src/decoder/b24_macros.hpp
         src/c_api.cpp
 )

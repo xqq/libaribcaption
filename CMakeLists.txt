@@ -22,6 +22,7 @@ project(aribcaption LANGUAGES C CXX)
 add_library(aribcaption
     STATIC
         include/aribcaption.h
+        include/drcs.hpp
         src/base/md5.c
         src/base/md5.h
         src/base/md5_helper.hpp

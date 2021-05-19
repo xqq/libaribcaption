@@ -37,6 +37,7 @@ add_library(aribcaption
         src/decoder/b24_drcs_conv.hpp
         src/decoder/b24_macros.hpp
         src/c_api.cpp
+        src/context.cpp
 )
 
 target_compile_features(aribcaption PRIVATE cxx_std_17)

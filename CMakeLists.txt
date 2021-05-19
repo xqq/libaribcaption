@@ -24,6 +24,7 @@ add_library(aribcaption
         include/aribcaption.h
         include/caption.hpp
         include/context.hpp
+        include/decoder.hpp
         include/drcs.hpp
         src/base/logger.hpp
         src/base/md5.c

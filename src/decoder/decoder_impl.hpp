@@ -66,7 +66,9 @@ private:
     bool HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* bytes_processed, CodesetEntry* entry);
     void PushCharacter(std::initializer_list<uint32_t> ucs4s);
     void PushDRCSCharacter(uint32_t id, DRCS& drcs);
+    void PushCaptionChar(CaptionChar&& caption_char);
     void ApplyCaptionCharCommonProperties(CaptionChar& caption_char);
+    bool NeedNewCaptionRegion();
     void MakeNewCaptionRegion();
     [[nodiscard]] bool IsRubyMode() const;
     [[nodiscard]] int section_width() const;

@@ -615,7 +615,6 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             uint8_t y = data[1] & 0b00111111;
             uint8_t x = data[2] & 0b00111111;
             SetAbsoluteActivePos(static_cast<int>(x), static_cast<int>(y));
-            MakeNewCaptionRegion();
             bytes = 3;
             break;
         }
@@ -1074,9 +1073,6 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
 void DecoderImpl::PushCharacter(std::initializer_list<uint32_t> ucs4s) {
     assert(ucs4s.size() > 0);
 
-    if (caption_->regions.empty())
-        MakeNewCaptionRegion();
-
     CaptionChar caption_char;
     caption_char.type = CaptionCharType::kCaptionCharTypeText;
 
@@ -1087,13 +1083,10 @@ void DecoderImpl::PushCharacter(std::initializer_list<uint32_t> ucs4s) {
     }
 
     ApplyCaptionCharCommonProperties(caption_char);
-    caption_->regions.back().chars.push_back(std::move(caption_char));
+    PushCaptionChar(std::move(caption_char));
 }
 
 void DecoderImpl::PushDRCSCharacter(uint32_t id, DRCS& drcs) {
-    if (caption_->regions.empty())
-        MakeNewCaptionRegion();
-
     CaptionChar caption_char;
 
     if (drcs.alternate_text.empty()) {
@@ -1114,7 +1107,16 @@ void DecoderImpl::PushDRCSCharacter(uint32_t id, DRCS& drcs) {
     caption_char.drcs_id = id;
 
     ApplyCaptionCharCommonProperties(caption_char);
-    caption_->regions.back().chars.push_back(std::move(caption_char));
+    PushCaptionChar(std::move(caption_char));
+}
+
+void DecoderImpl::PushCaptionChar(CaptionChar&& caption_char) {
+    if (NeedNewCaptionRegion()) {
+        MakeNewCaptionRegion();
+    }
+    CaptionRegion& region = caption_->regions.back();
+    region.width += caption_char.section_width();
+    region.chars.push_back(std::move(caption_char));
 }
 
 void DecoderImpl::ApplyCaptionCharCommonProperties(CaptionChar& caption_char) {
@@ -1141,6 +1143,34 @@ void DecoderImpl::ApplyCaptionCharCommonProperties(CaptionChar& caption_char) {
     }
 
     caption_char.enclosure_style = enclosure_style_;
+}
+
+bool DecoderImpl::NeedNewCaptionRegion() {
+    if (caption_->regions.empty()) {
+        // Need new caption region
+        return true;
+    }
+
+    CaptionRegion& prev_region = caption_->regions.back();
+    if (prev_region.chars.empty()) {
+        // Region is empty, reuse
+        return false;
+    }
+
+    CaptionChar& prev_char = prev_region.chars.back();
+
+    if (active_pos_x_ != prev_char.x + prev_char.section_width()) {
+        // Expected pos_x is mismatched, new region will be needed
+        return true;
+    } else if (active_pos_y_ - section_height() != prev_char.y){
+        // Caption Line (pos_y) is different, new region will be needed
+        return true;
+    } else if (section_height() != prev_char.section_height()) {
+        // Section height is different, new region will be needed
+        return true;
+    }
+
+    return false;
 }
 
 void DecoderImpl::MakeNewCaptionRegion() {
@@ -1183,7 +1213,6 @@ void DecoderImpl::SetAbsoluteActivePos(int x, int y) {
 void DecoderImpl::SetAbsoluteActiveCoordinateDot(int x, int y) {
     active_pos_x_ = x;
     active_pos_y_ = y;
-    MakeNewCaptionRegion();
 }
 
 void DecoderImpl::MoveRelativeActivePos(int x, int y) {
@@ -1191,15 +1220,12 @@ void DecoderImpl::MoveRelativeActivePos(int x, int y) {
         SetAbsoluteActivePos(0, 0);
     }
 
-    bool need_new_region = false;
-
     while (x < 0) {
         active_pos_x_ -= section_width();
         x++;
         if (active_pos_x_ < display_area_start_x_) {
             active_pos_x_ = display_area_start_x_ + display_area_width_ - section_width();
             y--;
-            need_new_region = true;
         }
     }
 
@@ -1212,14 +1238,12 @@ void DecoderImpl::MoveRelativeActivePos(int x, int y) {
         if (active_pos_x_ >= display_area_start_x_ + display_area_width_) {
             active_pos_x_ = display_area_start_x_;
             y++;
-            need_new_region = true;
         }
     }
 
     while (y < 0) {
         active_pos_y_ -= section_height();
         y++;
-        need_new_region = true;
         if (active_pos_y_ < display_area_start_y_ + section_height()) {
             active_pos_y_ = display_area_start_y_ + display_area_height_;
         }
@@ -1228,14 +1252,9 @@ void DecoderImpl::MoveRelativeActivePos(int x, int y) {
     while (y > 0) {
         active_pos_y_ += section_height();
         y--;
-        need_new_region = true;
         if (active_pos_y_ > display_area_start_y_ + display_area_height_) {
             active_pos_y_ = display_area_start_y_ + section_height();
         }
-    }
-
-    if (need_new_region) {
-        MakeNewCaptionRegion();
     }
 }
 
@@ -1246,8 +1265,6 @@ void DecoderImpl::MoveActivePosToNewline() {
 
     active_pos_x_ = display_area_start_x_;
     active_pos_y_ += section_height();
-
-    MakeNewCaptionRegion();
 }
 
 

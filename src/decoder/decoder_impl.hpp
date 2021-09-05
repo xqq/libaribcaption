@@ -79,7 +79,9 @@ private:
     void MoveActivePosToNewline();
 public:
     DecoderImpl(const DecoderImpl&) = delete;
+    DecoderImpl(DecoderImpl&&) = delete;
     DecoderImpl& operator=(const DecoderImpl&) = delete;
+    DecoderImpl& operator=(DecoderImpl&&) = delete;
 private:
     struct LanguageInfo {
         B24LanguageId language_id = kB24LanguageIdFirst;

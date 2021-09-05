@@ -1232,9 +1232,6 @@ void DecoderImpl::MoveRelativeActivePos(int x, int y) {
     while (x > 0) {
         active_pos_x_ += section_width();
         x--;
-        if (!caption_->regions.empty()) {
-            caption_->regions.back().width += section_width();
-        }
         if (active_pos_x_ >= display_area_start_x_ + display_area_width_) {
             active_pos_x_ = display_area_start_x_;
             y++;

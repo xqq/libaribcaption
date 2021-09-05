@@ -1252,7 +1252,7 @@ void DecoderImpl::MoveRelativeActivePos(int x, int y) {
     while (y < 0) {
         active_pos_y_ -= section_height();
         y++;
-        if (active_pos_y_ < display_area_start_y_ + section_height()) {
+        if (active_pos_y_ < display_area_start_y_) {
             active_pos_y_ = display_area_start_y_ + display_area_height_;
         }
     }

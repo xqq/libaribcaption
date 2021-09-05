@@ -121,6 +121,7 @@ private:
     int display_area_height_ = 960;
     int display_area_start_x_ = 0;   // instructed by SDP
     int display_area_start_y_ = 0;
+    bool active_pos_inited_ = false; // Active position is inited
     int active_pos_x_ = 0;           // Active position base point
     int active_pos_y_ = 0;           // Active position base point (section's bottom left)
 

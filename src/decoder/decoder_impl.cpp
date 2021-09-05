@@ -244,6 +244,7 @@ void DecoderImpl::ResetInternalState() {
 
     display_area_start_x_ = 0;
     display_area_start_y_ = 0;
+    active_pos_inited_ = false;
     active_pos_x_ = 0;
     active_pos_y_ = 0;
 
@@ -583,7 +584,6 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             if (remain_bytes < 2)
                 return false;
             uint8_t step = data[1] & 0b00111111;
-            // TODO: ruby, newline
             MoveRelativeActivePos(static_cast<int>(step), 0);
             bytes = 2;
             break;
@@ -941,11 +941,18 @@ bool DecoderImpl::HandleCSI(const uint8_t* data, size_t remain_bytes, size_t* by
         case CSI::GAA:  // Colouring block
         case CSI::SRC:  // Raster Colour Designation
             break;
-        case CSI::SDP:  // Set Display Position
+        case CSI::SDP: { // Set Display Position
             display_area_start_x_ = static_cast<int>(param1);
-            display_area_start_y_ = static_cast<int>(param2);
-            // TODO: reset active position
+            if (param_count >= 2) {
+                display_area_start_y_ = static_cast<int>(param2);
+            }
+            if (!active_pos_inited_) {
+                // Reset active position to top left corner of display area
+                // APS(0, 0)
+                SetAbsoluteActivePos(0, 0);
+            }
             break;
+        }
         case CSI::ACPS: // Active Coordinate Position Set
             SetAbsoluteActiveCoordinateDot(static_cast<int>(param1), static_cast<int>(param2));
             break;
@@ -1206,11 +1213,13 @@ int DecoderImpl::section_height() const {
 }
 
 void DecoderImpl::SetAbsoluteActivePos(int x, int y) {
+    active_pos_inited_ = true;
     active_pos_x_ = display_area_start_x_ + x * section_width();
     active_pos_y_ = display_area_start_y_ + (y + 1) * section_height();
 }
 
 void DecoderImpl::SetAbsoluteActiveCoordinateDot(int x, int y) {
+    active_pos_inited_ = true;
     active_pos_x_ = x;
     active_pos_y_ = y;
 }
@@ -1219,6 +1228,8 @@ void DecoderImpl::MoveRelativeActivePos(int x, int y) {
     if (active_pos_x_ < 0 || active_pos_y_ < 0) {
         SetAbsoluteActivePos(0, 0);
     }
+
+    active_pos_inited_ = true;
 
     while (x < 0) {
         active_pos_x_ -= section_width();
@@ -1260,6 +1271,7 @@ void DecoderImpl::MoveActivePosToNewline() {
         SetAbsoluteActivePos(0, 0);
     }
 
+    active_pos_inited_ = true;
     active_pos_x_ = display_area_start_x_;
     active_pos_y_ += section_height();
 }

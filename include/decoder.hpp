@@ -71,6 +71,9 @@ public:
     Decoder::DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts,
                                  const Decoder::OutputCB& output_cb);
     bool Flush();
+public:
+    Decoder(const Decoder&) = delete;
+    Decoder& operator=(const Decoder&) = delete;
 private:
     std::unique_ptr<DecoderImpl> pimpl_;
 };

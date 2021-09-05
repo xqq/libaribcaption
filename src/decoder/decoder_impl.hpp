@@ -115,20 +115,20 @@ private:
 
     uint8_t swf_ = 7;
 
-    int caption_plane_width_ = 960;  // instructed by SWF
+    int caption_plane_width_ = 960;  // indicated by SWF
     int caption_plane_height_ = 540;
-    int display_area_width_ = 960;   // instructed by SDF
+    int display_area_width_ = 960;   // indicated by SDF
     int display_area_height_ = 960;
-    int display_area_start_x_ = 0;   // instructed by SDP
+    int display_area_start_x_ = 0;   // indicated by SDP
     int display_area_start_y_ = 0;
     bool active_pos_inited_ = false; // Active position is inited
-    int active_pos_x_ = 0;           // Active position base point
-    int active_pos_y_ = 0;           // Active position base point (section's bottom left)
+    int active_pos_x_ = 0;           // Active position base point x
+    int active_pos_y_ = 0;           // Active position base point y (section's bottom left corner + 1 dot)
 
-    int char_width_ = 36;            // instructed by SSM
-    int char_height_ = 36;           // instructed by SSM
-    int char_horizontal_spacing_ = 4;  // instructed by SHS
-    int char_vertical_spacing_ = 24;   // instructed by SVS
+    int char_width_ = 36;            // indicated by SSM
+    int char_height_ = 36;           // indicated by SSM
+    int char_horizontal_spacing_ = 4;  // indicated by SHS
+    int char_vertical_spacing_ = 24;   // indicated by SVS
     float char_horizontal_scale_ = 1.0f;
     float char_vertical_scale_ = 1.0f;
 

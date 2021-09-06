@@ -119,6 +119,7 @@ public:
 
 struct Caption {
     CaptionType type = CaptionType::kCaptionTypeDefault;
+    uint32_t iso639_language_code = 0;
 
     std::string text;
     std::vector<CaptionRegion> regions;

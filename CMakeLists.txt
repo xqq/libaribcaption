@@ -22,6 +22,7 @@ project(aribcaption LANGUAGES C CXX)
 add_library(aribcaption
     STATIC
         include/aribcaption.h
+        include/b24.hpp
         include/caption.hpp
         include/context.hpp
         include/decoder.hpp

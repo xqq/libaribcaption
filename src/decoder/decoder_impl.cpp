@@ -101,7 +101,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
     uint16_t data_group_size = ((uint16_t)data[data_group_begin + 3] << 8) | data[data_group_begin + 4];
 
     if (data_group_size == 0) {
-        return Decoder::kDecodeStatusOK;
+        return Decoder::kDecodeStatusNoCaption;
     }
 
     uint8_t dgi_id = data_group_id & 0x0F;
@@ -116,7 +116,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
              * For caption management data, if data_group_id group equals to previous management data's group
              * This data could be considered as retransmission, ignore it
              */
-            return Decoder::kDecodeStatusOK;
+            return Decoder::kDecodeStatusNoCaption;
         } else {
             // Handle caption management data
             prev_dgi_group_ = dgi_group;
@@ -126,7 +126,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
         // Caption statement data
         if (dgi_id != language_id_) {
             // Non-expected language id, ignore it
-            return Decoder::kDecodeStatusOK;
+            return Decoder::kDecodeStatusNoCaption;
         } else {
             // Handle caption statement data
             ret = ParseCaptionStatementData(data + data_group_begin + 5, data_group_size);
@@ -152,7 +152,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
         return Decoder::kDecodeStatusGotCaption;
     }
 
-    return Decoder::kDecodeStatusOK;
+    return Decoder::kDecodeStatusNoCaption;
 }
 
 bool DecoderImpl::Flush() {

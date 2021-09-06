@@ -36,7 +36,7 @@ public:
 
     enum DecodeStatus {
         kDecodeStatusError = 0,
-        kDecodeStatusOK = 1,
+        kDecodeStatusNoCaption = 1,
         kDecodeStatusGotCaption = 2
     };
 public:

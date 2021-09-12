@@ -142,7 +142,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
         caption_->type = static_cast<CaptionType>(type_);
         caption_->iso639_language_code = QueryISO639LanguageCode(language_id_);
         caption_->pts = pts;
-        caption_->duration = duration_;
+        caption_->duration = duration_ == 0 ? DURATION_INDEFINITE : duration_;
         caption_->plane_width = caption_plane_width_;
         caption_->plane_height = caption_plane_height_;
         caption_->has_builtin_sound = has_builtin_sound_;

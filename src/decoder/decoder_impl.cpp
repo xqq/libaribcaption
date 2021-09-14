@@ -305,9 +305,9 @@ bool DecoderImpl::ParseCaptionManagementData(const uint8_t* data, size_t length)
             offset += 1;
         }
 
-        language_info.iso639_language_code = ((uint32_t)data[offset + 0] << 0) |
-                                             ((uint32_t)data[offset + 1] << 8) |
-                                             ((uint32_t)data[offset + 2] << 16);
+        language_info.iso639_language_code = ((uint32_t)data[offset + 0] << 16) |
+                                             ((uint32_t)data[offset + 1] <<  8) |
+                                             ((uint32_t)data[offset + 2] <<  0);
         offset += 3;
         language_info.format = (data[offset] & 0b11110000) >> 4;
         language_info.TCS = (data[offset] & 0b00001100) >> 2;

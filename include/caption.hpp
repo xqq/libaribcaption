@@ -31,6 +31,15 @@ namespace aribcaption {
 constexpr int64_t PTS_NOPTS = ((int64_t)UINT64_C(0x8000000000000000));
 constexpr int64_t DURATION_INDEFINITE = ((int64_t)UINT64_C(0x8000000000000000));
 
+// For encoding ISO 639-2 3-char language codes
+template <size_t N>
+static constexpr uint32_t ThreeCC(const char (&str)[N]) {
+    static_assert(N == 4, "ISO 639-2 literals must be exactly 3 characters long");
+    return  (static_cast<uint32_t>(str[0]) << 16) |
+            (static_cast<uint32_t>(str[1]) <<  8) |
+            (static_cast<uint32_t>(str[2]) <<  0);
+}
+
 using B24ColorRGBA = uint32_t;
 
 enum CharStyle : uint8_t {
@@ -119,6 +128,9 @@ public:
 
 struct Caption {
     CaptionType type = CaptionType::kCaptionTypeDefault;
+
+    // ISO 639-2 3-char language code, in Big Endian
+    // e.g. "jpn" => 6A 70 6E => 0x006A706E
     uint32_t iso639_language_code = 0;
 
     std::string text;

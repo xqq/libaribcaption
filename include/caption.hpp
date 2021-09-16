@@ -77,7 +77,11 @@ enum CaptionCharType : uint8_t {
 struct CaptionChar {
     CaptionCharType type = CaptionCharType::kCaptionCharTypeDefault;
 
+    // Character encoded in UTF-8
     std::string ch;
+    // Character's Unicode codepoint (UCS4)
+    uint32_t ucs4 = 0;
+
     uint32_t drcs_id = 0;
 
     int x = 0;

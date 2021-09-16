@@ -633,7 +633,7 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             bytes = 1;
             break;
         case JIS8::SP:   // Space character
-            PushCharacter({0x3000});  // Ideographic Space
+            PushCharacter(0x3000);  // Ideographic Space
             MoveRelativeActivePos(1, 0);
             bytes = 1;
             break;
@@ -1009,14 +1009,14 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
                entry->graphics_set == GraphicSet::kProportionalHiragana) {
         size_t index = (data[0] & 0x7F) - 0x21;
         uint32_t ucs4 = kHiraganaTable[index];
-        PushCharacter({ucs4});
+        PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kKatakana ||
                entry->graphics_set == GraphicSet::kProportionalKatakana ||
                entry->graphics_set == GraphicSet::kJIS_X0201_Katakana) {
         size_t index = (data[0] & 0x7F) - 0x21;
         uint32_t ucs4 = kKatakanaTable[index];
-        PushCharacter({ucs4});
+        PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kKanji ||
                entry->graphics_set == GraphicSet::kJIS_X0213_2004_Kanji_1 ||
@@ -1026,7 +1026,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         size_t idx2 = (data[1] & 0x7F) - 0x21;
         size_t index = idx1 * 94 + idx2;
         uint32_t ucs4 = kKanjiTable[index];
-        PushCharacter({ucs4});
+        PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kAlphanumeric ||
                entry->graphics_set == GraphicSet::kProportionalAlphanumeric) {
@@ -1037,7 +1037,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         } else {
             ucs4 = kAlphanumericTable_Fullwidth[index];
         }
-        PushCharacter({ucs4});
+        PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kMacro) {
         uint8_t key = data[0] & 0x7F;
@@ -1057,8 +1057,8 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
 
         auto iter = drcs_map.find(key);
         if (iter == drcs_map.end()) {
-            // Unfindable DRCS character, insert ideographic space instead
-            PushCharacter({0x3000});
+            // Unfindable DRCS character, insert Ideographic Space instead
+            PushCharacter(0x3000);
         } else {
             DRCS& drcs = iter->second;
             uint32_t id = (map_index << 16) | key;
@@ -1072,16 +1072,14 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
     return true;
 }
 
-void DecoderImpl::PushCharacter(std::initializer_list<uint32_t> ucs4s) {
-    assert(ucs4s.size() > 0);
-
+void DecoderImpl::PushCharacter(uint32_t ucs4) {
     CaptionChar caption_char;
     caption_char.type = CaptionCharType::kCaptionCharTypeText;
+    caption_char.ucs4 = ucs4;
 
-    for (uint32_t ucs4 : ucs4s) {
-        utf8::AppendCodePoint(caption_char.ch, ucs4);
-        if (!IsRubyMode())
-            utf8::AppendCodePoint(caption_->text, ucs4);
+    utf8::AppendCodePoint(caption_char.ch, ucs4);
+    if (!IsRubyMode()) {
+        utf8::AppendCodePoint(caption_->text, ucs4);
     }
 
     ApplyCaptionCharCommonProperties(caption_char);

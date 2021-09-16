@@ -31,6 +31,7 @@ add_library(aribcaption
         src/base/md5.c
         src/base/md5.h
         src/base/md5_helper.hpp
+        src/base/scoped_holder.hpp
         src/base/utf8_helper.hpp
         src/decoder/b24_codesets.hpp
         src/decoder/b24_colors.hpp

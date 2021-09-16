@@ -1026,13 +1026,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         size_t idx2 = (data[1] & 0x7F) - 0x21;
         size_t index = idx1 * 94 + idx2;
         uint32_t ucs4 = kKanjiTable[index];
-
-        if (ucs4 != 0xFFFD) {
-            PushCharacter({ucs4});
-        } else {
-            uint32_t ucs_pair = kKanjiTablePairedCodepoints.at(index);
-            PushCharacter({ucs_pair & 0x0000FFFF, ucs_pair >> 16});
-        }
+        PushCharacter({ucs4});
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kAlphanumeric ||
                entry->graphics_set == GraphicSet::kProportionalAlphanumeric) {

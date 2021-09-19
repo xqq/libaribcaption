@@ -32,7 +32,7 @@ class DecoderImpl;
 
 class Decoder {
 public:
-    using OutputCB = std::function<void(std::unique_ptr<Caption>)>;
+    using OutputCB = std::function<void(std::unique_ptr<Caption> caption)>;
 
     enum DecodeStatus {
         kDecodeStatusError = 0,
@@ -49,7 +49,7 @@ public:
     void SetType(B24Type type);
     void SetProfile(B24Profile profile);
     void SetLanguageId(B24LanguageId language_id);
-    uint32_t QueryISO639LanguageCode(B24LanguageId language_id);
+    uint32_t QueryISO639LanguageCode(B24LanguageId language_id) const;
     Decoder::DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts,
                                  const Decoder::OutputCB& output_cb);
     bool Flush();

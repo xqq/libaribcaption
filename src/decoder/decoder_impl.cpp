@@ -49,7 +49,7 @@ void DecoderImpl::SetProfile(B24Profile profile) {
     ResetWritingFormat();
 }
 
-uint32_t DecoderImpl::QueryISO639LanguageCode(B24LanguageId language_id) {
+uint32_t DecoderImpl::QueryISO639LanguageCode(B24LanguageId language_id) const {
     if (language_infos_.empty()) {
         return 0;
     }
@@ -59,7 +59,7 @@ uint32_t DecoderImpl::QueryISO639LanguageCode(B24LanguageId language_id) {
         return 0;
     }
 
-    LanguageInfo& info = language_infos_[index];
+    const LanguageInfo& info = language_infos_[index];
     return info.iso639_language_code;
 }
 

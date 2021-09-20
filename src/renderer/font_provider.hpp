@@ -35,10 +35,11 @@ enum FontProviderType {
 };
 
 struct FontProviderPrivate {
-    int placeholder_ = 0;
 public:
     FontProviderPrivate() = default;
     virtual ~FontProviderPrivate() = default;
+private:
+    int placeholder_ = 0;
 };
 
 struct FontfaceInfo {

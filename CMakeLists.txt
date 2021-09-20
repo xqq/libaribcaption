@@ -43,6 +43,8 @@ add_library(aribcaption
         src/decoder/decoder_impl.cpp
         src/decoder/decoder_impl.hpp
         src/renderer/font_provider.hpp
+        src/renderer/font_provider_fontconfig.cpp
+        src/renderer/font_provider_fontconfig.hpp
         src/c_api.cpp
         src/context.cpp
 )

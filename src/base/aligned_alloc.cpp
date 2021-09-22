@@ -16,14 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef ARIBCAPTION_ALIGNED_ALLOCATOR_HPP
-#define ARIBCAPTION_ALIGNED_ALLOCATOR_HPP
-
-#include <cstddef>
-#include <cstdint>
-#include <cstdlib>
-#include <new>
-#include <type_traits>
+#include "aligned_alloc.hpp"
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
     #include <malloc.h>
@@ -40,9 +33,7 @@
 
 namespace aribcaption {
 
-namespace internal {
-
-inline void* aligned_malloc(size_t size, size_t alignment) {
+static void* aligned_malloc_generic(size_t size, size_t alignment) {
     void* ptr = malloc(size + (alignment - 1) + sizeof(void*));
     if (!ptr) {
         return nullptr;
@@ -61,7 +52,7 @@ inline void* aligned_malloc(size_t size, size_t alignment) {
     return reinterpret_cast<void*>(aligned);
 }
 
-inline void aligned_free(void* ptr) {
+static void aligned_free_generic(void* ptr) {
     if (ptr) {
         // Retrieve original address
         void* original_addr = *(reinterpret_cast<void**>(ptr) - 1);
@@ -69,61 +60,28 @@ inline void aligned_free(void* ptr) {
     }
 }
 
-}  // namespace internal
-
-
-template <class T, std::size_t N>
-class AlignedAllocator {
-    static_assert(N % 4 == 0);
-public:
-    using value_type = T;
-    using size_type = std::size_t;
-    using pointer = std::add_pointer_t<value_type>;
-    using const_pointer = std::add_pointer_t<const value_type>;
-
-    template <class U>
-    struct rebind {
-        using other = AlignedAllocator<U, N>;
-    };
-public:
-    AlignedAllocator() noexcept = default;
-
-    AlignedAllocator(const AlignedAllocator&) noexcept = default;
-
-    template <class U>
-    explicit AlignedAllocator(const AlignedAllocator<U, N>&) noexcept {}
-
-    pointer allocate(size_type n, const_pointer hint = nullptr) const {
-        size_t size = n * sizeof(T);
-        void* ptr = nullptr;
+void* AlignedAlloc(size_t size, size_t alignment) {
+    void* ptr = nullptr;
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
-        ptr = _aligned_malloc(size, N);
+    ptr = _aligned_malloc(size, alignment);
 #elif HAS_POSIX_MEMALIGN
-        if (posix_memalign(&ptr, N, size)) throw std::bad_alloc();
+    if (posix_memalign(&ptr, alignment, size)) return nullptr;
 #else
-        ptr = internal::aligned_malloc(size, N);
+    ptr = aligned_malloc_generic(size, alignment);
 #endif
 
-        if (!ptr) {
-            throw std::bad_alloc();
-        }
-        return ptr;
-    }
+    return ptr;
+}
 
-    void deallocate(pointer p, size_type) const noexcept {
-        void* ptr = p;
+void AlignedFree(void* ptr) {
 #if defined(_MSC_VER) || defined(__MINGW32__)
-        _aligned_free(ptr);
+    _aligned_free(ptr);
 #elif HAS_POSIX_MEMALIGN
-        free(ptr);
+    free(ptr);
 #else
-        internal::aligned_free(ptr);
+    aligned_free_generic(ptr);
 #endif
-    }
-
-};
+}
 
 }  // namespace aribcaption
-
-#endif  // ARIBCAPTION_ALIGNED_ALLOCATOR_HPP

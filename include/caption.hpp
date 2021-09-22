@@ -106,11 +106,11 @@ public:
     CaptionChar& operator=(const CaptionChar&) = default;
     CaptionChar& operator=(CaptionChar&&) = default;
 
-    int section_width() const {
+    [[nodiscard]] int section_width() const {
         return (int)std::floor((float)(char_width + char_horizontal_spacing) * char_horizontal_scale);
     }
 
-    int section_height() const {
+    [[nodiscard]] int section_height() const {
         return (int)std::floor((float)(char_height + char_vertical_spacing) * char_vertical_scale);
     }
 };

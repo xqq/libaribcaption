@@ -57,7 +57,7 @@ public:
         if (!ptr) {
             throw std::bad_alloc();
         }
-        return ptr;
+        return reinterpret_cast<pointer>(ptr);
     }
 
     void deallocate(pointer p, size_type) const noexcept {

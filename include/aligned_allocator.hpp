@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <new>
 #include <type_traits>
 
 #if defined(_MSC_VER) || defined(__MINGW32__)

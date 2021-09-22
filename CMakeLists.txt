@@ -21,13 +21,13 @@ project(aribcaption LANGUAGES C CXX)
 
 add_library(aribcaption
     STATIC
+        include/aligned_allocator.hpp
         include/aribcaption.h
         include/b24.hpp
         include/caption.hpp
         include/context.hpp
         include/decoder.hpp
         include/drcs.hpp
-        src/base/aligned_allocator.hpp
         src/base/logger.hpp
         src/base/md5.c
         src/base/md5.h

@@ -66,17 +66,17 @@ public:
     }
 };
 
-template <class T, std::size_t kAlignedTo1,
-          class U, std::size_t kAlignedTo2>
-static inline bool operator==(const AlignedAllocator<T, kAlignedTo1>&,
-                              const AlignedAllocator<U, kAlignedTo2>&) noexcept {
-    return kAlignedTo1 == kAlignedTo2;
+template <class T, std::size_t M,
+          class U, std::size_t N>
+static inline bool operator==(const AlignedAllocator<T, M>&,
+                              const AlignedAllocator<U, N>&) noexcept {
+    return M == N;
 }
 
-template <class T, std::size_t kAlignedTo1,
-          class U, std::size_t kAlignedTo2>
-static inline bool operator!=(const AlignedAllocator<T, kAlignedTo1>& lhs,
-                              const AlignedAllocator<U, kAlignedTo2>& rhs) noexcept {
+template <class T, std::size_t M,
+          class U, std::size_t N>
+static inline bool operator!=(const AlignedAllocator<T, M>& lhs,
+                              const AlignedAllocator<U, N>& rhs) noexcept {
     return !(lhs == rhs);
 }
 

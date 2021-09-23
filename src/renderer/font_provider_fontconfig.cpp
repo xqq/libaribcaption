@@ -86,7 +86,7 @@ std::optional<FontfaceInfo> FontProviderFontconfig::GetFontFace(const std::strin
         return ret;  // std::nullopt
     }
 
-    if (ucs4.has_value()) {
+    if (ucs4.has_value() && ucs4 != 0) {
         FcCharSet* charset = nullptr;
 
         if (FcResultMatch != FcPatternGetCharSet(best, FC_CHARSET, 0, &charset)) {

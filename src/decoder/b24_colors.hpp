@@ -23,11 +23,11 @@
 
 namespace aribcaption {
 
-// Represents RGBA byte-order. Appears as AGBR in word-order on LE machines.
+// Represents RGBA byte-order. Appears as ABGR in word-order on LE machines.
 using B24ColorRGBA = uint32_t;
 
 static constexpr B24ColorRGBA MakeRGBA(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
-    // On Little-Endian machine, RGBA byte-order appears as AGBR in the word-order
+    // On Little-Endian machine, RGBA byte-order appears as ABGR in the word-order
     return (uint32_t)a << 24 |
            (uint32_t)b << 16 |
            (uint32_t)g <<  8 |

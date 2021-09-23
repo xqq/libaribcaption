@@ -40,7 +40,7 @@ static constexpr uint32_t ThreeCC(const char (&str)[N]) {
             (static_cast<uint32_t>(str[2]) <<  0);
 }
 
-// Represents RGBA byte-order. Appears as AGBR in word-order on LE machines.
+// Represents RGBA byte-order. Appears as ABGR in word-order on LE machines.
 using B24ColorRGBA = uint32_t;
 
 enum CharStyle : uint8_t {

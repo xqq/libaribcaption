@@ -256,7 +256,7 @@ void DecoderImpl::ResetInternalState() {
     has_bold_ = false;
     has_italic_ = false;
     has_stroke_ = false;
-    stroke_color_ = 0;
+    stroke_color_ = ColorRGBA();
     enclosure_style_ = EnclosureStyle::kEnclosureStyleNone;
 
     has_builtin_sound_ = false;

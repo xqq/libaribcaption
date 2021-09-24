@@ -34,7 +34,6 @@
 namespace aribcaption {
 
 class Logger;
-using B24ColorRGBA = uint32_t;
 
 class DecoderImpl {
 public:
@@ -138,15 +137,15 @@ private:
     bool has_bold_ = false;       // MDF
     bool has_italic_ = false;     // MDF
     bool has_stroke_ = false;     // ORN
-    B24ColorRGBA stroke_color_ = 0;  // ORN
+    ColorRGBA stroke_color_;      // ORN
     EnclosureStyle enclosure_style_ = EnclosureStyle::kEnclosureStyleDefault;  // HLC
 
     bool has_builtin_sound_ = false;
     uint8_t builtin_sound_id_ = 0;
 
     uint8_t palette_ = 0;
-    B24ColorRGBA text_color_ = 0;
-    B24ColorRGBA back_color_ = 0;
+    ColorRGBA text_color_;
+    ColorRGBA back_color_;
 };
 
 }  // namespace aribcaption

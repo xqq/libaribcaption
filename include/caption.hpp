@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include "color.hpp"
 #include "drcs.hpp"
 
 namespace aribcaption {
@@ -39,9 +40,6 @@ static constexpr uint32_t ThreeCC(const char (&str)[N]) {
             (static_cast<uint32_t>(str[1]) <<  8) |
             (static_cast<uint32_t>(str[2]) <<  0);
 }
-
-// Represents RGBA byte-order. Appears as ABGR in word-order on LE machines.
-using B24ColorRGBA = uint32_t;
 
 enum CharStyle : uint8_t {
     kCharStyleDefault = 0,
@@ -94,9 +92,9 @@ struct CaptionChar {
     float char_horizontal_scale = 0.0f;
     float char_vertical_scale = 0.0f;
 
-    B24ColorRGBA text_color = 0;
-    B24ColorRGBA back_color = 0;
-    B24ColorRGBA stroke_color = 0;
+    ColorRGBA text_color;
+    ColorRGBA back_color;
+    ColorRGBA stroke_color;
 
     CharStyle style = CharStyle::kCharStyleDefault;
     EnclosureStyle enclosure_style = EnclosureStyle::kEnclosureStyleDefault;

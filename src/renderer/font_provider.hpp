@@ -24,6 +24,7 @@
 #include <memory>
 #include <optional>
 #include "context.hpp"
+#include "base/result.hpp"
 
 namespace aribcaption {
 
@@ -49,12 +50,19 @@ struct FontfaceInfo {
     std::unique_ptr<FontProviderPrivate> provider_priv;
 };
 
+enum class FontProviderError {
+    kFontNotFound,
+    kCodePointNotFound,
+    kOtherError,
+};
+
 class IFontProvider {
 public:
     virtual ~IFontProvider() = 0;
 public:
     virtual bool Initialize() = 0;
-    virtual std::optional<FontfaceInfo> GetFontFace(const std::string& font_name, std::optional<uint32_t> ucs4) = 0;
+    virtual Result<FontfaceInfo, FontProviderError> GetFontFace(const std::string& font_name,
+                                                                std::optional<uint32_t> ucs4) = 0;
 };
 
 }  // namespace aribcaption

@@ -36,7 +36,8 @@ public:
     ~FontProviderFontconfig() override;
 public:
     bool Initialize() override;
-    std::optional<FontfaceInfo> GetFontFace(const std::string& font_name, std::optional<uint32_t> ucs4) override;
+    Result<FontfaceInfo, FontProviderError> GetFontFace(const std::string& font_name,
+                                                        std::optional<uint32_t> ucs4) override;
 private:
     std::shared_ptr<Logger> log_;
 

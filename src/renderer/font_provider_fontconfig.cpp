@@ -40,10 +40,9 @@ bool FontProviderFontconfig::Initialize() {
     return true;
 }
 
-std::optional<FontfaceInfo> FontProviderFontconfig::GetFontFace(const std::string& font_name,
-                                                                std::optional<uint32_t> ucs4) {
+auto FontProviderFontconfig::GetFontFace(const std::string& font_name,
+                                         std::optional<uint32_t> ucs4) -> Result<FontfaceInfo, FontProviderError> {
     assert(config_);
-    std::optional<FontfaceInfo> ret;
 
     ScopedHolder<FcPattern*> pattern(
         FcNameParse(reinterpret_cast<const FcChar8*>(font_name.c_str())),
@@ -51,7 +50,7 @@ std::optional<FontfaceInfo> FontProviderFontconfig::GetFontFace(const std::strin
     );
     if (!pattern) {
         log_->e("Fontconfig: Cannot parse font pattern string");
-        return ret;
+        return Err(FontProviderError::kFontNotFound);
     }
 
     FcPatternAddString(pattern, FC_FAMILY, reinterpret_cast<const FcChar8*>(font_name.c_str()));
@@ -59,7 +58,7 @@ std::optional<FontfaceInfo> FontProviderFontconfig::GetFontFace(const std::strin
 
     if (FcTrue != FcConfigSubstitute(config_, pattern, FcMatchPattern)) {
         log_->e("Fontconfig: Substitution cannot be performed");
-        return ret;  // std::nullopt
+        return Err(FontProviderError::kOtherError);
     }
     FcDefaultSubstitute(pattern);
 
@@ -69,7 +68,7 @@ std::optional<FontfaceInfo> FontProviderFontconfig::GetFontFace(const std::strin
     FcPattern* matched = FcFontMatch(config_, pattern, &result);
     if (!matched || result != FcResultMatch) {
         log_->w("Fontconfig: Cannot find a suitable font for ", font_name);
-        return ret;  // std::nullopt
+        return Err(FontProviderError::kFontNotFound);
     }
 
     ScopedHolder<FcPattern*> best(matched, FcPatternDestroy);
@@ -77,13 +76,13 @@ std::optional<FontfaceInfo> FontProviderFontconfig::GetFontFace(const std::strin
     FcChar8* filename = nullptr;
     if (FcResultMatch != FcPatternGetString(best, FC_FILE, 0, &filename)) {
         log_->e("Fontconfig: Retrieve font filename failed for ", font_name);
-        return ret;  // std::nullopt
+        return Err(FontProviderError::kOtherError);
     }
 
     int fc_index = 0;
     if (FcResultMatch != FcPatternGetInteger(best, FC_INDEX, 0, &fc_index)) {
         log_->e("Fontconfig: Retrieve font FC_INDEX failed for ", font_name);
-        return ret;  // std::nullopt
+        return Err(FontProviderError::kOtherError);
     }
 
     if (ucs4.has_value() && ucs4 != 0) {
@@ -91,21 +90,21 @@ std::optional<FontfaceInfo> FontProviderFontconfig::GetFontFace(const std::strin
 
         if (FcResultMatch != FcPatternGetCharSet(best, FC_CHARSET, 0, &charset)) {
             log_->e("Fontconfig: Retrieve font charset failed for ", font_name);
-            return ret;  // std::nullopt;
+            return Err(FontProviderError::kOtherError);
         }
 
         if (FcTrue != FcCharSetHasChar(charset, ucs4.value())) {
             log_->w("Fontconfig: Font ", font_name, " doesn't contain Unicode codepoint ", std::hex, ucs4.value());
-            return ret;  // std::nullopt;
+            return Err(FontProviderError::kCodePointNotFound);
         }
     }
 
-    ret.emplace();
-    ret->filename = reinterpret_cast<const char*>(filename);
-    ret->face_index = fc_index;
-    ret->provider_type = FontProviderType::kFontProviderFontconfig;
+    FontfaceInfo info;
+    info.filename = reinterpret_cast<const char*>(filename);
+    info.face_index = fc_index;
+    info.provider_type = FontProviderType::kFontProviderFontconfig;
 
-    return ret;
+    return Ok(std::move(info));
 }
 
 }  // namespace aribcaption

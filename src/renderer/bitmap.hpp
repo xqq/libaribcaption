@@ -35,9 +35,11 @@ public:
     static Image ToImage(Bitmap&&);
 public:
     Bitmap(int width, int height, PixelFormat pixel_format);
+    ~Bitmap() = default;
     Bitmap(const Bitmap& bmp) = default;
     Bitmap(Bitmap&& bmp) = default;
-    ~Bitmap() = default;
+    Bitmap& operator=(const Bitmap&) = default;
+    Bitmap& operator=(Bitmap&&) = default;
 public:
     [[nodiscard]] inline uint8_t* data() { return pixels.data(); }
 

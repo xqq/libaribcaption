@@ -58,11 +58,16 @@ enum class FontProviderError {
 
 class IFontProvider {
 public:
+    IFontProvider() = default;
     virtual ~IFontProvider() = 0;
 public:
     virtual bool Initialize() = 0;
     virtual Result<FontfaceInfo, FontProviderError> GetFontFace(const std::string& font_name,
                                                                 std::optional<uint32_t> ucs4) = 0;
+public:
+    // Disallow copy and assign
+    IFontProvider(const IFontProvider&) = delete;
+    IFontProvider& operator=(const IFontProvider&) = delete;
 };
 
 }  // namespace aribcaption

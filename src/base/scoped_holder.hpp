@@ -38,7 +38,7 @@ public:
         }
     }
 
-    T Get() const {
+    [[nodiscard]] T Get() const {
         return inner_;
     }
 
@@ -50,7 +50,15 @@ public:
         return inner_;
     }
 
-    T Take() {
+    T* operator&() {
+        if (inner_) {
+            deleter_(inner_);
+            inner_ = 0;
+        }
+        return &inner_;
+    }
+
+    [[nodiscard]] T Take() {
         T inner = inner_;
         inner_ = 0;
         deleter_ = nullptr;

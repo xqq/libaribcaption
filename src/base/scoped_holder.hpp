@@ -51,6 +51,14 @@ public:
     }
 
     T* operator&() {
+        return &inner_;
+    }
+
+    T* GetAddressOf() {
+        return &inner_;
+    }
+
+    T* ReleaseAndGetAddressOf() {
         if (inner_) {
             deleter_(inner_);
             inner_ = 0;

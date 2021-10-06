@@ -24,7 +24,7 @@
 
 namespace aribcaption {
 
-enum LogLevel {
+enum class LogLevel {
     kLogLevelError,
     kLogLevelWarning,
     kLogLevelVerbose

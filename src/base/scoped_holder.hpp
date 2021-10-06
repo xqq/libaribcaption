@@ -38,7 +38,8 @@ public:
         }
     }
 
-    [[nodiscard]] T Get() const {
+    [[nodiscard]]
+    T Get() const {
         return inner_;
     }
 
@@ -54,10 +55,12 @@ public:
         return &inner_;
     }
 
+    [[nodiscard]]
     T* GetAddressOf() {
         return &inner_;
     }
 
+    [[nodiscard]]
     T* ReleaseAndGetAddressOf() {
         if (inner_) {
             deleter_(inner_);
@@ -66,7 +69,8 @@ public:
         return &inner_;
     }
 
-    [[nodiscard]] T Take() {
+    [[nodiscard]]
+    T Take() {
         T inner = inner_;
         inner_ = 0;
         deleter_ = nullptr;

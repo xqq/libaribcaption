@@ -41,37 +41,48 @@ public:
     Bitmap& operator=(const Bitmap&) = default;
     Bitmap& operator=(Bitmap&&) = default;
 public:
-    [[nodiscard]] inline uint8_t* data() { return pixels.data(); }
+    [[nodiscard]]
+    inline uint8_t* data() { return pixels.data(); }
 
-    [[nodiscard]] inline const uint8_t* data() const { return pixels.data(); }
+    [[nodiscard]]
+    inline const uint8_t* data() const { return pixels.data(); }
 
-    [[nodiscard]] inline ColorRGBA* GetPixels() {
+    [[nodiscard]]
+    inline ColorRGBA* GetPixels() {
         return reinterpret_cast<ColorRGBA*>(pixels.data());
     };
 
-    [[nodiscard]] inline const ColorRGBA* GetPixels() const {
+    [[nodiscard]]
+    inline const ColorRGBA* GetPixels() const {
         return reinterpret_cast<const ColorRGBA*>(pixels.data());
     };
 
-    [[nodiscard]] inline ColorRGBA* GetPixelAt(int x, int y) {
+    [[nodiscard]]
+    inline ColorRGBA* GetPixelAt(int x, int y) {
         auto ptr = reinterpret_cast<ColorRGBA*>(pixels.data());
         return ptr + y * stride_ + x;
     };
 
-    [[nodiscard]] inline const ColorRGBA* GetPixelAt(int x, int y) const {
+    [[nodiscard]]
+    inline const ColorRGBA* GetPixelAt(int x, int y) const {
         auto ptr = reinterpret_cast<const ColorRGBA*>(pixels.data());
         return ptr + y * stride_ + x;
     };
 
-    [[nodiscard]] inline size_t size() const { return pixels.size(); }
+    [[nodiscard]]
+    inline size_t size() const { return pixels.size(); }
 
-    [[nodiscard]] inline int width() const { return width_; }
+    [[nodiscard]]
+    inline int width() const { return width_; }
 
-    [[nodiscard]] inline int height() const { return height_; }
+    [[nodiscard]]
+    inline int height() const { return height_; }
 
-    [[nodiscard]] inline int stride() const { return stride_; }
+    [[nodiscard]]
+    inline int stride() const { return stride_; }
 
-    [[nodiscard]] inline PixelFormat pixel_format() const { return pixel_format_; }
+    [[nodiscard]]
+    inline PixelFormat pixel_format() const { return pixel_format_; }
 private:
     int width_ = 0;
     int height_ = 0;

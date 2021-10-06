@@ -46,7 +46,8 @@ public:
     void SetType(B24Type type) { type_ = type; }
     void SetProfile(B24Profile profile);
     void SetLanguageId(B24LanguageId language_id) { language_id_ = language_id; }
-    [[nodiscard]] uint32_t QueryISO639LanguageCode(B24LanguageId language_id) const;
+    [[nodiscard]]
+    uint32_t QueryISO639LanguageCode(B24LanguageId language_id) const;
     Decoder::DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts,
                                  const Decoder::OutputCB& output_cb);
     bool Flush();
@@ -69,9 +70,12 @@ private:
     void ApplyCaptionCharCommonProperties(CaptionChar& caption_char);
     bool NeedNewCaptionRegion();
     void MakeNewCaptionRegion();
-    [[nodiscard]] bool IsRubyMode() const;
-    [[nodiscard]] int section_width() const;
-    [[nodiscard]] int section_height() const;
+    [[nodiscard]]
+    bool IsRubyMode() const;
+    [[nodiscard]]
+    int section_width() const;
+    [[nodiscard]]
+    int section_height() const;
     void SetAbsoluteActivePos(int x, int y);
     void SetAbsoluteActiveCoordinateDot(int x, int y);
     void MoveRelativeActivePos(int x, int y);

@@ -75,29 +75,34 @@ public:
     Result& operator=(Result&&) = default;
     Result& operator=(const Result&) = default;
 public:
-    [[nodiscard]] constexpr bool is_ok() const {
+    [[nodiscard]]
+    constexpr bool is_ok() const {
         return variant_.index() == 0;
     }
 
-    [[nodiscard]] constexpr bool is_err() const {
+    [[nodiscard]]
+    constexpr bool is_err() const {
         return variant_.index() == 1;
     }
 
     //----------------------------------------------------
     // ok
-    [[nodiscard]] constexpr T& value() & {
+    [[nodiscard]]
+    constexpr T& value() & {
         assert(is_ok());
         T* val = std::get_if<0>(&variant_);
         return *val;
     }
 
-    [[nodiscard]] constexpr const T& value() const& {
+    [[nodiscard]]
+    constexpr const T& value() const& {
         assert(is_ok());
         const T* val = std::get_if<0>(&variant_);
         return *val;
     }
 
-    [[nodiscard]] constexpr T&& value() && {
+    [[nodiscard]]
+    constexpr T&& value() && {
         assert(is_ok());
         T* val = std::get_if<0>(&variant_);
         return std::move(*val);
@@ -133,19 +138,22 @@ public:
 
     //----------------------------------------------------
     // error
-    [[nodiscard]] constexpr E& error() & {
+    [[nodiscard]]
+    constexpr E& error() & {
         assert(is_err());
         E* err = std::get_if<1>(&variant_);
         return *err;
     }
 
-    [[nodiscard]] constexpr const E& error() const& {
+    [[nodiscard]]
+    constexpr const E& error() const& {
         assert(is_err());
         const E* err = std::get_if<1>(&variant_);
         return *err;
     }
 
-    [[nodiscard]] constexpr E&& error() && {
+    [[nodiscard]]
+    constexpr E&& error() && {
         assert(is_err());
         E* err = std::get_if<1>(&variant_);
         return std::move(*err);

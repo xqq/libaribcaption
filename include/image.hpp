@@ -25,7 +25,7 @@
 
 namespace aribcaption {
 
-enum PixelFormat {
+enum class PixelFormat {
     kPixelFormatRGBA8888 = 0,
     kPixelFormatDefault = kPixelFormatRGBA8888,
 };

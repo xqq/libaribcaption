@@ -24,7 +24,12 @@ namespace aribcaption {
 template <class T, class Deleter = void(*)(T)>
 class ScopedHolder {
 public:
+    ScopedHolder() : inner_(0), deleter_(nullptr) {}
+
     ScopedHolder(T inner, Deleter deleter) : inner_(inner), deleter_(deleter) {}
+
+    template <class ParamType, class RetType>
+    ScopedHolder(T inner, RetType(*deleter)(ParamType)) : inner_(inner), deleter_(reinterpret_cast<Deleter>(deleter)) {}
 
     // Allow move construct
     ScopedHolder(ScopedHolder<T, Deleter>&& holder) noexcept : inner_(holder.inner_), deleter_(holder.deleter_) {

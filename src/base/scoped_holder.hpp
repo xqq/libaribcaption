@@ -87,6 +87,9 @@ public:
 
     // Allow move assign
     ScopedHolder& operator=(ScopedHolder<T, Deleter>&& rhs) noexcept {
+        if (inner_) {
+            deleter_(inner_);
+        }
         inner_ = rhs.inner_;
         deleter_ = rhs.deleter_;
         rhs.inner_ = 0;

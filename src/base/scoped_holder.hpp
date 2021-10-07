@@ -41,6 +41,7 @@ public:
         if (inner_) {
             deleter_(inner_);
         }
+        inner_ = 0;
     }
 
     [[nodiscard]]

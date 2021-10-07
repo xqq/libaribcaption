@@ -26,6 +26,7 @@
 #include <vector>
 #include "context.hpp"
 #include "base/logger.hpp"
+#include "base/scoped_holder.hpp"
 #include "renderer/font_provider.hpp"
 
 namespace aribcaption {
@@ -41,7 +42,7 @@ public:
 private:
     std::shared_ptr<Logger> log_;
 
-    FcConfig* config_ = nullptr;
+    ScopedHolder<FcConfig*> config_;
 };
 
 }  // namespace aribcaption

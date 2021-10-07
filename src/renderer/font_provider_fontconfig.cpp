@@ -25,18 +25,15 @@ namespace aribcaption {
 FontProviderFontconfig::FontProviderFontconfig(Context& context) :
       log_(GetContextLogger(context)) {}
 
-FontProviderFontconfig::~FontProviderFontconfig() {
-    if (config_) {
-        FcConfigDestroy(config_);
-        config_ = nullptr;
-    }
-}
+FontProviderFontconfig::~FontProviderFontconfig() = default;
 
 bool FontProviderFontconfig::Initialize() {
-    if (!(config_ = FcInitLoadConfigAndFonts())) {
+    FcConfig* config = nullptr;
+    if (!(config = FcInitLoadConfigAndFonts())) {
         log_->e("Fontconfig: FcInitLoadConfigAndFonts() failed");
         return false;
     }
+    config_ = ScopedHolder<FcConfig*>(config, FcConfigDestroy);
     return true;
 }
 
@@ -94,7 +91,7 @@ auto FontProviderFontconfig::GetFontFace(const std::string& font_name,
         }
 
         if (FcTrue != FcCharSetHasChar(charset, ucs4.value())) {
-            log_->w("Fontconfig: Font ", font_name, " doesn't contain Unicode codepoint ", std::hex, ucs4.value());
+            log_->w("Fontconfig: Font ", font_name, " doesn't contain U+", std::hex, ucs4.value());
             return Err(FontProviderError::kCodePointNotFound);
         }
     }

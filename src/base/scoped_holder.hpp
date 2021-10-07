@@ -19,6 +19,8 @@
 #ifndef ARIBCAPTION_SCOPED_HOLDER_HPP
 #define ARIBCAPTION_SCOPED_HOLDER_HPP
 
+#include <memory>
+
 namespace aribcaption {
 
 template <class T, class Deleter = void(*)(T)>
@@ -37,7 +39,7 @@ public:
         holder.deleter_ = nullptr;
     }
 
-    ~ScopedHolder() {
+    ~ScopedHolder() noexcept {
         if (inner_) {
             deleter_(inner_);
         }
@@ -45,45 +47,45 @@ public:
     }
 
     [[nodiscard]]
-    T Get() const {
+    T Get() const noexcept {
         return inner_;
     }
 
-    operator T() const {
+    operator T() const noexcept {
         return inner_;
     }
 
-    T operator->() const {
+    T operator->() const noexcept {
         return inner_;
     }
 
-    T* operator&() {
-        return &inner_;
+    T* operator&() noexcept {
+        return std::addressof(inner_);
     }
 
     [[nodiscard]]
-    T* GetAddressOf() {
-        return &inner_;
+    T* GetAddressOf() noexcept {
+        return std::addressof(inner_);
     }
 
     [[nodiscard]]
-    T* ReleaseAndGetAddressOf() {
+    T* ReleaseAndGetAddressOf() noexcept {
         if (inner_) {
             deleter_(inner_);
             inner_ = 0;
         }
-        return &inner_;
+        return std::addressof(inner_);
     }
 
     [[nodiscard]]
-    T Take() {
+    T Take() noexcept {
         T inner = inner_;
         inner_ = 0;
         deleter_ = nullptr;
         return inner;
     }
 
-    ScopedHolder& operator=(T new_inner) {
+    ScopedHolder& operator=(T new_inner) noexcept {
         if (inner_) {
             deleter_(inner_);
         }

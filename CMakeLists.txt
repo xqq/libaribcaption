@@ -19,6 +19,9 @@
 cmake_minimum_required(VERSION 3.1)
 project(aribcaption LANGUAGES C CXX)
 
+find_package(Freetype REQUIRED)
+find_package(Fontconfig REQUIRED)
+
 add_library(aribcaption
     STATIC
         include/aligned_alloc.hpp
@@ -64,6 +67,14 @@ target_include_directories(aribcaption
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${FREETYPE_INCLUDE_DIRS}
+        ${Fontconfig_INCLUDE_DIRS}
+)
+
+target_link_libraries(aribcaption
+    PRIVATE
+        ${FREETYPE_LIBRARIES}
+        ${Fontconfig_LIBRARIES}
 )
 
 add_subdirectory(test)

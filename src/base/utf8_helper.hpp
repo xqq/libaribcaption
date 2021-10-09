@@ -22,8 +22,7 @@
 #include <cstdint>
 #include <string>
 
-namespace aribcaption {
-namespace utf8 {
+namespace aribcaption::utf8 {
 
 inline size_t AppendCodePoint(std::string& u8str, uint32_t ucs4) {
     if (ucs4 < 0x80) {
@@ -56,7 +55,6 @@ inline size_t AppendCodePoint(std::string& u8str, uint32_t ucs4) {
     return 0;
 }
 
-}  // namespace utf8
-}  // namespace aribcaption
+}  // namespace aribcaption::utf8
 
 #endif  // ARIBCAPTION_UTF8_HELPER_HPP

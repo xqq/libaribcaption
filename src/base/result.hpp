@@ -63,75 +63,75 @@ public:
     Result() = delete;
     ~Result() = default;
 
-    constexpr Result(internal::Ok<T>&& ok) : variant_(std::in_place_index<0>, std::move(ok.val)) {}
+    constexpr Result(internal::Ok<T>&& ok) noexcept : variant_(std::in_place_index<0>, std::move(ok.val)) {}
     constexpr Result(const internal::Ok<T>& ok) : variant_(std::in_place_index<0>, ok.val) {}
 
-    constexpr Result(internal::Err<E>&& err) : variant_(std::in_place_index<1>, std::move(err.val)) {}
+    constexpr Result(internal::Err<E>&& err) noexcept : variant_(std::in_place_index<1>, std::move(err.val)) {}
     constexpr Result(const internal::Err<E>& err) : variant_(std::in_place_index<1>, err.val) {}
 
-    constexpr Result(Result&&) = default;
+    constexpr Result(Result&&) noexcept = default;
     constexpr Result(const Result&) = default;
 
-    Result& operator=(Result&&) = default;
+    Result& operator=(Result&&) noexcept = default;
     Result& operator=(const Result&) = default;
 public:
     [[nodiscard]]
-    constexpr bool is_ok() const {
+    constexpr bool is_ok() const noexcept {
         return variant_.index() == 0;
     }
 
     [[nodiscard]]
-    constexpr bool is_err() const {
+    constexpr bool is_err() const noexcept {
         return variant_.index() == 1;
     }
 
     //----------------------------------------------------
     // ok
     [[nodiscard]]
-    constexpr T& value() & {
+    constexpr T& value() & noexcept {
         assert(is_ok());
         T* val = std::get_if<0>(&variant_);
         return *val;
     }
 
     [[nodiscard]]
-    constexpr const T& value() const& {
+    constexpr const T& value() const& noexcept {
         assert(is_ok());
         const T* val = std::get_if<0>(&variant_);
         return *val;
     }
 
     [[nodiscard]]
-    constexpr T&& value() && {
+    constexpr T&& value() && noexcept {
         assert(is_ok());
         T* val = std::get_if<0>(&variant_);
         return std::move(*val);
     }
 
-    constexpr T& operator*() const& {
+    constexpr T& operator*() const& noexcept {
         assert(is_ok());
         const T* val = std::get_if<0>(&variant_);
         return *val;
     }
 
-    T& operator*() & {
+    constexpr T& operator*() & noexcept {
         assert(is_ok());
         T* val = std::get_if<0>(&variant_);
         return *val;
     }
 
-    T&& operator*() && {
+    constexpr T&& operator*() && noexcept {
         assert(is_ok());
         T* val = std::get_if<0>(&variant_);
         return std::move(*val);
     }
 
-    constexpr T* operator->() const {
+    constexpr T* operator->() const noexcept {
         assert(is_ok());
         return std::get_if<0>(&variant_);
     }
 
-    T* operator->() {
+    constexpr T* operator->() noexcept {
         assert(is_ok());
         return std::get_if<0>(&variant_);
     }
@@ -139,21 +139,21 @@ public:
     //----------------------------------------------------
     // error
     [[nodiscard]]
-    constexpr E& error() & {
+    constexpr E& error() & noexcept {
         assert(is_err());
         E* err = std::get_if<1>(&variant_);
         return *err;
     }
 
     [[nodiscard]]
-    constexpr const E& error() const& {
+    constexpr const E& error() const& noexcept {
         assert(is_err());
         const E* err = std::get_if<1>(&variant_);
         return *err;
     }
 
     [[nodiscard]]
-    constexpr E&& error() && {
+    constexpr E&& error() && noexcept {
         assert(is_err());
         E* err = std::get_if<1>(&variant_);
         return std::move(*err);

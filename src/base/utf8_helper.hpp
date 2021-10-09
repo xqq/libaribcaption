@@ -25,7 +25,7 @@
 namespace aribcaption {
 namespace utf8 {
 
-static size_t AppendCodePoint(std::string& u8str, uint32_t ucs4) {
+inline size_t AppendCodePoint(std::string& u8str, uint32_t ucs4) {
     if (ucs4 < 0x80) {
         u8str.push_back(static_cast<char>(ucs4));
         return 1;

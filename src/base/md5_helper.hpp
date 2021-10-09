@@ -28,7 +28,7 @@
 namespace aribcaption {
 namespace md5 {
 
-static std::string GetDigest(const uint8_t* buffer, size_t length) {
+inline std::string GetDigest(const uint8_t* buffer, size_t length) {
     const uint8_t* ptr = buffer;
     MD5_CTX ctx;
     MD5_Init(&ctx);

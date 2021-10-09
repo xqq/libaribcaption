@@ -34,7 +34,7 @@ constexpr int64_t DURATION_INDEFINITE = ((int64_t)UINT64_C(0x8000000000000000));
 
 // For encoding ISO 639-2 3-char language codes
 template <size_t N>
-static constexpr uint32_t ThreeCC(const char (&str)[N]) {
+inline constexpr uint32_t ThreeCC(const char (&str)[N]) {
     static_assert(N == 4, "ISO 639-2 literals must be exactly 3 characters long");
     return  (static_cast<uint32_t>(str[0]) << 16) |
             (static_cast<uint32_t>(str[1]) <<  8) |

@@ -25,7 +25,7 @@
 namespace aribcaption {
 
 // MD5 => UCS4, for common DRCS patterns
-static const std::unordered_map<std::string, uint32_t> kDRCSReplacementMap = {
+inline const std::unordered_map<std::string, uint32_t> kDRCSReplacementMap = {
     {"022b6f43e2a414fd68f172da202bac9a", 0x269e},
     {"94fb7be756372db6b62e3e0a119083d5", 0x269e},
     {"12aecdea283e4d07f88b9f2b740e4f86", 0x269f},

@@ -24,7 +24,7 @@
 
 namespace aribcaption {
 
-static constexpr ColorRGBA kB24ColorCLUT[][16] = {
+inline constexpr ColorRGBA kB24ColorCLUT[][16] = {
     {
         ColorRGBA(  0,   0,   0, 255),
         ColorRGBA(255,   0,   0, 255),

@@ -67,23 +67,23 @@ struct CodesetEntry {
     constexpr CodesetEntry(GraphicSet set, uint8_t byte_count) noexcept : graphics_set(set), bytes(byte_count) {}
 };
 
-static constexpr CodesetEntry kKanjiEntry(GraphicSet::kKanji, 2);
-static constexpr CodesetEntry kAlphanumericEntry(GraphicSet::kAlphanumeric, 1);
-static constexpr CodesetEntry kHiraganaEntry(GraphicSet::kHiragana, 1);
-static constexpr CodesetEntry kKatakanaEntry(GraphicSet::kKatakana, 1);
-static constexpr CodesetEntry kMosaicAEntry(GraphicSet::kMosaicA, 1);
-static constexpr CodesetEntry kMosaicBEntry(GraphicSet::kMosaicB, 1);
-static constexpr CodesetEntry kMosaicCEntry(GraphicSet::kMosaicC, 1);
-static constexpr CodesetEntry kMosaicDEntry(GraphicSet::kMosaicD, 1);
-static constexpr CodesetEntry kProportionalAlphanumericEntry(GraphicSet::kProportionalAlphanumeric, 1);
-static constexpr CodesetEntry kProportionalHiraganaEntry(GraphicSet::kProportionalHiragana, 1);
-static constexpr CodesetEntry kProportionalKatakanaEntry(GraphicSet::kProportionalKatakana, 1);
-static constexpr CodesetEntry kJIS_X0201_Katakana_Entry(GraphicSet::kJIS_X0201_Katakana, 1);
-static constexpr CodesetEntry kJIS_X0213_2004_Kanji_1_Entry(GraphicSet::kJIS_X0213_2004_Kanji_1, 2);
-static constexpr CodesetEntry kJIS_X0213_2004_Kanji_2_Entry(GraphicSet::kJIS_X0213_2004_Kanji_2, 2);
-static constexpr CodesetEntry kAdditionalSymbolsEntry(GraphicSet::kAdditionalSymbols, 2);
+inline constexpr CodesetEntry kKanjiEntry(GraphicSet::kKanji, 2);
+inline constexpr CodesetEntry kAlphanumericEntry(GraphicSet::kAlphanumeric, 1);
+inline constexpr CodesetEntry kHiraganaEntry(GraphicSet::kHiragana, 1);
+inline constexpr CodesetEntry kKatakanaEntry(GraphicSet::kKatakana, 1);
+inline constexpr CodesetEntry kMosaicAEntry(GraphicSet::kMosaicA, 1);
+inline constexpr CodesetEntry kMosaicBEntry(GraphicSet::kMosaicB, 1);
+inline constexpr CodesetEntry kMosaicCEntry(GraphicSet::kMosaicC, 1);
+inline constexpr CodesetEntry kMosaicDEntry(GraphicSet::kMosaicD, 1);
+inline constexpr CodesetEntry kProportionalAlphanumericEntry(GraphicSet::kProportionalAlphanumeric, 1);
+inline constexpr CodesetEntry kProportionalHiraganaEntry(GraphicSet::kProportionalHiragana, 1);
+inline constexpr CodesetEntry kProportionalKatakanaEntry(GraphicSet::kProportionalKatakana, 1);
+inline constexpr CodesetEntry kJIS_X0201_Katakana_Entry(GraphicSet::kJIS_X0201_Katakana, 1);
+inline constexpr CodesetEntry kJIS_X0213_2004_Kanji_1_Entry(GraphicSet::kJIS_X0213_2004_Kanji_1, 2);
+inline constexpr CodesetEntry kJIS_X0213_2004_Kanji_2_Entry(GraphicSet::kJIS_X0213_2004_Kanji_2, 2);
+inline constexpr CodesetEntry kAdditionalSymbolsEntry(GraphicSet::kAdditionalSymbols, 2);
 
-static const std::unordered_map<uint8_t, CodesetEntry> kGCodesetByF = {
+inline const std::unordered_map<uint8_t, CodesetEntry> kGCodesetByF = {
     {0x42, kKanjiEntry},
     {0x4a, kAlphanumericEntry},
     {0x30, kHiraganaEntry},
@@ -101,25 +101,25 @@ static const std::unordered_map<uint8_t, CodesetEntry> kGCodesetByF = {
     {0x3b, kAdditionalSymbolsEntry}
 };
 
-static constexpr CodesetEntry kDRCS0Entry(GraphicSet::kDRCS_0, 2);
-static constexpr CodesetEntry kDRCS1Entry(GraphicSet::kDRCS_1, 1);
-static constexpr CodesetEntry kDRCS2Entry(GraphicSet::kDRCS_2, 1);
-static constexpr CodesetEntry kDRCS3Entry(GraphicSet::kDRCS_3, 1);
-static constexpr CodesetEntry kDRCS4Entry(GraphicSet::kDRCS_4, 1);
-static constexpr CodesetEntry kDRCS5Entry(GraphicSet::kDRCS_5, 1);
-static constexpr CodesetEntry kDRCS6Entry(GraphicSet::kDRCS_6, 1);
-static constexpr CodesetEntry kDRCS7Entry(GraphicSet::kDRCS_7, 1);
-static constexpr CodesetEntry kDRCS8Entry(GraphicSet::kDRCS_8, 1);
-static constexpr CodesetEntry kDRCS9Entry(GraphicSet::kDRCS_9, 1);
-static constexpr CodesetEntry kDRCS10Entry(GraphicSet::kDRCS_10, 1);
-static constexpr CodesetEntry kDRCS11Entry(GraphicSet::kDRCS_11, 1);
-static constexpr CodesetEntry kDRCS12Entry(GraphicSet::kDRCS_12, 1);
-static constexpr CodesetEntry kDRCS13Entry(GraphicSet::kDRCS_13, 1);
-static constexpr CodesetEntry kDRCS14Entry(GraphicSet::kDRCS_14, 1);
-static constexpr CodesetEntry kDRCS15Entry(GraphicSet::kDRCS_15, 1);
-static constexpr CodesetEntry kMacroEntry(GraphicSet::kMacro, 1);
+inline constexpr CodesetEntry kDRCS0Entry(GraphicSet::kDRCS_0, 2);
+inline constexpr CodesetEntry kDRCS1Entry(GraphicSet::kDRCS_1, 1);
+inline constexpr CodesetEntry kDRCS2Entry(GraphicSet::kDRCS_2, 1);
+inline constexpr CodesetEntry kDRCS3Entry(GraphicSet::kDRCS_3, 1);
+inline constexpr CodesetEntry kDRCS4Entry(GraphicSet::kDRCS_4, 1);
+inline constexpr CodesetEntry kDRCS5Entry(GraphicSet::kDRCS_5, 1);
+inline constexpr CodesetEntry kDRCS6Entry(GraphicSet::kDRCS_6, 1);
+inline constexpr CodesetEntry kDRCS7Entry(GraphicSet::kDRCS_7, 1);
+inline constexpr CodesetEntry kDRCS8Entry(GraphicSet::kDRCS_8, 1);
+inline constexpr CodesetEntry kDRCS9Entry(GraphicSet::kDRCS_9, 1);
+inline constexpr CodesetEntry kDRCS10Entry(GraphicSet::kDRCS_10, 1);
+inline constexpr CodesetEntry kDRCS11Entry(GraphicSet::kDRCS_11, 1);
+inline constexpr CodesetEntry kDRCS12Entry(GraphicSet::kDRCS_12, 1);
+inline constexpr CodesetEntry kDRCS13Entry(GraphicSet::kDRCS_13, 1);
+inline constexpr CodesetEntry kDRCS14Entry(GraphicSet::kDRCS_14, 1);
+inline constexpr CodesetEntry kDRCS15Entry(GraphicSet::kDRCS_15, 1);
+inline constexpr CodesetEntry kMacroEntry(GraphicSet::kMacro, 1);
 
-static const std::unordered_map<uint8_t, CodesetEntry> kDRCSCodesetByF = {
+inline const std::unordered_map<uint8_t, CodesetEntry> kDRCSCodesetByF = {
     {0x40, kDRCS0Entry},
     {0x41, kDRCS1Entry},
     {0x42, kDRCS2Entry},

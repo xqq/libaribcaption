@@ -25,8 +25,7 @@
 #include <string>
 #include "base/md5.h"
 
-namespace aribcaption {
-namespace md5 {
+namespace aribcaption::md5 {
 
 inline std::string GetDigest(const uint8_t* buffer, size_t length) {
     const uint8_t* ptr = buffer;
@@ -56,7 +55,6 @@ inline std::string GetDigest(const uint8_t* buffer, size_t length) {
     return digest_str;
 }
 
-}  // namespace md5
-}  // namespace aribcaption
+}  // namespace aribcaption::md5
 
 #endif  // ARIBCAPTION_MD5_HELPER_HPP

@@ -23,8 +23,7 @@
 #include "color.hpp"
 #include "base/always_inline.hpp"
 
-namespace aribcaption {
-namespace alphablend {
+namespace aribcaption::alphablend {
 
 // Fast divide by 255 algorithm
 ALWAYS_INLINE uint32_t Div255(uint32_t x) {
@@ -50,7 +49,6 @@ ALWAYS_INLINE ColorRGBA BlendColor(ColorRGBA bg_color, ColorRGBA fg_color) {
     return color;
 }
 
-}  // namespace alphablend
-}  // namespace aribcaption
+}  // namespace aribcaption::alphablend
 
 #endif  // ARIBCAPTION_ALPHA_BLEND_HPP

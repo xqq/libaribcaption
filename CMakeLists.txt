@@ -34,6 +34,7 @@ add_library(aribcaption
         include/drcs.hpp
         include/image.hpp
         src/base/aligned_alloc.cpp
+        src/base/always_inline.hpp
         src/base/logger.hpp
         src/base/md5.c
         src/base/md5.h
@@ -50,6 +51,7 @@ add_library(aribcaption
         src/decoder/decoder.cpp
         src/decoder/decoder_impl.cpp
         src/decoder/decoder_impl.hpp
+        src/renderer/alpha_blend.hpp
         src/renderer/bitmap.cpp
         src/renderer/bitmap.hpp
         src/renderer/font_provider.hpp

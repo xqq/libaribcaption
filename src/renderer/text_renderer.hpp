@@ -25,7 +25,8 @@
 
 namespace aribcaption {
 
-enum class TextRenderError {
+enum class TextRenderStatus {
+    kOK,
     kFontNotFound,
     kCodePointNotFound,
     kOtherError
@@ -39,7 +40,11 @@ public:
     virtual bool Initialize() = 0;
     virtual bool SetFontFamily(const std::vector<std::string>& font_family) = 0;
     virtual auto DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color, int stroke_width,
-                          int char_width, int char_height) -> Result<Bitmap, TextRenderError> = 0;
+                          int char_width,
+                          int char_height,
+                          Bitmap& target_bmp,
+                          int x,
+                          int y) -> TextRenderStatus = 0;
 public:
     // Disallow copy and assign
     ITextRenderer(const ITextRenderer&) = delete;

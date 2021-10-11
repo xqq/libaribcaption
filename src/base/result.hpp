@@ -158,6 +158,14 @@ public:
         E* err = std::get_if<1>(&variant_);
         return std::move(*err);
     }
+public:
+    friend inline bool operator==(const Result<T, E>& lhs, const Result<T, E>& rhs) {
+        return lhs.variant_ == rhs.variant_;
+    }
+
+    friend inline bool operator!=(const Result<T, E>& lhs, const Result<T, E>& rhs) {
+        return lhs.variant_ != rhs.variant_;
+    }
 private:
     std::variant<T, E> variant_;
 };

@@ -158,12 +158,28 @@ public:
         E* err = std::get_if<1>(&variant_);
         return std::move(*err);
     }
+
+    constexpr bool operator==(const internal::Ok<T>& ok) const {
+        return is_ok() && value() == ok.val;
+    }
+
+    constexpr bool operator!=(const internal::Ok<T>& ok) const {
+        return !operator==(ok);
+    }
+
+    constexpr bool operator==(const internal::Err<E>& err) const {
+        return is_err() && error() == err.val;
+    }
+
+    constexpr bool operator!=(const internal::Err<E>& err) const {
+        return !operator==(err);
+    }
 public:
-    friend inline bool operator==(const Result<T, E>& lhs, const Result<T, E>& rhs) {
+    friend constexpr bool operator==(const Result<T, E>& lhs, const Result<T, E>& rhs) {
         return lhs.variant_ == rhs.variant_;
     }
 
-    friend inline bool operator!=(const Result<T, E>& lhs, const Result<T, E>& rhs) {
+    friend constexpr bool operator!=(const Result<T, E>& lhs, const Result<T, E>& rhs) {
         return lhs.variant_ != rhs.variant_;
     }
 private:

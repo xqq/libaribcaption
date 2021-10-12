@@ -54,6 +54,8 @@ add_library(aribcaption
         src/renderer/alpha_blend.hpp
         src/renderer/bitmap.cpp
         src/renderer/bitmap.hpp
+        src/renderer/canvas.cpp
+        src/renderer/canvas.hpp
         src/renderer/font_provider.hpp
         src/renderer/font_provider_fontconfig.cpp
         src/renderer/font_provider_fontconfig.hpp

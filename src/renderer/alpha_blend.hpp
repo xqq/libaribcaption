@@ -30,6 +30,12 @@ ALWAYS_INLINE uint32_t Div255(uint32_t x) {
     return (x + 1 + (x >> 8)) >> 8;
 }
 
+// Fast clamp to 255 algorithm
+ALWAYS_INLINE uint8_t Clamp255(uint32_t x) {
+    x |= -(x > 255);
+    return static_cast<uint8_t>(x);
+}
+
 // Alpha blend
 ALWAYS_INLINE ColorRGBA BlendColor(ColorRGBA bg_color, ColorRGBA fg_color) {
     ColorRGBA color;
@@ -41,11 +47,12 @@ ALWAYS_INLINE ColorRGBA BlendColor(ColorRGBA bg_color, ColorRGBA fg_color) {
 
     // Calculate blended RGB channel
     // alpha is within range [0, 1] in the formula
+    // result should be clamped to [0, 255]
     // out_rgb = (foreground_rgb * foreground_alpha + background_rgb * (1 - foreground_alpha)) / out_alpha
     if (color.a) {
-        color.r = ((uint32_t)fg_color.r * fg_color.a + (uint32_t)bg_color.r * (255 - fg_color.a)) / color.a;
-        color.g = ((uint32_t)fg_color.g * fg_color.a + (uint32_t)bg_color.g * (255 - fg_color.a)) / color.a;
-        color.b = ((uint32_t)fg_color.b * fg_color.a + (uint32_t)bg_color.b * (255 - fg_color.a)) / color.a;
+        color.r = Clamp255(((uint32_t)fg_color.r * fg_color.a + (uint32_t)bg_color.r * (255 - fg_color.a)) / color.a);
+        color.g = Clamp255(((uint32_t)fg_color.g * fg_color.a + (uint32_t)bg_color.g * (255 - fg_color.a)) / color.a);
+        color.b = Clamp255(((uint32_t)fg_color.b * fg_color.a + (uint32_t)bg_color.b * (255 - fg_color.a)) / color.a);
     }
     // else if alpha is 0, then RGB is 0
 

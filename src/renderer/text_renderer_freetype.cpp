@@ -57,7 +57,8 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
                                     int char_height,
                                     Bitmap& target_bmp,
                                     int target_x,
-                                    int target_y) -> TextRenderStatus {
+                                    int target_y,
+                                    std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
     assert(stroke_width >= 0);
     assert(char_height > 0);
 
@@ -117,6 +118,8 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
     int baseline = static_cast<int>(face->size->metrics.ascender >> 6);
     int ascender = static_cast<int>(face->size->metrics.ascender >> 6);
     int descender = static_cast<int>(face->size->metrics.descender >> 6);
+    int underline = static_cast<int>(FT_MulFix(face->underline_position, face->size->metrics.x_scale) >> 6);
+    int underline_thickness = static_cast<int>(FT_MulFix(face->underline_thickness, face->size->metrics.x_scale) >> 6);
 
     int em_height = ascender + std::abs(descender);
     int em_adjust_y = (char_height - em_height) / 2;
@@ -163,7 +166,29 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
         border_glyph_image = std::move(stroke_glyph);
     }
 
-    // Draw stroke border bitmap
+    // Draw Underline if required
+    if ((style & kCharStyleUnderline) && underline_info && underline_thickness > 0) {
+        int underline_y = target_y + baseline + em_adjust_y + std::abs(underline);
+        Rect underline_rect(underline_info->start_x,
+                            underline_y,
+                            underline_info->start_x + underline_info->width,
+                            underline_y + 1);
+
+        int half_thickness = underline_thickness / 2;
+
+        if (underline_thickness % 2) {  // odd number
+            underline_rect.top -= half_thickness;
+            underline_rect.bottom += half_thickness;
+        } else {  // even number
+            underline_rect.top -= half_thickness - 1;
+            underline_rect.bottom += half_thickness;
+        }
+
+        Canvas canvas(target_bmp);
+        canvas.DrawRect(color, underline_rect);
+    }
+
+    // Draw stroke border bitmap, if required
     if (border_glyph_image) {
         auto border_bitmap_glyph = reinterpret_cast<FT_BitmapGlyph>(border_glyph_image.Get());
         int start_x = target_x + border_bitmap_glyph->left;

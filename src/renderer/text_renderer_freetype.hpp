@@ -49,7 +49,8 @@ public:
                   int char_height,
                   Bitmap& target_bmp,
                   int x,
-                  int y) -> TextRenderStatus override;
+                  int y,
+                  std::optional<UnderlineInfo> underline_info) -> TextRenderStatus override;
 private:
     auto LoadFontFace(std::optional<uint32_t> codepoint = std::nullopt,
                       std::optional<size_t> begin_index = std::nullopt)

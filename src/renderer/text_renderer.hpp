@@ -19,11 +19,17 @@
 #ifndef ARIBCAPTION_TEXT_RENDERER_HPP
 #define ARIBCAPTION_TEXT_RENDERER_HPP
 
+#include <optional>
 #include <caption.hpp>
 #include "base/result.hpp"
 #include "renderer/bitmap.hpp"
 
 namespace aribcaption {
+
+struct UnderlineInfo {
+    int start_x = 0;
+    int width = 0;
+};
 
 enum class TextRenderStatus {
     kOK,
@@ -44,7 +50,8 @@ public:
                           int char_height,
                           Bitmap& target_bmp,
                           int x,
-                          int y) -> TextRenderStatus = 0;
+                          int y,
+                          std::optional<UnderlineInfo> underline_info) -> TextRenderStatus = 0;
 public:
     // Disallow copy and assign
     ITextRenderer(const ITextRenderer&) = delete;

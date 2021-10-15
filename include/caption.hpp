@@ -43,18 +43,18 @@ inline constexpr uint32_t ThreeCC(const char (&str)[N]) {
 
 enum CharStyle : uint8_t {
     kCharStyleDefault = 0,
-    kCharStyleBold = 1 << 0,
-    kCharStyleItalic = 1 << 1,
-    kCharStyleUnderline = 1 << 2,
-    kCharStyleStroke = 1 << 3
+    kCharStyleBold = 1u << 0,
+    kCharStyleItalic = 1u << 1,
+    kCharStyleUnderline = 1u << 2,
+    kCharStyleStroke = 1u << 3
 };
 
 enum EnclosureStyle : uint8_t {
     kEnclosureStyleNone = 0,
-    kEnclosureStyleTop = 1 << 0,
-    kEnclosureStyleRight = 1 << 1,
-    kEnclosureStyleBottom = 1 << 2,
-    kEnclosureStyleLeft = 1 << 3,
+    kEnclosureStyleTop = 1u << 0,
+    kEnclosureStyleRight = 1u << 1,
+    kEnclosureStyleBottom = 1u << 2,
+    kEnclosureStyleLeft = 1u << 3,
     kEnclosureStyleDefault = kEnclosureStyleNone
 };
 

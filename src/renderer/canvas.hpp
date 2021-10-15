@@ -19,14 +19,15 @@
 #ifndef ARIBCAPTION_CANVAS_HPP
 #define ARIBCAPTION_CANVAS_HPP
 
+#include <optional>
 #include "caption.hpp"
 #include "color.hpp"
 #include "renderer/rect.hpp"
+#include "renderer/text_renderer.hpp"
 
 namespace aribcaption {
 
 class Bitmap;
-class ITextRenderer;
 
 class Canvas {
 public:
@@ -39,7 +40,8 @@ public:
     void DrawRect(ColorRGBA color, const Rect& rect);
     void DrawBitmap(const Bitmap& bmp, const Rect& rect);
     bool DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color, int stroke_width,
-                  int char_width, int char_height, int x, int y);
+                  int char_width, int char_height, int x, int y,
+                  std::optional<UnderlineInfo> underline_info = std::nullopt);
 public:
     // Disallow copy and assign
     Canvas(const Canvas&) = delete;

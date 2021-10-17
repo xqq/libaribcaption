@@ -56,6 +56,8 @@ add_library(aribcaption
         src/renderer/bitmap.hpp
         src/renderer/canvas.cpp
         src/renderer/canvas.hpp
+        src/renderer/drcs_renderer.cpp
+        src/renderer/drcs_renderer.hpp
         src/renderer/font_provider.hpp
         src/renderer/font_provider_fontconfig.cpp
         src/renderer/font_provider_fontconfig.hpp

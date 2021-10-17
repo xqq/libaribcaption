@@ -39,7 +39,7 @@ namespace aribcaption {
 
 class TextRendererFreetype : public ITextRenderer {
 public:
-    explicit TextRendererFreetype(Context& context, IFontProvider& font_provider);
+    TextRendererFreetype(Context& context, IFontProvider& font_provider);
     ~TextRendererFreetype() override;
 public:
     bool Initialize() override;

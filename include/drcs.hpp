@@ -28,6 +28,7 @@ namespace aribcaption {
 struct DRCS {
     int width = 0;
     int height = 0;
+    int depth = 0;
     int depth_bits = 0;
     std::vector<uint8_t> pixels;
     std::string md5;

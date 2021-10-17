@@ -501,6 +501,7 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
                 DRCS drcs;
                 drcs.width = static_cast<int>(width);
                 drcs.height = static_cast<int>(height);
+                drcs.depth = static_cast<int>(depth);
                 drcs.depth_bits = static_cast<int>(depth_bits);
                 drcs.pixels.resize(bitmap_size);
                 memcpy(&drcs.pixels[0], &data[offset], bitmap_size);

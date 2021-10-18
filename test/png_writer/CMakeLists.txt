@@ -16,4 +16,37 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-add_subdirectory(png_writer)
+cmake_minimum_required(VERSION 3.1)
+
+find_package(PNG REQUIRED)
+
+add_library(png_writer
+    STATIC
+    EXCLUDE_FROM_ALL
+        include/png_writer.hpp
+        png_writer.cpp
+)
+
+target_compile_features(png_writer
+    PRIVATE
+        cxx_std_17
+)
+
+target_include_directories(png_writer
+    PRIVATE
+        include/
+        ../../include
+        ../../src
+        ${PNG_INCLUDE_DIRS}
+)
+
+target_link_libraries(png_writer
+    PRIVATE
+        aribcaption
+        ${PNG_LIBRARIES}
+)
+
+set_target_properties(png_writer
+    PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)

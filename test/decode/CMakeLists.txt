@@ -16,5 +16,29 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-add_subdirectory(png_writer)
-add_subdirectory(decode)
+cmake_minimum_required(VERSION 3.1)
+
+add_executable(test_decode
+    EXCLUDE_FROM_ALL
+        test.cpp
+)
+
+target_compile_features(test_decode
+    PRIVATE
+        cxx_std_17
+)
+
+target_include_directories(test_decode
+    PRIVATE
+        ../../include
+)
+
+target_link_libraries(test_decode
+    PRIVATE
+        aribcaption
+)
+
+set_target_properties(test_decode
+    PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)

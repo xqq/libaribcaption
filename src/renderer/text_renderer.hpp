@@ -38,10 +38,10 @@ enum class TextRenderStatus {
     kOtherError
 };
 
-class ITextRenderer {
+class TextRenderer {
 public:
-    ITextRenderer() = default;
-    virtual ~ITextRenderer() = default;
+    TextRenderer() = default;
+    virtual ~TextRenderer() = default;
 public:
     virtual bool Initialize() = 0;
     virtual bool SetFontFamily(const std::vector<std::string>& font_family) = 0;
@@ -54,8 +54,8 @@ public:
                           std::optional<UnderlineInfo> underline_info) -> TextRenderStatus = 0;
 public:
     // Disallow copy and assign
-    ITextRenderer(const ITextRenderer&) = delete;
-    ITextRenderer& operator=(const ITextRenderer&) = delete;
+    TextRenderer(const TextRenderer&) = delete;
+    TextRenderer& operator=(const TextRenderer&) = delete;
 };
 
 }  // namespace aribcaption

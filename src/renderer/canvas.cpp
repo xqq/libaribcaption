@@ -28,7 +28,7 @@ Canvas::Canvas(Bitmap& target_bitmap) : bitmap_(target_bitmap) {}
 
 Canvas::~Canvas() = default;
 
-void Canvas::SetTextRenderer(ITextRenderer& text_renderer) {
+void Canvas::SetTextRenderer(TextRenderer& text_renderer) {
     text_renderer_ = &text_renderer;
 }
 

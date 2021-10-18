@@ -34,7 +34,7 @@ public:
     explicit Canvas(Bitmap& target_bitmap);
     ~Canvas();
 public:
-    void SetTextRenderer(ITextRenderer& text_renderer);
+    void SetTextRenderer(TextRenderer& text_renderer);
     void ClearColor(ColorRGBA color);
     void ClearRect(ColorRGBA color, const Rect& rect);
     void DrawRect(ColorRGBA color, const Rect& rect);
@@ -48,7 +48,7 @@ public:
     Canvas& operator=(const Canvas&) = delete;
 private:
     Bitmap& bitmap_;
-    ITextRenderer* text_renderer_ = nullptr;
+    TextRenderer* text_renderer_ = nullptr;
 };
 
 }  // namespace aribcaption

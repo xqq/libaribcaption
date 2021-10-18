@@ -31,7 +31,7 @@
 
 namespace aribcaption {
 
-class FontProviderFontconfig : public IFontProvider {
+class FontProviderFontconfig : public FontProvider {
 public:
     explicit FontProviderFontconfig(Context& context);
     ~FontProviderFontconfig() override;

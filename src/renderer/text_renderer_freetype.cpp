@@ -28,7 +28,7 @@
 
 namespace aribcaption {
 
-TextRendererFreetype::TextRendererFreetype(Context& context, IFontProvider& font_provider) :
+TextRendererFreetype::TextRendererFreetype(Context& context, FontProvider& font_provider) :
       log_(GetContextLogger(context)), font_provider_(font_provider) {}
 
 TextRendererFreetype::~TextRendererFreetype() = default;

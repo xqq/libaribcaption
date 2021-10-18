@@ -29,10 +29,11 @@
 namespace aribcaption {
 
 enum class FontProviderType {
-    kFontProviderFontconfig = 0,
-    kFontProviderDirectWrite,
+    kFontProviderAuto = 0,
     kFontProviderCoreText,
-    kFontProviderDefault = kFontProviderFontconfig,
+    kFontProviderDirectWrite,
+    kFontProviderFontconfig,
+    kFontProviderDefault = kFontProviderAuto,
 };
 
 struct FontProviderPrivate {
@@ -56,18 +57,20 @@ enum class FontProviderError {
     kOtherError,
 };
 
-class IFontProvider {
+class FontProvider {
 public:
-    IFontProvider() = default;
-    virtual ~IFontProvider() = default;
+    static std::unique_ptr<FontProvider> Create(FontProviderType type, Context& context);
+public:
+ FontProvider() = default;
+    virtual ~FontProvider() = default;
 public:
     virtual bool Initialize() = 0;
     virtual Result<FontfaceInfo, FontProviderError> GetFontFace(const std::string& font_name,
                                                                 std::optional<uint32_t> ucs4) = 0;
 public:
     // Disallow copy and assign
-    IFontProvider(const IFontProvider&) = delete;
-    IFontProvider& operator=(const IFontProvider&) = delete;
+    FontProvider(const FontProvider&) = delete;
+    FontProvider& operator=(const FontProvider&) = delete;
 };
 
 }  // namespace aribcaption

@@ -39,7 +39,7 @@ namespace aribcaption {
 
 class TextRendererFreetype : public ITextRenderer {
 public:
-    TextRendererFreetype(Context& context, IFontProvider& font_provider);
+    TextRendererFreetype(Context& context, FontProvider& font_provider);
     ~TextRendererFreetype() override;
 public:
     bool Initialize() override;
@@ -60,7 +60,7 @@ private:
 private:
     std::shared_ptr<Logger> log_;
 
-    IFontProvider& font_provider_;
+    FontProvider& font_provider_;
     std::vector<std::string> font_family_;
 
     ScopedHolder<FT_Library> library_;

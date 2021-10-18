@@ -16,26 +16,3 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-cmake_minimum_required(VERSION 3.1)
-
-add_executable(aribcaption_test
-    EXCLUDE_FROM_ALL
-        test.cpp
-)
-
-target_compile_features(aribcaption_test PRIVATE cxx_std_17)
-
-target_include_directories(aribcaption_test
-    PRIVATE
-        ../include
-)
-
-target_link_libraries(aribcaption_test
-    PRIVATE
-        aribcaption
-)
-
-set_target_properties(aribcaption_test
-    PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-)

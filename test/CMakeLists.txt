@@ -18,3 +18,4 @@
 
 add_subdirectory(png_writer)
 add_subdirectory(decode)
+add_subdirectory(drcs)

@@ -63,6 +63,7 @@ add_library(aribcaption
         src/renderer/font_provider_fontconfig.cpp
         src/renderer/font_provider_fontconfig.hpp
         src/renderer/rect.hpp
+        src/renderer/text_renderer.cpp
         src/renderer/text_renderer.hpp
         src/renderer/text_renderer_freetype.cpp
         src/renderer/text_renderer_freetype.hpp

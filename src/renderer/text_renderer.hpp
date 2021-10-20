@@ -19,12 +19,21 @@
 #ifndef ARIBCAPTION_TEXT_RENDERER_HPP
 #define ARIBCAPTION_TEXT_RENDERER_HPP
 
+#include <memory>
 #include <optional>
 #include <caption.hpp>
+#include "context.hpp"
 #include "base/result.hpp"
 #include "renderer/bitmap.hpp"
 
 namespace aribcaption {
+
+enum class TextRendererType {
+    kTextRendererAuto = 0,
+    kFontProviderCoreText,
+    kFontProviderDirectWrite,
+    kFontProviderFreetype,
+};
 
 struct UnderlineInfo {
     int start_x = 0;
@@ -38,7 +47,11 @@ enum class TextRenderStatus {
     kOtherError
 };
 
+class FontProvider;
+
 class TextRenderer {
+public:
+    static std::unique_ptr<TextRenderer> Create(TextRendererType type, Context& context, FontProvider& font_provider);
 public:
     TextRenderer() = default;
     virtual ~TextRenderer() = default;

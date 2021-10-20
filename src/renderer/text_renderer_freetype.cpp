@@ -47,6 +47,10 @@ bool TextRendererFreetype::Initialize() {
 }
 
 bool TextRendererFreetype::SetFontFamily(const std::vector<std::string>& font_family) {
+    if (font_family.empty()) {
+        return false;
+    }
+
     font_family_ = font_family;
     return true;
 }

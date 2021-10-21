@@ -32,8 +32,8 @@ struct DRCS {
     int depth_bits = 0;
     std::vector<uint8_t> pixels;
     std::string md5;
-    std::string alternate_text;
-    uint32_t alternate_ucs4 = 0;
+    std::string alternative_text;
+    uint32_t alternative_ucs4 = 0;
 public:
     DRCS() = default;
     DRCS(const DRCS&) = default;

@@ -512,8 +512,8 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
                 // Find alternative replacement
                 auto iter = kDRCSReplacementMap.find(drcs.md5);
                 if (iter != kDRCSReplacementMap.end()) {
-                    drcs.alternate_ucs4 = iter->second;
-                    utf8::AppendCodePoint(drcs.alternate_text, iter->second);
+                    drcs.alternative_ucs4 = iter->second;
+                    utf8::AppendCodePoint(drcs.alternative_text, iter->second);
                 } else {
                     log_->w("Cannot convert unrecognized DRCS pattern with MD5 ", drcs.md5, " to Unicode");
                 }
@@ -1091,15 +1091,15 @@ void DecoderImpl::PushCharacter(uint32_t ucs4) {
 void DecoderImpl::PushDRCSCharacter(uint32_t id, DRCS& drcs) {
     CaptionChar caption_char;
 
-    if (drcs.alternate_text.empty()) {
+    if (drcs.alternative_text.empty()) {
         caption_char.type = CaptionCharType::kCaptionCharTypeDRCS;
         utf8::AppendCodePoint(caption_->text, 0x3000);  // Fill a Ideographic Space here
     } else {
         caption_char.type = CaptionCharType::kCaptionCharTypeDRCSReplaced;
-        caption_char.ch = drcs.alternate_text;
-        caption_char.ucs4 = drcs.alternate_ucs4;
+        caption_char.ch = drcs.alternative_text;
+        caption_char.ucs4 = drcs.alternative_ucs4;
         if (!IsRubyMode())
-            caption_->text.append(drcs.alternate_text);
+            caption_->text.append(drcs.alternative_text);
     }
 
     auto iter = caption_->drcs_map.find(id);

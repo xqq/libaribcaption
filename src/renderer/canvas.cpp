@@ -119,19 +119,18 @@ void Canvas::DrawBitmap(const Bitmap& bmp, const Rect& rect) {
     }
 }
 
-bool Canvas::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color, int stroke_width,
+auto Canvas::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color, int stroke_width,
                       int char_width, int char_height, int x, int y,
-                      std::optional<UnderlineInfo> underline_info) {
+                      std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
     assert(text_renderer_);
-    auto result = text_renderer_->DrawChar(ucs4, style, color, stroke_color,
-                                           stroke_width,
-                                           char_width,
-                                           char_height,
-                                           bitmap_,
-                                           x,
-                                           y,
-                                           underline_info);
-    return result == TextRenderStatus::kOK;
+    return text_renderer_->DrawChar(ucs4, style, color, stroke_color,
+                                    stroke_width,
+                                    char_width,
+                                    char_height,
+                                    bitmap_,
+                                    x,
+                                    y,
+                                    underline_info);
 }
 
 }  // namespace aribcaption

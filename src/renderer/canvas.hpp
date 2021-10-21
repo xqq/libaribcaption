@@ -39,9 +39,9 @@ public:
     void ClearRect(ColorRGBA color, const Rect& rect);
     void DrawRect(ColorRGBA color, const Rect& rect);
     void DrawBitmap(const Bitmap& bmp, const Rect& rect);
-    bool DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color, int stroke_width,
+    auto DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color, int stroke_width,
                   int char_width, int char_height, int x, int y,
-                  std::optional<UnderlineInfo> underline_info = std::nullopt);
+                  std::optional<UnderlineInfo> underline_info = std::nullopt) -> TextRenderStatus;
 public:
     // Disallow copy and assign
     Canvas(const Canvas&) = delete;

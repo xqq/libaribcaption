@@ -174,10 +174,10 @@ int main(int argc, const char* argv[]) {
                     fprintf(stderr, "drcs_renderer.DrawDRCS() returned error\n");
                 }
             } else {
-                bool ret = canvas.DrawChar(ch.ucs4, style, ch.text_color, stroke_color, stroke_width,
-                                           char_width, char_height, x, y);
-                if (!ret) {
-                    fprintf(stderr, "canvas.DrawChar() returned error\n");
+                auto render_status = canvas.DrawChar(ch.ucs4, style, ch.text_color, stroke_color, stroke_width,
+                                                     char_width, char_height, x, y);
+                if (render_status != TextRenderStatus::kOK) {
+                    fprintf(stderr, "canvas.DrawChar() returned error %d\n", static_cast<int>(render_status));
                 }
             }
 

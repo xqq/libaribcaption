@@ -95,18 +95,18 @@ int main(int argc, const char* argv[]) {
         if (i == 2 || i == 3 || i == 5)
             style = static_cast<CharStyle>(style | CharStyle::kCharStyleUnderline);
 
-        bool ret = canvas.DrawChar(ch,
-                                   style,
-                                   ColorRGBA(  0, 255,   0, 255),
-                                   ColorRGBA(  0,   0,   0, 180),
-                                   3,
-                                   0,  // char_width * scale_factor,
-                                   char_height * scale_factor,
-                                   x,
-                                   y,
-                                   UnderlineInfo{section_x, section_width * scale_factor});
-        if (!ret) {
-            fprintf(stderr, "text_renderer.DrawChar returned error\n");
+        auto status = canvas.DrawChar(ch,
+                                      style,
+                                      ColorRGBA(  0, 255,   0, 255),
+                                      ColorRGBA(  0,   0,   0, 180),
+                                      3,
+                                      0,  // char_width * scale_factor,
+                                      char_height * scale_factor,
+                                      x,
+                                      y,
+                                      UnderlineInfo{section_x, section_width * scale_factor});
+        if (status != TextRenderStatus::kOK) {
+            fprintf(stderr, "text_renderer.DrawChar returned error %d\n", static_cast<int>(status));
             return -1;
         }
 

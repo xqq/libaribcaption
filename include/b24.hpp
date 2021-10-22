@@ -21,19 +21,19 @@
 
 namespace aribcaption {
 
-enum B24Type : uint8_t {
+enum class B24Type : uint8_t {
     kB24TypeCaption = 0x80,
     kB24TypeSuperimpose = 0x81,
     kB24TypeDefault = kB24TypeCaption
 };
 
-enum B24Profile {
+enum class B24Profile : uint8_t {
     kB24ProfileA = 0x0008,
     kB24ProfileC = 0x0012,
     kB24ProfileDefault = kB24ProfileA
 };
 
-enum B24LanguageId : uint8_t {
+enum class B24LanguageId : uint8_t {
     kB24LanguageIdFirst = 1,
     kB24LanguageIdSecond = 2,
     kB24LanguageIdDefault = kB24LanguageIdFirst,

@@ -43,9 +43,9 @@ public:
     explicit Decoder(Context& context);
     ~Decoder();
 public:
-    bool Initialize(B24Type type = kB24TypeDefault,
-                    B24Profile profile = kB24ProfileDefault,
-                    B24LanguageId language_id = kB24LanguageIdDefault);
+    bool Initialize(B24Type type = B24Type::kB24TypeDefault,
+                    B24Profile profile = B24Profile::kB24ProfileDefault,
+                    B24LanguageId language_id = B24LanguageId::kB24LanguageIdDefault);
     void SetType(B24Type type);
     void SetProfile(B24Profile profile);
     void SetLanguageId(B24LanguageId language_id);

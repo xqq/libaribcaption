@@ -40,9 +40,9 @@ public:
     explicit DecoderImpl(Context& context);
     ~DecoderImpl();
 public:
-    bool Initialize(B24Type type = kB24TypeDefault,
-                    B24Profile profile = kB24ProfileDefault,
-                    B24LanguageId language_id = kB24LanguageIdDefault);
+    bool Initialize(B24Type type = B24Type::kB24TypeDefault,
+                    B24Profile profile = B24Profile::kB24ProfileDefault,
+                    B24LanguageId language_id = B24LanguageId::kB24LanguageIdDefault);
     void SetType(B24Type type) { type_ = type; }
     void SetProfile(B24Profile profile);
     void SetLanguageId(B24LanguageId language_id) { language_id_ = language_id; }
@@ -87,7 +87,7 @@ public:
     DecoderImpl& operator=(DecoderImpl&&) = delete;
 private:
     struct LanguageInfo {
-        B24LanguageId language_id = kB24LanguageIdFirst;
+        B24LanguageId language_id = B24LanguageId::kB24LanguageIdFirst;
         uint8_t DMF = 0;
         uint8_t format = 0;
         uint8_t TCS = 0;
@@ -96,9 +96,9 @@ private:
 private:
     std::shared_ptr<Logger> log_;
 
-    B24Type type_ = kB24TypeDefault;
-    B24Profile profile_ = kB24ProfileDefault;
-    B24LanguageId language_id_ = kB24LanguageIdDefault;
+    B24Type type_ = B24Type::kB24TypeDefault;
+    B24Profile profile_ = B24Profile::kB24ProfileDefault;
+    B24LanguageId language_id_ = B24LanguageId::kB24LanguageIdDefault;
 
     std::vector<LanguageInfo> language_infos_;
     int prev_dgi_group_ = -1;

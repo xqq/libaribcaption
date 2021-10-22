@@ -54,7 +54,7 @@ uint32_t DecoderImpl::QueryISO639LanguageCode(B24LanguageId language_id) const {
         return 0;
     }
 
-    size_t index = language_id - 1;
+    size_t index = static_cast<size_t>(language_id) - 1;
     if (index >= language_infos_.size()) {
         return 0;
     }
@@ -81,8 +81,9 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
     if (data_identifier != 0x80 && data_identifier != 0x81) {
         log_->e("Invalid data_identifier: 0x", std::hex, data_identifier);
         return Decoder::kDecodeStatusError;
-    } else if (data_identifier != type_) {
-        log_->e("data_identifier mismatch, found: 0x", std::hex, data_identifier, ", expected: 0x", type_);
+    } else if (data_identifier != static_cast<uint8_t>(type_)) {
+        log_->e("data_identifier mismatch, found: 0x", std::hex, data_identifier,
+                ", expected: 0x", static_cast<uint8_t>(type_));
         return Decoder::kDecodeStatusError;
     }
 
@@ -124,7 +125,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
         }
     } else {
         // Caption statement data
-        if (dgi_id != language_id_) {
+        if (dgi_id != static_cast<uint8_t>(language_id_)) {
             // Non-expected language id, ignore it
             return Decoder::kDecodeStatusNoCaption;
         } else {

@@ -162,7 +162,7 @@ bool DecoderImpl::Flush() {
 }
 
 void DecoderImpl::ResetWritingFormat() {
-    if (profile_ == B24Profile::kB24ProfileA) {
+    if (profile_ == B24Profile::kProfileA) {
         switch (swf_) {
             case 5:   // 1920 x 1080 horizontal
                 caption_plane_width_ = display_area_width_ = 1920;
@@ -206,7 +206,7 @@ void DecoderImpl::ResetWritingFormat() {
                 char_vertical_spacing_ = 24;
                 break;
         }
-    } else if (profile_ == B24Profile::kB24ProfileC) {
+    } else if (profile_ == B24Profile::kProfileC) {
         caption_plane_width_ = display_area_width_ = 320;
         caption_plane_height_ = display_area_height_ = 180;
         char_width_ = 18;
@@ -220,13 +220,13 @@ void DecoderImpl::ResetInternalState() {
     caption_ = std::make_unique<Caption>();
 
     // Set default G1~G4 codesets
-    if (profile_ == B24Profile::kB24ProfileA) {
+    if (profile_ == B24Profile::kProfileA) {
         // full-seg, Profile A
         GX_[0] = kKanjiEntry;
         GX_[1] = kAlphanumericEntry;
         GX_[2] = kHiraganaEntry;
         GX_[3] = kMacroEntry;
-    } else if (profile_ == B24Profile::kB24ProfileC) {
+    } else if (profile_ == B24Profile::kProfileC) {
         // one-seg, Profile C
         GX_[0] = kDRCS1Entry;
         GX_[1] = kAlphanumericEntry;
@@ -1195,7 +1195,7 @@ void DecoderImpl::MakeNewCaptionRegion() {
 
 bool DecoderImpl::IsRubyMode() const {
     if ((char_horizontal_scale_ == 0.5f && char_vertical_scale_ == 0.5f) ||
-            (profile_ == B24Profile::kB24ProfileA && char_width_ == 18 && char_height_ == 18)) {
+            (profile_ == B24Profile::kProfileA && char_width_ == 18 && char_height_ == 18)) {
         return true;
     }
     return false;

@@ -22,22 +22,22 @@
 namespace aribcaption {
 
 enum class B24Type : uint8_t {
-    kB24TypeCaption = 0x80,
-    kB24TypeSuperimpose = 0x81,
-    kB24TypeDefault = kB24TypeCaption
+    kCaption = 0x80,
+    kSuperimpose = 0x81,
+    kDefault = kCaption
 };
 
 enum class B24Profile : uint8_t {
-    kB24ProfileA = 0x0008,
-    kB24ProfileC = 0x0012,
-    kB24ProfileDefault = kB24ProfileA
+    kProfileA = 0x0008,
+    kProfileC = 0x0012,
+    kDefault = kProfileA
 };
 
 enum class B24LanguageId : uint8_t {
-    kB24LanguageIdFirst = 1,
-    kB24LanguageIdSecond = 2,
-    kB24LanguageIdDefault = kB24LanguageIdFirst,
-    kB24LanguageIdMax = kB24LanguageIdSecond
+    kFirst = 1,
+    kSecond = 2,
+    kDefault = kFirst,
+    kMax = kSecond
 };
 
 }  // namespace aribcaption

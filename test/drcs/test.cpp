@@ -127,14 +127,14 @@ int main(int argc, const char* argv[]) {
 
     Bitmap caption_frame(caption->plane_width * scale_factor,
                          caption->plane_height * scale_factor,
-                         PixelFormat::kPixelFormatRGBA8888);
+                         PixelFormat::kRGBA8888);
     Canvas caption_canvas(caption_frame);
 
     for (size_t i = 0; i < caption->regions.size(); i++) {
         CaptionRegion& region = caption->regions[i];
         Bitmap region_bmp(region.width * scale_factor,
                           region.height * scale_factor,
-                          PixelFormat::kPixelFormatRGBA8888);
+                          PixelFormat::kRGBA8888);
         Canvas canvas(region_bmp);
         canvas.SetTextRenderer(text_renderer);
 

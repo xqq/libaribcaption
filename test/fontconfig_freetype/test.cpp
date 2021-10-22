@@ -76,7 +76,7 @@ int main(int argc, const char* argv[]) {
 
     Bitmap bitmap(section_width * chars.size() * scale_factor,
                   section_height * scale_factor,
-                  PixelFormat::kPixelFormatRGBA8888);
+                  PixelFormat::kRGBA8888);
 
     printf("bitmap size: width %d, height %d\n", bitmap.width(), bitmap.height());
 
@@ -125,7 +125,7 @@ int main(int argc, const char* argv[]) {
         return -1;
     }
 
-    Bitmap bmp(char_width * scale_factor, char_height * scale_factor, PixelFormat::kPixelFormatRGBA8888);
+    Bitmap bmp(char_width * scale_factor, char_height * scale_factor, PixelFormat::kRGBA8888);
     text_renderer.DrawChar(U'獣',
                            CharStyle::kCharStyleStroke,
                            ColorRGBA(255, 255, 0, 255),

@@ -87,7 +87,7 @@ private:
     int width_ = 0;
     int height_ = 0;
     int stride_ = 0;
-    PixelFormat pixel_format_ = PixelFormat::kPixelFormatDefault;
+    PixelFormat pixel_format_ = PixelFormat::kDefault;
 
     std::vector<uint8_t, AlignedAllocator<uint8_t, kAlignedTo>> pixels;
 };

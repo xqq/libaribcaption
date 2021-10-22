@@ -40,7 +40,7 @@ Image Bitmap::ToImage(Bitmap&& bmp) {
 Bitmap::Bitmap(int width, int height, PixelFormat pixel_format) :
       width_(width), height_(height), pixel_format_(pixel_format) {
     assert(width > 0 && height > 0);
-    assert(pixel_format == PixelFormat::kPixelFormatRGBA8888);
+    assert(pixel_format == PixelFormat::kRGBA8888);
 
     stride_ = width;
 

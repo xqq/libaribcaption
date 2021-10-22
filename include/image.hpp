@@ -26,8 +26,8 @@
 namespace aribcaption {
 
 enum class PixelFormat {
-    kPixelFormatRGBA8888 = 0,
-    kPixelFormatDefault = kPixelFormatRGBA8888,
+    kRGBA8888 = 0,
+    kDefault = kRGBA8888,
 };
 
 struct Image {
@@ -41,7 +41,7 @@ public:
     int dst_x = 0;
     int dst_y = 0;
 
-    PixelFormat pixel_format = PixelFormat::kPixelFormatDefault;
+    PixelFormat pixel_format = PixelFormat::kDefault;
 
     std::vector<uint8_t, AlignedAllocator<uint8_t, kAlignedTo>> bitmap;
 public:

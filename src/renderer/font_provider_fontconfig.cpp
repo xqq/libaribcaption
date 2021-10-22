@@ -99,7 +99,7 @@ auto FontProviderFontconfig::GetFontFace(const std::string& font_name,
     FontfaceInfo info;
     info.filename = reinterpret_cast<const char*>(filename);
     info.face_index = fc_index;
-    info.provider_type = FontProviderType::kFontProviderFontconfig;
+    info.provider_type = FontProviderType::kFontconfig;
 
     return Ok(std::move(info));
 }

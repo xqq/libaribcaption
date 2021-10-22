@@ -23,17 +23,11 @@
 #include <optional>
 #include <caption.hpp>
 #include "context.hpp"
+#include "renderer.hpp"
 #include "base/result.hpp"
 #include "renderer/bitmap.hpp"
 
 namespace aribcaption {
-
-enum class TextRendererType {
-    kTextRendererAuto = 0,
-    kFontProviderCoreText,
-    kFontProviderDirectWrite,
-    kFontProviderFreetype,
-};
 
 struct UnderlineInfo {
     int start_x = 0;

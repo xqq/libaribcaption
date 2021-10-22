@@ -24,8 +24,8 @@ namespace aribcaption {
 
 std::unique_ptr<TextRenderer> TextRenderer::Create(TextRendererType type, Context& context, FontProvider& font_provider) {
     switch (type) {
-        case TextRendererType::kTextRendererAuto:
-        case TextRendererType::kFontProviderFreetype:
+        case TextRendererType::kAuto:
+        case TextRendererType::kFreetype:
         default:
             return std::make_unique<TextRendererFreetype>(context, font_provider);
     }

@@ -24,8 +24,8 @@ namespace aribcaption {
 
 std::unique_ptr<FontProvider> FontProvider::Create(FontProviderType type, Context& context) {
     switch (type) {
-        case FontProviderType::kFontProviderAuto:
-        case FontProviderType::kFontProviderFontconfig:
+        case FontProviderType::kAuto:
+        case FontProviderType::kFontconfig:
         default:
             return std::make_unique<FontProviderFontconfig>(context);
     }

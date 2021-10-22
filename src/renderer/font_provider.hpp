@@ -24,17 +24,10 @@
 #include <memory>
 #include <optional>
 #include "context.hpp"
+#include "renderer.hpp"
 #include "base/result.hpp"
 
 namespace aribcaption {
-
-enum class FontProviderType {
-    kFontProviderAuto = 0,
-    kFontProviderCoreText,
-    kFontProviderDirectWrite,
-    kFontProviderFontconfig,
-    kFontProviderDefault = kFontProviderAuto,
-};
 
 struct FontProviderPrivate {
 public:
@@ -47,7 +40,7 @@ private:
 struct FontfaceInfo {
     std::string filename;
     int face_index = 0;
-    FontProviderType provider_type = FontProviderType::kFontProviderDefault;
+    FontProviderType provider_type = FontProviderType::kAuto;
     std::unique_ptr<FontProviderPrivate> provider_priv;
 };
 

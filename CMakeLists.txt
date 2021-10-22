@@ -33,6 +33,7 @@ add_library(aribcaption
         include/decoder.hpp
         include/drcs.hpp
         include/image.hpp
+        include/renderer.hpp
         src/base/aligned_alloc.cpp
         src/base/always_inline.hpp
         src/base/logger.hpp

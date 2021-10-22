@@ -42,8 +42,8 @@ public:
     ~ScopedHolder() noexcept {
         if (inner_) {
             deleter_(inner_);
+            inner_ = 0;
         }
-        inner_ = 0;
     }
 
     [[nodiscard]]
@@ -81,8 +81,14 @@ public:
     T Take() noexcept {
         T inner = inner_;
         inner_ = 0;
-        deleter_ = nullptr;
         return inner;
+    }
+
+    void Reset() noexcept {
+        if (inner_) {
+            deleter_(inner_);
+            inner_ = 0;
+        }
     }
 
     ScopedHolder& operator=(T new_inner) noexcept {

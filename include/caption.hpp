@@ -58,13 +58,13 @@ enum EnclosureStyle : uint8_t {
     kEnclosureStyleDefault = kEnclosureStyleNone
 };
 
-enum CaptionType : uint8_t {
+enum class CaptionType : uint8_t {
     kCaptionTypeCaption = 0x80,
     kCaptionTypeSuperimpose = 0x81,
     kCaptionTypeDefault = kCaptionTypeCaption
 };
 
-enum CaptionCharType : uint8_t {
+enum class CaptionCharType : uint8_t {
     kCaptionCharTypeText = 0,
     kCaptionCharTypeTextGaiji,
     kCaptionCharTypeDRCS,

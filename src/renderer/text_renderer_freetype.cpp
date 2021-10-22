@@ -51,6 +51,14 @@ bool TextRendererFreetype::SetFontFamily(const std::vector<std::string>& font_fa
         return false;
     }
 
+    if (!font_family_.empty() && font_family_ != font_family) {
+        // Reset Freetype faces
+        main_face_.Reset();
+        fallback_face_.Reset();
+        main_face_index_ = 0;
+        fallback_face_index_ = 0;
+    }
+
     font_family_ = font_family;
     return true;
 }

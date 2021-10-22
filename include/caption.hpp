@@ -59,22 +59,22 @@ enum EnclosureStyle : uint8_t {
 };
 
 enum class CaptionType : uint8_t {
-    kCaptionTypeCaption = 0x80,
-    kCaptionTypeSuperimpose = 0x81,
-    kCaptionTypeDefault = kCaptionTypeCaption
+    kCaption = 0x80,
+    kSuperimpose = 0x81,
+    kDefault = kCaption
 };
 
 enum class CaptionCharType : uint8_t {
-    kCaptionCharTypeText = 0,
-    kCaptionCharTypeTextGaiji,
-    kCaptionCharTypeDRCS,
-    kCaptionCharTypeDRCSReplaced,
-    kCaptionCharTypeDRCSReplacedGaiji,
-    kCaptionCharTypeDefault = kCaptionCharTypeText
+    kText = 0,
+    kGaiji,
+    kDRCS,
+    kDRCSReplaced,
+    kDRCSReplacedGaiji,
+    kDefault = kText
 };
 
 struct CaptionChar {
-    CaptionCharType type = CaptionCharType::kCaptionCharTypeDefault;
+    CaptionCharType type = CaptionCharType::kDefault;
 
     // Character encoded in UTF-8
     std::string ch;
@@ -132,7 +132,7 @@ public:
 };
 
 struct Caption {
-    CaptionType type = CaptionType::kCaptionTypeDefault;
+    CaptionType type = CaptionType::kDefault;
 
     // ISO 639-2 3-char language code, in Big Endian
     // e.g. "jpn" => 6A 70 6E => 0x006A706E

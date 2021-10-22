@@ -1077,7 +1077,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
 
 void DecoderImpl::PushCharacter(uint32_t ucs4) {
     CaptionChar caption_char;
-    caption_char.type = CaptionCharType::kCaptionCharTypeText;
+    caption_char.type = CaptionCharType::kText;
     caption_char.ucs4 = ucs4;
 
     utf8::AppendCodePoint(caption_char.ch, ucs4);
@@ -1093,10 +1093,10 @@ void DecoderImpl::PushDRCSCharacter(uint32_t id, DRCS& drcs) {
     CaptionChar caption_char;
 
     if (drcs.alternative_text.empty()) {
-        caption_char.type = CaptionCharType::kCaptionCharTypeDRCS;
+        caption_char.type = CaptionCharType::kDRCS;
         utf8::AppendCodePoint(caption_->text, 0x3000);  // Fill a Ideographic Space here
     } else {
-        caption_char.type = CaptionCharType::kCaptionCharTypeDRCSReplaced;
+        caption_char.type = CaptionCharType::kDRCSReplaced;
         caption_char.ch = drcs.alternative_text;
         caption_char.ucs4 = drcs.alternative_ucs4;
         if (!IsRubyMode())

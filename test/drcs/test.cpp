@@ -163,9 +163,9 @@ int main(int argc, const char* argv[]) {
                 }
             }
 
-            if (ch.type == CaptionCharType::kCaptionCharTypeDRCS
-                || ch.type == CaptionCharType::kCaptionCharTypeDRCSReplaced
-                || ch.type == CaptionCharType::kCaptionCharTypeDRCSReplacedGaiji) {
+            if (ch.type == CaptionCharType::kDRCS
+                || ch.type == CaptionCharType::kDRCSReplaced
+                || ch.type == CaptionCharType::kDRCSReplacedGaiji) {
 
                 DRCS& drcs = caption->drcs_map[ch.drcs_id];
                 bool ret = drcs_renderer.DrawDRCS(drcs, style, ch.text_color, stroke_color, stroke_width,

@@ -43,7 +43,7 @@ constexpr int scale_factor = 2;
 int main(int argc, const char* argv[]) {
     Context context;
     context.SetLogcatCallback([](LogLevel level, const char* message) {
-        if (level == LogLevel::kLogLevelError) {
+        if (level == LogLevel::kError) {
             fprintf(stderr, "%s\n", message);
         } else {
             printf("%s\n", message);

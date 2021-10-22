@@ -86,7 +86,7 @@ auto decoder_callback = [](std::unique_ptr<aribcaption::Caption> caption) -> voi
 int main(int argc, const char* argv[]) {
     aribcaption::Context context;
     context.SetLogcatCallback([](aribcaption::LogLevel level, const char* message) {
-        if (level == aribcaption::LogLevel::kLogLevelError) {
+        if (level == aribcaption::LogLevel::kError) {
             fprintf(stderr, "%s\n", message);
         } else {
             printf("%s\n", message);

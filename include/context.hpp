@@ -25,9 +25,9 @@
 namespace aribcaption {
 
 enum class LogLevel {
-    kLogLevelError,
-    kLogLevelWarning,
-    kLogLevelVerbose
+    kError,
+    kWarning,
+    kVerbose
 };
 
 using LogcatCB = std::function<void(LogLevel, const char*)>;

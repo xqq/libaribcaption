@@ -36,21 +36,21 @@ public:
     void e(const Args&... items) {
         std::ostringstream oss;
         WriteStream(oss, items...);
-        logcat_cb_(LogLevel::kLogLevelError, oss.str().c_str());
+        logcat_cb_(LogLevel::kError, oss.str().c_str());
     }
 
     template <typename... Args>
     void w(const Args&... items) {
         std::ostringstream oss;
         WriteStream(oss, items...);
-        logcat_cb_(LogLevel::kLogLevelWarning, oss.str().c_str());
+        logcat_cb_(LogLevel::kWarning, oss.str().c_str());
     }
 
     template <typename... Args>
     void v(const Args&... items) {
         std::ostringstream oss;
         WriteStream(oss, items...);
-        logcat_cb_(LogLevel::kLogLevelVerbose, oss.str().c_str());
+        logcat_cb_(LogLevel::kVerbose, oss.str().c_str());
     }
 public:
     Logger(const Logger&) = delete;

@@ -67,6 +67,9 @@ add_library(aribcaption
         src/renderer/rect.hpp
         src/renderer/region_renderer.cpp
         src/renderer/region_renderer.hpp
+        src/renderer/renderer.cpp
+        src/renderer/renderer_impl.cpp
+        src/renderer/renderer_impl.hpp
         src/renderer/text_renderer.cpp
         src/renderer/text_renderer.hpp
         src/renderer/text_renderer_freetype.cpp

@@ -161,6 +161,11 @@ bool RendererImpl::SetMargins(int top, int bottom, int left, int right) {
 
 bool RendererImpl::AppendCaption(const Caption& caption) {
     assert(caption.pts != PTS_NOPTS && "Caption without PTS is not supported");
+    assert(caption.plane_width > 0 && caption.plane_height > 0);
+
+    if (caption.pts == PTS_NOPTS || caption.plane_width <= 0 || caption.plane_height <= 0) {
+        return false;
+    }
 
     auto prev = captions_.rbegin();
     if (prev != captions_.rend() && prev->second.duration == DURATION_INDEFINITE) {
@@ -174,6 +179,11 @@ bool RendererImpl::AppendCaption(const Caption& caption) {
 
 bool RendererImpl::AppendCaption(Caption&& caption) {
     assert(caption.pts != PTS_NOPTS && "Caption without PTS is not supported");
+    assert(caption.plane_width > 0 && caption.plane_height > 0);
+
+    if (caption.pts == PTS_NOPTS || caption.plane_width <= 0 || caption.plane_height <= 0) {
+        return false;
+    }
 
     auto prev = captions_.rbegin();
     if (prev != captions_.rend() && prev->second.duration == DURATION_INDEFINITE) {

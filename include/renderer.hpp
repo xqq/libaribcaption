@@ -40,7 +40,7 @@ enum class TextRendererType {
     kFreetype,
 };
 
-class RendererImpl;
+namespace internal { class RendererImpl; }
 
 class Renderer {
 public:
@@ -79,7 +79,7 @@ public:
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;
 private:
-    std::unique_ptr<RendererImpl> pimpl_;
+    std::unique_ptr<internal::RendererImpl> pimpl_;
 };
 
 }  // namespace aribcaption

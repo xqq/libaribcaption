@@ -26,6 +26,7 @@ add_library(aribcaption
     STATIC
         include/aligned_alloc.hpp
         include/aribcaption.h
+        include/aribcaption.hpp
         include/b24.hpp
         include/caption.hpp
         include/color.hpp
@@ -64,6 +65,8 @@ add_library(aribcaption
         src/renderer/font_provider_fontconfig.cpp
         src/renderer/font_provider_fontconfig.hpp
         src/renderer/rect.hpp
+        src/renderer/region_renderer.cpp
+        src/renderer/region_renderer.hpp
         src/renderer/text_renderer.cpp
         src/renderer/text_renderer.hpp
         src/renderer/text_renderer_freetype.cpp

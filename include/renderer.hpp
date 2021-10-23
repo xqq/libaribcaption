@@ -20,8 +20,8 @@
 #define ARIBCAPTION_RENDERER_HPP
 
 #include <memory>
-#include "b24.hpp"
 #include "context.hpp"
+#include "caption.hpp"
 #include "image.hpp"
 
 namespace aribcaption {
@@ -40,7 +40,6 @@ enum class TextRendererType {
     kFreetype,
 };
 
-struct Caption;
 class RendererImpl;
 
 class Renderer {
@@ -57,7 +56,9 @@ public:
     explicit Renderer(Context& context);
     ~Renderer();
 public:
-    bool Initialize(B24Type caption_type = B24Type::kCaption);
+    bool Initialize(CaptionType caption_type = CaptionType::kCaption,
+                    FontProviderType font_provider_type = FontProviderType::kAuto,
+                    TextRendererType text_renderer_type = TextRendererType::kAuto);
     bool SetFrameSize(int frame_width, int frame_height);
     bool SetMargins(int top, int bottom, int left, int right);
 

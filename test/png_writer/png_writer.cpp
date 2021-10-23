@@ -20,10 +20,66 @@
 #include <cstdlib>
 #include <cstdio>
 #include <png.h>
+#include "image.hpp"
 #include "renderer/bitmap.hpp"
 #include "png_writer.hpp"
 
 using namespace aribcaption;
+
+bool png_writer_write_image(const char* filename, const Image& image) {
+    FILE *fp = fopen(filename, "wb");
+    if (!fp) {
+        fprintf(stderr, "fopen() failed\n");
+        return false;
+    }
+
+    png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+    if (!png) {
+        fprintf(stderr, "png_create_write_struct() failed\n");
+        return false;
+    }
+
+    png_infop info = png_create_info_struct(png);
+    if (!info) {
+        fprintf(stderr, "png_create_info_struct() failed\n");
+        return false;
+    }
+
+    if (setjmp(png_jmpbuf(png)))
+        return false;
+
+    png_init_io(png, fp);
+
+    // Output is 8bit depth, RGBA format.
+    png_set_IHDR(
+        png,
+        info,
+        image.width, image.height,
+        8,
+        PNG_COLOR_TYPE_RGBA,
+        PNG_INTERLACE_NONE,
+        PNG_COMPRESSION_TYPE_DEFAULT,
+        PNG_FILTER_TYPE_DEFAULT
+    );
+    png_write_info(png, info);
+
+    std::vector<png_bytep> row_pointers;
+
+    for (int y = 0; y < image.height ; y++) {
+        auto base = reinterpret_cast<const uint32_t*>(image.bitmap.data());
+        uint32_t* ptr = const_cast<uint32_t*>(base) + y * image.stride;
+        row_pointers.push_back(reinterpret_cast<uint8_t*>(ptr));
+    }
+
+    png_write_image(png, row_pointers.data());
+    png_write_end(png, nullptr);
+
+    fclose(fp);
+
+    png_destroy_write_struct(&png, &info);
+    return true;
+}
+
 
 bool png_writer_write_bitmap(const char* filename, const Bitmap& bitmap) {
     FILE *fp = fopen(filename, "wb");

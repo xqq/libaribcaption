@@ -53,6 +53,7 @@ public:
     bool SetFontFamily(const std::vector<std::string>& font_family);
     void SetOriginPlaneSize(int plane_width, int plane_height);
     void SetTargetCaptionAreaRect(const Rect& rect);
+    void SetStrokeWidth(float dots);
     void SetReplaceDRCS(bool replace);
     void SetForceStrokeText(bool force_stroke);
     void SetForceNoBackground(bool force_no_background);
@@ -103,6 +104,7 @@ private:
     int caption_area_width_ = 0;
     int caption_area_height_ = 0;
 
+    float stroke_width_ = 1.5f;
     bool replace_drcs_ = true;
     bool force_stroke_text_ = false;
     bool force_no_background_ = false;

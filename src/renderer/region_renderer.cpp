@@ -69,6 +69,12 @@ void RegionRenderer::SetTargetCaptionAreaRect(const Rect& rect) {
     }
 }
 
+void RegionRenderer::SetStrokeWidth(float dots) {
+    if (dots >= 0.0f) {
+        stroke_width_ = dots;
+    }
+}
+
 void RegionRenderer::SetReplaceDRCS(bool replace) {
     replace_drcs_ = replace;
 }
@@ -152,7 +158,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
         CaptionCharType type = ch.type;
         CharStyle style = ch.style;
         ColorRGBA stroke_color = ch.stroke_color;
-        int stroke_width = ScaleX(1.5f);  // use floor
+        int stroke_width = ScaleX(stroke_width_);  // use floor
         UnderlineInfo underline_info{section_rect.left, section_rect.width()};
 
         if (force_stroke_text_ && !(ch.style & CharStyle::kCharStyleStroke)) {

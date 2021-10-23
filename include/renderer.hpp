@@ -59,6 +59,14 @@ public:
     bool Initialize(CaptionType caption_type = CaptionType::kCaption,
                     FontProviderType font_provider_type = FontProviderType::kAuto,
                     TextRendererType text_renderer_type = TextRendererType::kAuto);
+
+    void SetStrokeWidth(float dots);
+    void SetReplaceDRCS(bool replace);
+    void SetForceStrokeText(bool force_stroke);
+    void SetForceNoBackground(bool force_no_background);
+
+    bool SetDefaultFontFamily(const std::vector<std::string>& font_family, bool force_default);
+    bool SetLanguageSpecificFontFamily(uint32_t language_code, const std::vector<std::string>& font_family);
     bool SetFrameSize(int frame_width, int frame_height);
     bool SetMargins(int top, int bottom, int left, int right);
 

@@ -104,7 +104,7 @@ private:
     int caption_area_height_ = 0;
 
     bool replace_drcs_ = true;
-    bool force_stroke_text_ = true;
+    bool force_stroke_text_ = false;
     bool force_no_background_ = false;
 
     float x_magnification_ = 0.0f;

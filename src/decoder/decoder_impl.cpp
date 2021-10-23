@@ -30,7 +30,7 @@
 #include "decoder/b24_macros.hpp"
 #include "decoder/decoder_impl.hpp"
 
-namespace aribcaption {
+namespace aribcaption::internal {
 
 DecoderImpl::DecoderImpl(Context& context) : log_(GetContextLogger(context)) { }
 
@@ -1274,4 +1274,4 @@ void DecoderImpl::MoveActivePosToNewline() {
 }
 
 
-}  // namespace aribcaption
+}  // namespace aribcaption::internal

@@ -28,7 +28,8 @@
 namespace aribcaption {
 
 struct Caption;
-class DecoderImpl;
+
+namespace internal { class DecoderImpl; }
 
 class Decoder {
 public:
@@ -58,7 +59,7 @@ public:
     Decoder(const Decoder&) = delete;
     Decoder& operator=(const Decoder&) = delete;
 private:
-    std::unique_ptr<DecoderImpl> pimpl_;
+    std::unique_ptr<internal::DecoderImpl> pimpl_;
 };
 
 }  // namespace aribcaption

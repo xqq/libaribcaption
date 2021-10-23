@@ -28,12 +28,11 @@
 #include "caption.hpp"
 #include "context.hpp"
 #include "decoder.hpp"
-#include "decoder/b24_codesets.hpp"
 #include "drcs.hpp"
+#include "base/logger.hpp"
+#include "decoder/b24_codesets.hpp"
 
-namespace aribcaption {
-
-class Logger;
+namespace aribcaption::internal {
 
 class DecoderImpl {
 public:
@@ -152,6 +151,6 @@ private:
     ColorRGBA back_color_;
 };
 
-}  // namespace aribcaption
+}  // namespace aribcaption::internal
 
 #endif  // ARIBCAPTION_DECODER_IMPL_HPP

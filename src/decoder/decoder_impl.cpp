@@ -32,7 +32,7 @@
 
 namespace aribcaption::internal {
 
-DecoderImpl::DecoderImpl(Context& context) : log_(GetContextLogger(context)) { }
+DecoderImpl::DecoderImpl(Context& context) : log_(GetContextLogger(context)), drcs_maps_(16) { }
 
 DecoderImpl::~DecoderImpl() = default;
 
@@ -235,9 +235,6 @@ void DecoderImpl::ResetInternalState() {
     }
     GL_ = &GX_[0];
     GR_ = &GX_[2];
-
-    drcs_maps_.clear();
-    drcs_maps_.resize(16);
 
     ResetWritingFormat();
 

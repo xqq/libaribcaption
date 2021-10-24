@@ -37,6 +37,19 @@ Image Bitmap::ToImage(Bitmap&& bmp) {
     return image;
 }
 
+Bitmap Bitmap::FromImage(Image&& image) {
+    Bitmap bitmap;
+
+    bitmap.width_ = image.width;
+    bitmap.height_ = image.height;
+    bitmap.stride_ = image.stride;
+    bitmap.pixel_format_ = image.pixel_format;
+
+    bitmap.pixels = std::move(image.bitmap);
+
+    return bitmap;
+}
+
 Bitmap::Bitmap(int width, int height, PixelFormat pixel_format) :
       width_(width), height_(height), pixel_format_(pixel_format) {
     assert(width > 0 && height > 0);

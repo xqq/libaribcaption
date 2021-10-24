@@ -32,7 +32,10 @@ class Bitmap {
 public:
     static constexpr size_t kAlignedTo = 32;
 public:
-    static Image ToImage(Bitmap&&);
+    static Image ToImage(Bitmap&& bitmap);
+    static Bitmap FromImage(Image&& image);
+private:
+    Bitmap() = default;
 public:
     Bitmap(int width, int height, PixelFormat pixel_format);
     ~Bitmap() = default;

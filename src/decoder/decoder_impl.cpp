@@ -67,7 +67,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
                                           const Decoder::OutputCB& output_cb) {
     assert(pes_data != nullptr && length > 0);
     if (length < 3) {
-        log_->e("pes_data size < 3, cannot parse");
+        log_->e("DecoderImpl: pes_data size < 3, cannot parse");
         return Decoder::kDecodeStatusError;
     }
 
@@ -79,22 +79,22 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
     uint8_t PES_data_packet_header_length = data[2] & 0x0F;
 
     if (data_identifier != 0x80 && data_identifier != 0x81) {
-        log_->e("Invalid data_identifier: 0x", std::hex, data_identifier);
+        log_->e("DecoderImpl: Invalid data_identifier: 0x", std::hex, data_identifier);
         return Decoder::kDecodeStatusError;
     } else if (data_identifier != static_cast<uint8_t>(type_)) {
-        log_->e("data_identifier mismatch, found: 0x", std::hex, data_identifier,
+        log_->e("DecoderImpl: data_identifier mismatch, found: 0x", std::hex, data_identifier,
                 ", expected: 0x", static_cast<uint8_t>(type_));
         return Decoder::kDecodeStatusError;
     }
 
     if (private_stream_id != 0xFF) {
-        log_->e("Invalid private_stream_id: 0x", std::hex, private_stream_id);
+        log_->e("DecoderImpl: Invalid private_stream_id: 0x", std::hex, private_stream_id);
         return Decoder::kDecodeStatusError;
     }
 
     size_t data_group_begin = 3 + PES_data_packet_header_length;
     if (data_group_begin + 5 > length) {
-        log_->e("pes_data length does not enough for a whole data_group");
+        log_->e("DecoderImpl: pes_data length does not enough for a whole data_group");
         return Decoder::kDecodeStatusError;
     }
 
@@ -267,7 +267,7 @@ void DecoderImpl::ResetInternalState() {
 
 bool DecoderImpl::ParseCaptionManagementData(const uint8_t* data, size_t length) {
     if (length < 10) {
-        log_->e("Data not enough for parsing CaptionManagementData");
+        log_->e("DecoderImpl: Data not enough for parsing CaptionManagementData");
         return false;
     }
 
@@ -282,14 +282,14 @@ bool DecoderImpl::ParseCaptionManagementData(const uint8_t* data, size_t length)
     offset += 1;
 
     if (num_languages == 0 || num_languages > 2) {
-        log_->e("Invalid num_languages: ", num_languages, ", maximum: 2");
+        log_->e("DecoderImpl: Invalid num_languages: ", num_languages, ", maximum: 2");
         return false;
     }
     language_infos_.resize(num_languages);
 
     for (uint8_t i = 0; i < num_languages; i++) {
         if (offset + 5 > length) {
-            log_->e("Data not enough for parsing language specific info in CaptionManagementData");
+            log_->e("DecoderImpl: Data not enough for parsing language specific info in CaptionManagementData");
             return false;
         }
 
@@ -320,7 +320,7 @@ bool DecoderImpl::ParseCaptionManagementData(const uint8_t* data, size_t length)
     }
 
     if (offset + 3 > length) {
-        log_->e("Data not enough for parsing CaptionManagementData");
+        log_->e("DecoderImpl: Data not enough for parsing CaptionManagementData");
         return false;
     }
 
@@ -332,7 +332,7 @@ bool DecoderImpl::ParseCaptionManagementData(const uint8_t* data, size_t length)
     if (data_unit_loop_length == 0) {
         return true;
     } else if (offset + data_unit_loop_length > length) {
-        log_->e("Data not enough for parsing CaptionManagementData");
+        log_->e("DecoderImpl: Data not enough for parsing CaptionManagementData");
         return false;
     }
 
@@ -342,7 +342,7 @@ bool DecoderImpl::ParseCaptionManagementData(const uint8_t* data, size_t length)
 
 bool DecoderImpl::ParseCaptionStatementData(const uint8_t* data, size_t length) {
     if (length < 4) {
-        log_->e("Data not enough for parsing CaptionStatementData");
+        log_->e("DecoderImpl: Data not enough for parsing CaptionStatementData");
         return false;
     }
 
@@ -354,7 +354,7 @@ bool DecoderImpl::ParseCaptionStatementData(const uint8_t* data, size_t length) 
     }
 
     if (offset + 4 > length) {
-        log_->e("Data not enough for parsing CaptionStatementData");
+        log_->e("DecoderImpl: Data not enough for parsing CaptionStatementData");
         return false;
     }
 
@@ -366,7 +366,7 @@ bool DecoderImpl::ParseCaptionStatementData(const uint8_t* data, size_t length) 
     if (data_unit_loop_length == 0) {
         return true;
     } else if (offset + data_unit_loop_length > length) {
-        log_->e("Data not enough for parsing CaptionStatementData");
+        log_->e("DecoderImpl: Data not enough for parsing CaptionStatementData");
         return false;
     }
 
@@ -376,7 +376,7 @@ bool DecoderImpl::ParseCaptionStatementData(const uint8_t* data, size_t length) 
 
 bool DecoderImpl::ParseDataUnit(const uint8_t* data, size_t length) {
     if (length < 5) {
-        log_->e("Data not enough for parsing DataUnit");
+        log_->e("DecoderImpl: Data not enough for parsing DataUnit");
         return false;
     }
 
@@ -390,14 +390,14 @@ bool DecoderImpl::ParseDataUnit(const uint8_t* data, size_t length) {
                                    ((uint32_t)data[offset + 4] <<  0);
 
         if (unit_separator != 0x1F) {
-            log_->e("Invalid unit_separator: 0x", std::hex, unit_separator);
+            log_->e("DecoderImpl: Invalid unit_separator: 0x", std::hex, unit_separator);
             return false;
         }
 
         if (data_unit_size == 0) {
             return true;
         } else if (offset + 5 + data_unit_size > length) {
-            log_->e("Data not enough for parsing DataUnit");
+            log_->e("DecoderImpl: Data not enough for parsing DataUnit");
             return false;
         }
 
@@ -425,23 +425,23 @@ bool DecoderImpl::ParseStatementBody(const uint8_t* data, size_t length) {
         if (ch <= 0x20) {
             ret = HandleC0(data + offset, length - offset, &bytes_processed);
             if (!ret)
-                log_->e("Handle C0 control character 0x", std::hex, data[offset], " failed near 0x", offset);
+                log_->e("DecoderImpl: Handle C0 control character 0x", std::hex, data[offset], " failed near 0x", offset);
         } else if (ch < 0x7F) {
             ret = HandleGLGR(data + offset, length - offset, &bytes_processed, GL_);
             if (!ret)
-                log_->e("Handle GL character 0x", std::hex, data[offset], " failed near 0x", offset);
+                log_->e("DecoderImpl: Handle GL character 0x", std::hex, data[offset], " failed near 0x", offset);
         } else if (ch <= 0xA0) {
             ret = HandleC1(data + offset, length - offset, &bytes_processed);
             if (!ret)
-                log_->e("Handle C1 control character 0x", std::hex, data[offset], " failed near 0x", offset);
+                log_->e("DecoderImpl: Handle C1 control character 0x", std::hex, data[offset], " failed near 0x", offset);
         } else if (ch < 0xFF) {
             ret = HandleGLGR(data + offset, length - offset, &bytes_processed, GR_);
             if (!ret)
-                log_->e("Handle GR character 0x", std::hex, data[offset], " failed near 0x", offset);
+                log_->e("DecoderImpl: Handle GR character 0x", std::hex, data[offset], " failed near 0x", offset);
         }
 
         if (!ret) {
-            log_->e("Parse StatementBody failed");
+            log_->e("DecoderImpl: Parse StatementBody failed");
             return false;
         }
         offset += bytes_processed;
@@ -457,7 +457,7 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
 
     for (uint8_t i = 0; i < number_of_code; i++) {
         if (offset + 3 > length) {
-            log_->e("Data not enough for parsing DRCS");
+            log_->e("DecoderImpl: Data not enough for parsing DRCS");
             return false;
         }
 
@@ -467,7 +467,7 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
 
         for (uint8_t j = 0; j < number_of_font; j++) {
             if (offset + 4 > length) {
-                log_->e("Data not enough for parsing DRCS");
+                log_->e("DecoderImpl: Data not enough for parsing DRCS");
                 return false;
             }
 
@@ -492,7 +492,7 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
                 size_t bitmap_size = width * height * depth_bits / 8;
 
                 if (offset + bitmap_size > length) {
-                    log_->e("Data not enough for parsing DRCS");
+                    log_->e("DecoderImpl: Data not enough for parsing DRCS");
                     return false;
                 }
 
@@ -513,7 +513,7 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
                     drcs.alternative_ucs4 = iter->second;
                     utf8::AppendCodePoint(drcs.alternative_text, iter->second);
                 } else {
-                    log_->w("Cannot convert unrecognized DRCS pattern with MD5 ", drcs.md5, " to Unicode");
+                    log_->w("DecoderImpl: Cannot convert unrecognized DRCS pattern with MD5 ", drcs.md5, " to Unicode");
                 }
 
                 if (byte_count == 1) {
@@ -908,7 +908,7 @@ bool DecoderImpl::HandleCSI(const uint8_t* data, size_t remain_bytes, size_t* by
 
     // move to F
     if (++offset >= remain_bytes) {
-        log_->e("Data not enough for handling CSI control character");
+        log_->e("DecoderImpl: Data not enough for handling CSI control character");
         return false;
     }
 

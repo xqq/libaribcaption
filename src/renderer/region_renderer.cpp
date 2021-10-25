@@ -32,7 +32,7 @@ bool RegionRenderer::Initialize(FontProviderType font_provider_type, TextRendere
     }
 
     text_renderer_ = TextRenderer::Create(text_renderer_type, context_, *font_provider_);
-    if (text_renderer_->Initialize()) {
+    if (!text_renderer_->Initialize()) {
         return false;
     }
 

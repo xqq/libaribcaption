@@ -45,12 +45,14 @@ public:
     void SetType(B24Type type) { type_ = type; }
     void SetProfile(B24Profile profile);
     void SetLanguageId(B24LanguageId language_id) { language_id_ = language_id; }
+    void SetDefaultLanguage(uint32_t iso639_language_code);
     [[nodiscard]]
     uint32_t QueryISO639LanguageCode(B24LanguageId language_id) const;
     Decoder::DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts,
                                  const Decoder::OutputCB& output_cb);
     bool Flush();
 private:
+    void ResetGraphicSets();
     void ResetWritingFormat();
     void ResetInternalState();
     bool ParseCaptionManagementData(const uint8_t* data, size_t length);
@@ -69,6 +71,8 @@ private:
     void ApplyCaptionCharCommonProperties(CaptionChar& caption_char);
     bool NeedNewCaptionRegion();
     void MakeNewCaptionRegion();
+    [[nodiscard]]
+    bool IsLatinLanguage() const;
     [[nodiscard]]
     bool IsRubyMode() const;
     [[nodiscard]]
@@ -100,6 +104,7 @@ private:
     B24LanguageId language_id_ = B24LanguageId::kDefault;
 
     std::vector<LanguageInfo> language_infos_;
+    uint32_t current_iso639_language_code_;
     int prev_dgi_group_ = -1;
 
     std::unique_ptr<Caption> caption_;

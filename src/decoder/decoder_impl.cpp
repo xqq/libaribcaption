@@ -49,14 +49,23 @@ void DecoderImpl::SetProfile(B24Profile profile) {
     ResetWritingFormat();
 }
 
+void DecoderImpl::SetDefaultLanguage(uint32_t iso639_language_code) {
+    if (!language_infos_.empty()) {
+        return;
+    }
+
+    current_iso639_language_code_ = iso639_language_code;
+    ResetInternalState();
+}
+
 uint32_t DecoderImpl::QueryISO639LanguageCode(B24LanguageId language_id) const {
     if (language_infos_.empty()) {
-        return 0;
+        return current_iso639_language_code_;
     }
 
     size_t index = static_cast<size_t>(language_id) - 1;
     if (index >= language_infos_.size()) {
-        return 0;
+        return current_iso639_language_code_;
     }
 
     const LanguageInfo& info = language_infos_[index];
@@ -110,12 +119,16 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
 
     bool ret = false;
 
+    if (!caption_) {
+        caption_ = std::make_unique<Caption>();
+    }
+
     if (dgi_id == 0) {
         // Caption management data
         if (dgi_group == prev_dgi_group_) {
             /* According to ARIB TR-B14 4.2.4
              * For caption management data, if data_group_id group equals to previous management data's group
-             * This data could be considered as retransmission, ignore it
+             * This packet could be considered as retransmission, ignore it
              */
             return Decoder::kDecodeStatusNoCaption;
         } else {
@@ -141,7 +154,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
 
     if (caption_ && !caption_->text.empty()) {
         caption_->type = static_cast<CaptionType>(type_);
-        caption_->iso639_language_code = QueryISO639LanguageCode(language_id_);
+        caption_->iso639_language_code = current_iso639_language_code_;
         caption_->pts = pts;
         caption_->duration = duration_ == 0 ? DURATION_INDEFINITE : duration_;
         caption_->plane_width = caption_plane_width_;
@@ -159,6 +172,31 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
 bool DecoderImpl::Flush() {
     ResetInternalState();
     return true;
+}
+
+void DecoderImpl::ResetGraphicSets() {
+    // Set default G1~G4 codesets
+    if (IsLatinLanguage()) {
+        // Latin language, defined in ABNT NBR 15606-1
+        GX_[0] = kAlphanumericEntry;
+        GX_[1] = kAlphanumericEntry;
+        GX_[2] = kLatinExtensionEntry;
+        GX_[3] = kLatinSpecialEntry;
+    } else if (profile_ == B24Profile::kProfileA) {
+        // full-seg, Profile A
+        GX_[0] = kKanjiEntry;
+        GX_[1] = kAlphanumericEntry;
+        GX_[2] = kHiraganaEntry;
+        GX_[3] = kMacroEntry;
+    } else if (profile_ == B24Profile::kProfileC) {
+        // one-seg, Profile C
+        GX_[0] = kDRCS1Entry;
+        GX_[1] = kAlphanumericEntry;
+        GX_[2] = kKanjiEntry;
+        GX_[3] = kMacroEntry;
+    }
+    GL_ = &GX_[0];
+    GR_ = &GX_[2];
 }
 
 void DecoderImpl::ResetWritingFormat() {
@@ -214,28 +252,17 @@ void DecoderImpl::ResetWritingFormat() {
         char_horizontal_spacing_ = 2;
         char_vertical_spacing_ = 6;
     }
+
+    if (IsLatinLanguage()) {
+        char_horizontal_spacing_ = 2;
+        char_vertical_spacing_ = 16;
+    }
 }
 
 void DecoderImpl::ResetInternalState() {
     caption_ = std::make_unique<Caption>();
 
-    // Set default G1~G4 codesets
-    if (profile_ == B24Profile::kProfileA) {
-        // full-seg, Profile A
-        GX_[0] = kKanjiEntry;
-        GX_[1] = kAlphanumericEntry;
-        GX_[2] = kHiraganaEntry;
-        GX_[3] = kMacroEntry;
-    } else if (profile_ == B24Profile::kProfileC) {
-        // one-seg, Profile C
-        GX_[0] = kDRCS1Entry;
-        GX_[1] = kAlphanumericEntry;
-        GX_[2] = kKanjiEntry;
-        GX_[3] = kMacroEntry;
-    }
-    GL_ = &GX_[0];
-    GR_ = &GX_[2];
-
+    ResetGraphicSets();
     ResetWritingFormat();
 
     pts_ = PTS_NOPTS;
@@ -247,8 +274,15 @@ void DecoderImpl::ResetInternalState() {
     active_pos_x_ = 0;
     active_pos_y_ = 0;
 
-    char_horizontal_scale_ = 1.0f;
-    char_vertical_scale_ = 1.0f;
+    if (IsLatinLanguage()) {
+        // Latin language: Use 1/2 x 1 middle size (MSZ) as default
+        char_horizontal_scale_ = 0.5f;
+        char_vertical_scale_ = 1.0f;
+    } else {
+        // Japanese: Use normal size (NSZ) as default
+        char_horizontal_scale_ = 1.0f;
+        char_vertical_scale_ = 1.0f;
+    }
 
     has_underline_ = false;
     has_bold_ = false;
@@ -312,7 +346,9 @@ bool DecoderImpl::ParseCaptionManagementData(const uint8_t* data, size_t length)
         offset += 1;
 
         if (language_info.language_id == this->language_id_) {
+            current_iso639_language_code_ = language_info.iso639_language_code;
             swf_ = language_info.format - 1;
+            ResetGraphicSets();
             ResetWritingFormat();
         }
 
@@ -633,7 +669,11 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             bytes = 1;
             break;
         case JIS8::SP:   // Space character
-            PushCharacter(0x3000);  // Ideographic Space
+            if (IsLatinLanguage()) {
+                PushCharacter(0x0020);  // Space (Basic Latin)
+            } else {
+                PushCharacter(0x3000);  // Ideographic Space (CJK)
+            }
             MoveRelativeActivePos(1, 0);
             bytes = 1;
             break;
@@ -1032,11 +1072,23 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
                entry->graphics_set == GraphicSet::kProportionalAlphanumeric) {
         size_t index = (data[0] & 0x7F) - 0x21;
         uint32_t ucs4 = 0;
-        if (char_horizontal_scale_ * 2 == char_vertical_scale_) {
+        if (IsLatinLanguage()) {
+            ucs4 = kAlphanumericTable_Latin[index];
+        } else if (char_horizontal_scale_ * 2 == char_vertical_scale_) {
             ucs4 = kAlphanumericTable_Halfwidth[index];
         } else {
             ucs4 = kAlphanumericTable_Fullwidth[index];
         }
+        PushCharacter(ucs4);
+        MoveRelativeActivePos(1, 0);
+    } else if (entry->graphics_set == GraphicSet::kLatinExtension) {
+        size_t index = (data[0] & 0x7F) - 0x21;
+        uint32_t ucs4 = kLatinExtensionTable[index];
+        PushCharacter(ucs4);
+        MoveRelativeActivePos(1, 0);
+    } else if (entry->graphics_set == GraphicSet::kLatinSpecial) {
+        size_t index = (data[0] & 0x7F) - 0x21;
+        uint32_t ucs4 = kLatinSpecialTable[index];
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kMacro) {
@@ -1190,7 +1242,15 @@ void DecoderImpl::MakeNewCaptionRegion() {
     }
 }
 
+bool DecoderImpl::IsLatinLanguage() const {
+    // Portuguese or Spanish
+    return current_iso639_language_code_ == ThreeCC("por") || current_iso639_language_code_ == ThreeCC("spa");
+}
+
 bool DecoderImpl::IsRubyMode() const {
+    if (IsLatinLanguage()) {
+        return false;
+    }
     if ((char_horizontal_scale_ == 0.5f && char_vertical_scale_ == 0.5f) ||
             (profile_ == B24Profile::kProfileA && char_width_ == 18 && char_height_ == 18)) {
         return true;

@@ -27,6 +27,8 @@ namespace aribcaption {
 enum class GraphicSet : uint8_t {
     kKanji,
     kAlphanumeric,
+    kLatinExtension,
+    kLatinSpecial,
     kHiragana,
     kKatakana,
     kMosaicA,
@@ -69,6 +71,8 @@ struct CodesetEntry {
 
 inline constexpr CodesetEntry kKanjiEntry(GraphicSet::kKanji, 2);
 inline constexpr CodesetEntry kAlphanumericEntry(GraphicSet::kAlphanumeric, 1);
+inline constexpr CodesetEntry kLatinExtensionEntry(GraphicSet::kLatinExtension, 1);
+inline constexpr CodesetEntry kLatinSpecialEntry(GraphicSet::kLatinSpecial, 1);
 inline constexpr CodesetEntry kHiraganaEntry(GraphicSet::kHiragana, 1);
 inline constexpr CodesetEntry kKatakanaEntry(GraphicSet::kKatakana, 1);
 inline constexpr CodesetEntry kMosaicAEntry(GraphicSet::kMosaicA, 1);
@@ -86,6 +90,8 @@ inline constexpr CodesetEntry kAdditionalSymbolsEntry(GraphicSet::kAdditionalSym
 inline const std::unordered_map<uint8_t, CodesetEntry> kGCodesetByF = {
     {0x42, kKanjiEntry},
     {0x4a, kAlphanumericEntry},
+    {0x4b, kLatinExtensionEntry},
+    {0x4c, kLatinSpecialEntry},
     {0x30, kHiraganaEntry},
     {0x31, kKatakanaEntry},
     {0x32, kMosaicAEntry},

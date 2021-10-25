@@ -41,6 +41,10 @@ void Decoder::SetLanguageId(B24LanguageId language_id) {
     pimpl_->SetLanguageId(language_id);
 }
 
+void Decoder::SetDefaultLanguage(uint32_t iso639_language_code) {
+    pimpl_->SetDefaultLanguage(iso639_language_code);
+}
+
 uint32_t Decoder::QueryISO639LanguageCode(B24LanguageId language_id) const {
     return pimpl_->QueryISO639LanguageCode(language_id);
 }

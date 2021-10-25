@@ -50,6 +50,7 @@ public:
     void SetType(B24Type type);
     void SetProfile(B24Profile profile);
     void SetLanguageId(B24LanguageId language_id);
+    void SetDefaultLanguage(uint32_t iso639_language_code);
     [[nodiscard]]
     uint32_t QueryISO639LanguageCode(B24LanguageId language_id) const;
     Decoder::DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts,

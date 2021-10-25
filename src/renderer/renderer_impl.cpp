@@ -65,18 +65,7 @@ void RendererImpl::LoadDefaultFontFamilies() {
     language_font_family_[ThreeCC("jpn")] = std::move(jpn_default_font_family);
 
     // Default fonts for latin languages (Portuguese / Spanish)
-    std::vector<std::string> latin_default_font_family;
-#if defined(_WIN32)
-    latin_default_font_family = {
-        "Courier New",
-        "monospace",
-    };
-#else  // macOS, Linux, or other platforms
-    latin_default_font_family = {
-        "Courier",
-        "monospace",
-    };
-#endif
+    std::vector<std::string> latin_default_font_family = { "sans-serif" };
     language_font_family_[ThreeCC("por")] = latin_default_font_family;  // Portuguese
     language_font_family_[ThreeCC("spa")] = latin_default_font_family;  // Spanish
 }

@@ -49,27 +49,27 @@ void DecoderImpl::SetProfile(B24Profile profile) {
     ResetWritingFormat();
 }
 
-void DecoderImpl::SetDefaultLanguage(uint32_t iso639_language_code) {
+void DecoderImpl::SetDefaultLanguage(uint32_t iso6392_language_code) {
     if (!language_infos_.empty()) {
         return;
     }
 
-    current_iso639_language_code_ = iso639_language_code;
+    current_iso6392_language_code_ = iso6392_language_code;
     ResetInternalState();
 }
 
-uint32_t DecoderImpl::QueryISO639LanguageCode(B24LanguageId language_id) const {
+uint32_t DecoderImpl::QueryISO6392LanguageCode(B24LanguageId language_id) const {
     if (language_infos_.empty()) {
-        return current_iso639_language_code_;
+        return current_iso6392_language_code_;
     }
 
     size_t index = static_cast<size_t>(language_id) - 1;
     if (index >= language_infos_.size()) {
-        return current_iso639_language_code_;
+        return current_iso6392_language_code_;
     }
 
     const LanguageInfo& info = language_infos_[index];
-    return info.iso639_language_code;
+    return info.iso6392_language_code;
 }
 
 Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t pts,
@@ -154,7 +154,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
 
     if (caption_ && !caption_->text.empty()) {
         caption_->type = static_cast<CaptionType>(type_);
-        caption_->iso639_language_code = current_iso639_language_code_;
+        caption_->iso6392_language_code = current_iso6392_language_code_;
         caption_->pts = pts;
         caption_->duration = duration_ == 0 ? DURATION_INDEFINITE : duration_;
         caption_->plane_width = caption_plane_width_;
@@ -337,16 +337,16 @@ bool DecoderImpl::ParseCaptionManagementData(const uint8_t* data, size_t length)
             offset += 1;
         }
 
-        language_info.iso639_language_code = ((uint32_t)data[offset + 0] << 16) |
-                                             ((uint32_t)data[offset + 1] <<  8) |
-                                             ((uint32_t)data[offset + 2] <<  0);
+        language_info.iso6392_language_code = ((uint32_t)data[offset + 0] << 16) |
+                                              ((uint32_t)data[offset + 1] <<  8) |
+                                              ((uint32_t)data[offset + 2] <<  0);
         offset += 3;
         language_info.format = (data[offset] & 0b11110000) >> 4;
         language_info.TCS = (data[offset] & 0b00001100) >> 2;
         offset += 1;
 
         if (language_info.language_id == this->language_id_) {
-            current_iso639_language_code_ = language_info.iso639_language_code;
+            current_iso6392_language_code_ = language_info.iso6392_language_code;
             swf_ = language_info.format - 1;
             ResetGraphicSets();
             ResetWritingFormat();
@@ -1244,7 +1244,7 @@ void DecoderImpl::MakeNewCaptionRegion() {
 
 bool DecoderImpl::IsLatinLanguage() const {
     // Portuguese or Spanish
-    return current_iso639_language_code_ == ThreeCC("por") || current_iso639_language_code_ == ThreeCC("spa");
+    return current_iso6392_language_code_ == ThreeCC("por") || current_iso6392_language_code_ == ThreeCC("spa");
 }
 
 bool DecoderImpl::IsRubyMode() const {

@@ -45,9 +45,9 @@ public:
     void SetType(B24Type type) { type_ = type; }
     void SetProfile(B24Profile profile);
     void SetLanguageId(B24LanguageId language_id) { language_id_ = language_id; }
-    void SetDefaultLanguage(uint32_t iso639_language_code);
+    void SetDefaultLanguage(uint32_t iso6392_language_code);
     [[nodiscard]]
-    uint32_t QueryISO639LanguageCode(B24LanguageId language_id) const;
+    uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;
     Decoder::DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts,
                                  const Decoder::OutputCB& output_cb);
     bool Flush();
@@ -94,7 +94,7 @@ private:
         uint8_t DMF = 0;
         uint8_t format = 0;
         uint8_t TCS = 0;
-        uint32_t iso639_language_code = 0;
+        uint32_t iso6392_language_code = 0;
     };
 private:
     std::shared_ptr<Logger> log_;
@@ -104,7 +104,7 @@ private:
     B24LanguageId language_id_ = B24LanguageId::kDefault;
 
     std::vector<LanguageInfo> language_infos_;
-    uint32_t current_iso639_language_code_;
+    uint32_t current_iso6392_language_code_;
     int prev_dgi_group_ = -1;
 
     std::unique_ptr<Caption> caption_;

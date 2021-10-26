@@ -54,7 +54,7 @@ class FontProvider {
 public:
     static std::unique_ptr<FontProvider> Create(FontProviderType type, Context& context);
 public:
- FontProvider() = default;
+    FontProvider() = default;
     virtual ~FontProvider() = default;
 public:
     virtual bool Initialize() = 0;

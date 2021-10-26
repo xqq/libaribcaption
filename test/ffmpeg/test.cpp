@@ -129,8 +129,9 @@ private:
         });
 
         if (status == Decoder::kDecodeStatusGotCaption) {
-            if (caption->iso639_language_code == 0) {
-                caption->iso639_language_code = ThreeCC("jpn");
+            printf("%s\n", caption->text.c_str());
+            if (caption->iso6392_language_code == 0) {
+                caption->iso6392_language_code = ThreeCC("jpn");
             }
             aribcc_renderer_.AppendCaption(*caption);
         } else if (status == Decoder::kDecodeStatusError) {

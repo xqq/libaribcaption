@@ -136,7 +136,7 @@ struct Caption {
 
     // ISO 639-2 3-char language code, in Big Endian
     // e.g. "jpn" => 6A 70 6E => 0x006A706E
-    uint32_t iso639_language_code = 0;
+    uint32_t iso6392_language_code = 0;
 
     std::string text;
     std::vector<CaptionRegion> regions;

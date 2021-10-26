@@ -219,11 +219,11 @@ Renderer::RenderStatus RendererImpl::Render(int64_t pts, const Renderer::OutputC
     // Prepare for rendering
 
     // Set up Font Family
-    uint32_t language_index = caption.iso639_language_code;
+    uint32_t language_code = caption.iso6392_language_code;
     if (force_default_font_family_) {
-        language_index = 0;
+        language_code = 0;
     }
-    region_renderer_.SetFontFamily(language_font_family_[language_index]);
+    region_renderer_.SetFontFamily(language_font_family_[language_code]);
 
     // Set up origin plane size / target caption area
     AdjustCaptionArea(caption.plane_width, caption.plane_height);

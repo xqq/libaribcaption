@@ -39,6 +39,11 @@ bool RegionRenderer::Initialize(FontProviderType font_provider_type, TextRendere
     return true;
 }
 
+void RegionRenderer::SetFontLanguage(uint32_t iso6392_language_code) {
+    assert(font_provider_);
+    font_provider_->SetLanguage(iso6392_language_code);
+}
+
 bool RegionRenderer::SetFontFamily(const std::vector<std::string>& font_family) {
     assert(text_renderer_);
     return text_renderer_->SetFontFamily(font_family);

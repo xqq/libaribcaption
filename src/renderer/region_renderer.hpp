@@ -49,7 +49,7 @@ public:
 public:
     bool Initialize(FontProviderType font_provider_type = FontProviderType::kAuto,
                     TextRendererType text_renderer_type = TextRendererType::kAuto);
-    // void SetFontLanguage();  // TODO
+    void SetFontLanguage(uint32_t iso6392_language_code);
     bool SetFontFamily(const std::vector<std::string>& font_family);
     void SetOriginPlaneSize(int plane_width, int plane_height);
     void SetTargetCaptionAreaRect(const Rect& rect);

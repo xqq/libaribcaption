@@ -37,12 +37,14 @@ public:
     ~FontProviderFontconfig() override;
 public:
     bool Initialize() override;
+    void SetLanguage(uint32_t iso6392_language_code) override;
     Result<FontfaceInfo, FontProviderError> GetFontFace(const std::string& font_name,
                                                         std::optional<uint32_t> ucs4) override;
 private:
     std::shared_ptr<Logger> log_;
 
     ScopedHolder<FcConfig*> config_;
+    uint32_t iso6392_language_code_ = 0;
 };
 
 }  // namespace aribcaption

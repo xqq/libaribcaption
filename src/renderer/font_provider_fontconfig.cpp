@@ -17,6 +17,7 @@
  */
 
 #include <cassert>
+#include "base/language_code.hpp"
 #include "base/scoped_holder.hpp"
 #include "renderer/font_provider_fontconfig.hpp"
 
@@ -35,6 +36,10 @@ bool FontProviderFontconfig::Initialize() {
     }
     config_ = ScopedHolder<FcConfig*>(config, FcConfigDestroy);
     return true;
+}
+
+void FontProviderFontconfig::SetLanguage(uint32_t iso6392_language_code) {
+    iso6392_language_code_ = iso6392_language_code;
 }
 
 auto FontProviderFontconfig::GetFontFace(const std::string& font_name,
@@ -60,6 +65,12 @@ auto FontProviderFontconfig::GetFontFace(const std::string& font_name,
     FcDefaultSubstitute(pattern);
 
     FcPatternDel(pattern, FC_LANG);
+    if (iso6392_language_code_) {
+        ScopedHolder<FcLangSet*> fc_langset(FcLangSetCreate(), FcLangSetDestroy);
+        FcLangSetAdd(fc_langset,
+                     reinterpret_cast<const FcChar8*>(ISO6392ToISO6391LanguageString(iso6392_language_code_)));
+        FcPatternAddLangSet(pattern, FC_LANG, fc_langset);
+    }
 
     FcResult result = FcResultMatch;
     FcPattern* matched = FcFontMatch(config_, pattern, &result);

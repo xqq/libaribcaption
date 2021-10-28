@@ -16,8 +16,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef ARIBCAPTION_UTF8_HELPER_HPP
-#define ARIBCAPTION_UTF8_HELPER_HPP
+#ifndef ARIBCAPTION_UTF_HELPER_HPP
+#define ARIBCAPTION_UTF_HELPER_HPP
 
 #include <cstdint>
 #include <string>
@@ -57,4 +57,4 @@ inline size_t UTF8AppendCodePoint(std::string& u8str, uint32_t ucs4) {
 
 }  // namespace aribcaption::utf
 
-#endif  // ARIBCAPTION_UTF8_HELPER_HPP
+#endif  // ARIBCAPTION_UTF_HELPER_HPP

@@ -21,7 +21,7 @@
 #include <cmath>
 #include "base/logger.hpp"
 #include "base/md5_helper.hpp"
-#include "base/utf8_helper.hpp"
+#include "base/utf_helper.hpp"
 #include "decoder/b24_codesets.hpp"
 #include "decoder/b24_colors.hpp"
 #include "decoder/b24_controlsets.hpp"

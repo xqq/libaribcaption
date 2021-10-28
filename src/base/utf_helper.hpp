@@ -55,6 +55,22 @@ inline size_t UTF8AppendCodePoint(std::string& u8str, uint32_t ucs4) {
     return 0;
 }
 
+inline size_t UTF16AppendCodePoint(std::u16string& u16str, uint32_t ucs4) {
+    if (ucs4 < 0x10000) {
+        u16str.push_back(static_cast<char16_t>(ucs4));
+        return 1;
+    } else if (ucs4 < 0x110000) {
+        u16str.append({
+            static_cast<char16_t>((0xD800 - 64) + (ucs4 >> 10)),
+            static_cast<char16_t>(0xDC00 | (ucs4 & 0x3FF))
+        });
+        return 2;
+    }
+
+    // Invalid ucs4
+    return 0;
+}
+
 }  // namespace aribcaption::utf
 
 #endif  // ARIBCAPTION_UTF_HELPER_HPP

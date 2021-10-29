@@ -38,6 +38,8 @@ private:
 };
 
 struct FontfaceInfo {
+    std::string family_name;
+    std::string postscript_name;
     std::string filename;
     int face_index = 0;
     FontProviderType provider_type = FontProviderType::kAuto;

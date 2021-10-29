@@ -22,6 +22,9 @@ project(aribcaption LANGUAGES C CXX)
 find_package(Freetype REQUIRED)
 find_package(Fontconfig REQUIRED)
 
+find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
+find_library(CORETEXT_FRAMEWORK CoreText)
+
 add_library(aribcaption
     STATIC
         include/aligned_alloc.hpp
@@ -64,6 +67,8 @@ add_library(aribcaption
         src/renderer/drcs_renderer.hpp
         src/renderer/font_provider.cpp
         src/renderer/font_provider.hpp
+        src/renderer/font_provider_coretext.cpp
+        src/renderer/font_provider_coretext.hpp
         src/renderer/font_provider_fontconfig.cpp
         src/renderer/font_provider_fontconfig.hpp
         src/renderer/rect.hpp
@@ -95,6 +100,8 @@ target_link_libraries(aribcaption
     PRIVATE
         ${FREETYPE_LIBRARIES}
         ${Fontconfig_LIBRARIES}
+        ${COREFOUNDATION_FRAMEWORK}
+        ${CORETEXT_FRAMEWORK}
 )
 
 add_subdirectory(test)

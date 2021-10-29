@@ -104,7 +104,7 @@ private:
     B24LanguageId language_id_ = B24LanguageId::kDefault;
 
     std::vector<LanguageInfo> language_infos_;
-    uint32_t current_iso6392_language_code_;
+    uint32_t current_iso6392_language_code_ = 0;
     int prev_dgi_group_ = -1;
 
     std::unique_ptr<Caption> caption_;

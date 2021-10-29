@@ -18,16 +18,26 @@
 
 #include <memory>
 #include "renderer/font_provider.hpp"
+#include "renderer/font_provider_coretext.hpp"
 #include "renderer/font_provider_fontconfig.hpp"
 
 namespace aribcaption {
 
 std::unique_ptr<FontProvider> FontProvider::Create(FontProviderType type, Context& context) {
     switch (type) {
-        case FontProviderType::kAuto:
+        case FontProviderType::kCoreText:
+            return std::make_unique<FontProviderCoreText>(context);
         case FontProviderType::kFontconfig:
-        default:
             return std::make_unique<FontProviderFontconfig>(context);
+        case FontProviderType::kAuto:
+        default:
+#if defined(_WIN32)
+            // TODO: FontProviderDirectWrite
+#elif defined(__APPLE__)
+            return std::make_unique<FontProviderCoreText>(context);
+#else
+            return std::make_unique<FontProviderFontconfig>(context);
+#endif
     }
 }
 

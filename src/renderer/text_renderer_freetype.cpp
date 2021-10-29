@@ -310,6 +310,26 @@ auto TextRendererFreetype::LoadFontFace(std::optional<uint32_t> codepoint, std::
         return Err(FontProviderError::kFontNotFound);
     }
 
+    // face_index is negative, e.g. -1, means face index is unknown
+    if (info.face_index < 0) {
+        // Find exact font face by PostScript name
+        if (info.postscript_name.empty()) {
+            log_->e("Freetype: Missing PostScript font name for cases that face_index < 0");
+            return Err(FontProviderError::kOtherError);
+        }
+
+        for (FT_Long i = 0; i < face->num_faces; i++) {
+            FT_Done_Face(face);
+            if (FT_New_Face(library_, info.filename.c_str(), i, &face)) {
+                return Err(FontProviderError::kFontNotFound);
+            }
+            // Find by comparing PostScript name
+            if (info.postscript_name == FT_Get_Postscript_Name(face)) {
+                break;
+            }
+        }
+    }
+
     return Ok(std::make_pair(face, font_index));
 }
 

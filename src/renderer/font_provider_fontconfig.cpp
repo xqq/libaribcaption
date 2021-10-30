@@ -107,8 +107,22 @@ auto FontProviderFontconfig::GetFontFace(const std::string& font_name,
         }
     }
 
+    FcChar8* fc_family_name = nullptr;
+    if (FcResultMatch != FcPatternGetString(best, FC_FAMILY, 0, &fc_family_name)) {
+        log_->e("Fontconfig: Retrieve font FC_FAMILY failed for ", font_name);
+        return Err(FontProviderError::kOtherError);
+    }
+
+    FcChar8* fc_postscript_name = nullptr;
+    if (FcResultMatch != FcPatternGetString(best, FC_POSTSCRIPT_NAME, 0, &fc_postscript_name)) {
+        log_->e("Fontconfig: Retrieve font FC_POSTSCRIPT_NAME failed for ", font_name);
+        return Err(FontProviderError::kOtherError);
+    }
+
     FontfaceInfo info;
-    info.filename = reinterpret_cast<const char*>(filename);
+    info.family_name = reinterpret_cast<char*>(fc_family_name);
+    info.postscript_name = reinterpret_cast<char*>(fc_postscript_name);
+    info.filename = reinterpret_cast<char*>(filename);
     info.face_index = fc_index;
     info.provider_type = FontProviderType::kFontconfig;
 

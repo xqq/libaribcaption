@@ -72,7 +72,7 @@ static std::string ConvertFamilyName(const std::string& family_name, uint32_t is
 
     if (family_name == "sans-serif") {
         if (iso6392_language_code == ThreeCC("jpn")) {
-            font_name = "Hiragino Sans W4";
+            font_name = "Hiragino Sans";
         } else {
             font_name = "Verdana";
         }
@@ -84,10 +84,18 @@ static std::string ConvertFamilyName(const std::string& family_name, uint32_t is
         }
     } else if (family_name == "monospace") {
         if (iso6392_language_code == ThreeCC("jpn")) {
-            font_name = "Hiragino Sans W4";
+            font_name = "Hiragino Sans";
         } else {
             font_name = "Courier";
         }
+    }
+
+    if (font_name == "Hiragino Sans") {
+#if TARGET_OS_IPHONE
+        font_name = "Hiragino Sans W3";  // iOS
+#else
+        font_name = "Hiragino Sans W4";  // macOS
+#endif
     }
 
     return font_name;
@@ -96,19 +104,31 @@ static std::string ConvertFamilyName(const std::string& family_name, uint32_t is
 auto FontProviderCoreText::GetFontFace(const std::string& font_name,
                                        std::optional<uint32_t> ucs4) -> Result<FontfaceInfo, FontProviderError> {
     std::string converted_font = ConvertFamilyName(font_name, iso6392_language_code_);
-    ScopedCFRef<CFStringRef> fontname_requested(StdStringToCFString(converted_font));
-    if (!fontname_requested)
+    ScopedCFRef<CFStringRef> fontname_request(StdStringToCFString(converted_font));
+    if (!fontname_request)
         return Err(FontProviderError::kOtherError);
 
     ScopedCFRef<CFMutableDictionaryRef> cf_attributes(CFDictionaryCreateMutable(kCFAllocatorDefault,
                                                                                 0,
                                                                                 &kCFTypeDictionaryKeyCallBacks,
                                                                                 &kCFTypeDictionaryValueCallBacks));
-    if (!cf_attributes)
+    ScopedCFRef<CFMutableDictionaryRef> cf_traits(CFDictionaryCreateMutable(kCFAllocatorDefault,
+                                                                            0,
+                                                                            &kCFTypeDictionaryKeyCallBacks,
+                                                                            &kCFTypeDictionaryValueCallBacks));
+    if (!cf_attributes || !cf_traits)
         return Err(FontProviderError::kOtherError);
 
+    // Set expected font weight to Regular/Medium (could be overrided by Font family name)
+    CGFloat font_weight = 0.0f;
+    ScopedCFRef<CFNumberRef> cf_font_weight(CFNumberCreate(nullptr, kCFNumberFloatType, &font_weight));
+    CFDictionaryAddValue(cf_traits.get(), kCTFontWeightTrait, cf_font_weight.get());
+
+    // Set cf_traits into cf_attributes
+    CFDictionaryAddValue(cf_attributes.get(), kCTFontTraitsAttribute, cf_traits.get());
+
     // Set requested font name
-    CFDictionaryAddValue(cf_attributes.get(), kCTFontFamilyNameAttribute, fontname_requested.get());
+    CFDictionaryAddValue(cf_attributes.get(), kCTFontFamilyNameAttribute, fontname_request.get());
 
     // Create font descriptor
     ScopedCFRef<CTFontDescriptorRef> descriptor_for_find(CTFontDescriptorCreateWithAttributes(cf_attributes.get()));

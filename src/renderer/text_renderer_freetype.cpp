@@ -99,6 +99,7 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
     FT_UInt glyph_index = FT_Get_Char_Index(face, ucs4);
 
     if (glyph_index == 0) {
+        log_->w("Freetype: Main font ", face->family_name, " doesn't contain U+", std::hex, ucs4);
         // Missing glyph, check fallback face
         if (fallback_face_ && (glyph_index = FT_Get_Char_Index(fallback_face_, ucs4))) {
             face = fallback_face_;

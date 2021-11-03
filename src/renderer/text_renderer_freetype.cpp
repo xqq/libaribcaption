@@ -74,6 +74,14 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
     assert(stroke_width >= 0);
     assert(char_height > 0);
 
+    // Handle space characters
+    if (ucs4 == 0x0009 || ucs4 == 0x0020 || ucs4 == 0x00A0 || ucs4 == 0x1680 ||
+        ucs4 == 0x3000 || ucs4 == 0x202F || ucs4 == 0x205F || (ucs4 >= 0x2000 && ucs4 <= 0x200A)) {
+        if (!(style & CharStyle::kCharStyleUnderline)) {
+            return TextRenderStatus::kOK;
+        }
+    }
+
     if (!main_face_) {
         // If main FT_Face is not yet loaded, try load FT_Face from font_family_
         // We don't care about the codepoint (ucs4) now
@@ -88,14 +96,8 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
     }
 
     FT_Face face = main_face_;
-
-    // Handle space characters
-    if (ucs4 == 0x0009 || ucs4 == 0x0020 || ucs4 == 0x00A0 || ucs4 == 0x1680 ||
-        ucs4 == 0x3000 || ucs4 == 0x202F || ucs4 == 0x205F || (ucs4 >= 0x2000 && ucs4 <= 0x200A)) {
-        return TextRenderStatus::kOK;
-    }
-
     FT_UInt glyph_index = FT_Get_Char_Index(face, ucs4);
+
     if (glyph_index == 0) {
         // Missing glyph, check fallback face
         if (fallback_face_ && (glyph_index = FT_Get_Char_Index(fallback_face_, ucs4))) {

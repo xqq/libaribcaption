@@ -19,7 +19,12 @@
 #ifndef ARIBCAPTION_FONT_PROVIDER_CORETEXT_HPP
 #define ARIBCAPTION_FONT_PROVIDER_CORETEXT_HPP
 
-#include <CoreText/CoreText.h>
+#include <TargetConditionals.h>
+#if TARGET_OS_IPHONE
+    #include <CoreText/CoreText.h>
+#else
+    #include <ApplicationServices/ApplicationServices.h>
+#endif
 #include <memory>
 #include "context.hpp"
 #include "base/logger.hpp"

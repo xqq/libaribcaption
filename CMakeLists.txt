@@ -24,6 +24,7 @@ find_package(Fontconfig REQUIRED)
 
 find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
 find_library(CORETEXT_FRAMEWORK CoreText)
+find_library(COREGRAPHICS_FRAMEWORK CoreGraphics)
 
 add_library(aribcaption
     STATIC
@@ -80,6 +81,8 @@ add_library(aribcaption
         src/renderer/renderer_impl.hpp
         src/renderer/text_renderer.cpp
         src/renderer/text_renderer.hpp
+        src/renderer/text_renderer_coretext.cpp
+        src/renderer/text_renderer_coretext.hpp
         src/renderer/text_renderer_freetype.cpp
         src/renderer/text_renderer_freetype.hpp
         src/c_api.cpp
@@ -103,6 +106,7 @@ target_link_libraries(aribcaption
         ${Fontconfig_LIBRARIES}
         ${COREFOUNDATION_FRAMEWORK}
         ${CORETEXT_FRAMEWORK}
+        ${COREGRAPHICS_FRAMEWORK}
 )
 
 add_subdirectory(test)

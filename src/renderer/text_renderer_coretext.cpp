@@ -268,7 +268,7 @@ auto TextRendererCoreText::CreateBitmapTargetCGContext(Bitmap& bitmap) -> Scoped
                                                           bitmap.width(),
                                                           bitmap.height(),
                                                           bits_per_component,
-                                                          bitmap.stride() * 4,
+                                                          bitmap.stride(),
                                                           space.get(),
                                                           bitmap_info));
     return cgctx;

@@ -66,9 +66,9 @@ bool png_writer_write_image(const char* filename, const Image& image) {
     std::vector<png_bytep> row_pointers;
 
     for (int y = 0; y < image.height ; y++) {
-        auto base = reinterpret_cast<const uint32_t*>(image.bitmap.data());
-        uint32_t* ptr = const_cast<uint32_t*>(base) + y * image.stride;
-        row_pointers.push_back(reinterpret_cast<uint8_t*>(ptr));
+        auto base = reinterpret_cast<const uint8_t*>(image.bitmap.data());
+        uint8_t* ptr = const_cast<uint8_t*>(base) + y * image.stride;
+        row_pointers.push_back(ptr);
     }
 
     png_write_image(png, row_pointers.data());

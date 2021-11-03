@@ -55,14 +55,15 @@ Bitmap::Bitmap(int width, int height, PixelFormat pixel_format) :
     assert(width > 0 && height > 0);
     assert(pixel_format == PixelFormat::kRGBA8888);
 
-    stride_ = width;
+    stride_ = width * 4;
 
-    uint32_t padding = kAlignedTo - (width % kAlignedTo);
-    if (padding) {
+    uint32_t remainder = stride_ % kAlignedTo;
+    if (remainder) {
+        uint32_t padding = kAlignedTo - remainder;
         stride_ += static_cast<int>(padding);
     }
 
-    pixels.resize(stride_ * height * 4);
+    pixels.resize(stride_ * height);
 }
 
 }  // namespace aribcaption

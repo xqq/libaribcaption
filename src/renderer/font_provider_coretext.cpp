@@ -23,6 +23,7 @@
 #else
     #include <ApplicationServices/ApplicationServices.h>
 #endif
+#include "base/cfstr_helper.hpp"
 #include "base/scoped_cfref.hpp"
 #include "base/scoped_holder.hpp"
 #include "base/utf_helper.hpp"
@@ -38,33 +39,6 @@ bool FontProviderCoreText::Initialize() {
 
 void FontProviderCoreText::SetLanguage(uint32_t iso6392_language_code) {
     iso6392_language_code_ = iso6392_language_code;
-}
-
-static std::string CFStringToStdString(CFStringRef cfstr) {
-    std::string str;
-
-    if (!cfstr) {
-        return str;
-    }
-
-    const char* cstring_ptr = CFStringGetCStringPtr(cfstr, kCFStringEncodingUTF8);
-
-    if (cstring_ptr) {
-        str = cstring_ptr;
-    } else {  // cstring_ptr == nullptr
-        CFIndex buf_size = CFStringGetMaximumSizeForEncoding(CFStringGetLength(cfstr), kCFStringEncodingUTF8);
-        str.resize(buf_size);
-        CFStringGetCString(cfstr, str.data(), buf_size, kCFStringEncodingUTF8);
-        size_t len = strlen(str.data());
-        str.resize(len);
-    }
-
-    return str;
-}
-
-static ScopedCFRef<CFStringRef> StdStringToCFString(const std::string& str) {
-    ScopedCFRef<CFStringRef> cfstr(CFStringCreateWithCString(nullptr, str.c_str(), kCFStringEncodingUTF8));
-    return cfstr;
 }
 
 static std::string ConvertFamilyName(const std::string& family_name, uint32_t iso6392_language_code) {
@@ -104,7 +78,7 @@ static std::string ConvertFamilyName(const std::string& family_name, uint32_t is
 auto FontProviderCoreText::GetFontFace(const std::string& font_name,
                                        std::optional<uint32_t> ucs4) -> Result<FontfaceInfo, FontProviderError> {
     std::string converted_font = ConvertFamilyName(font_name, iso6392_language_code_);
-    ScopedCFRef<CFStringRef> fontname_request(StdStringToCFString(converted_font));
+    ScopedCFRef<CFStringRef> fontname_request(cfstr::StdStringToCFString(converted_font));
     if (!fontname_request)
         return Err(FontProviderError::kOtherError);
 
@@ -185,9 +159,9 @@ auto FontProviderCoreText::GetFontFace(const std::string& font_name,
         return Err(FontProviderError::kOtherError);
 
     FontfaceInfo info;
-    info.family_name = CFStringToStdString(cf_family_name.get());
-    info.postscript_name = CFStringToStdString(cf_postscript_name.get());
-    info.filename = CFStringToStdString(cf_path.get());;
+    info.family_name = cfstr::CFStringToStdString(cf_family_name.get());
+    info.postscript_name = cfstr::CFStringToStdString(cf_postscript_name.get());
+    info.filename = cfstr::CFStringToStdString(cf_path.get());;
     info.face_index = -1;
     info.provider_type = FontProviderType::kCoreText;
 

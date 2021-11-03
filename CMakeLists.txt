@@ -40,6 +40,7 @@ add_library(aribcaption
         include/renderer.hpp
         src/base/aligned_alloc.cpp
         src/base/always_inline.hpp
+        src/base/cfstr_helper.hpp
         src/base/language_code.hpp
         src/base/logger.hpp
         src/base/md5.c

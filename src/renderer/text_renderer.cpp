@@ -18,16 +18,25 @@
 
 #include <memory>
 #include "renderer/text_renderer.hpp"
+#include "renderer/text_renderer_coretext.hpp"
 #include "renderer/text_renderer_freetype.hpp"
 
 namespace aribcaption {
 
 std::unique_ptr<TextRenderer> TextRenderer::Create(TextRendererType type, Context& context, FontProvider& font_provider) {
     switch (type) {
-        case TextRendererType::kAuto:
+        case TextRendererType::kCoreText:
+            return std::make_unique<TextRendererCoreText>(context, font_provider);
         case TextRendererType::kFreetype:
-        default:
             return std::make_unique<TextRendererFreetype>(context, font_provider);
+        default:
+#if defined(_WIN32)
+            // TODO: TextRendererDirectWrite
+#elif defined(__APPLE__)
+            return std::make_unique<TextRendererCoreText>(context, font_provider);
+#else
+            return std::make_unique<TextRendererFreetype>(context, font_provider);
+#endif
     }
 }
 

@@ -25,9 +25,9 @@
 #include <string>
 #include <optional>
 #include <utility>
-#include "caption.hpp"
-#include "color.hpp"
-#include "context.hpp"
+#include "aribcaption/caption.hpp"
+#include "aribcaption/color.hpp"
+#include "aribcaption/context.hpp"
 #include "base/logger.hpp"
 #include "base/result.hpp"
 #include "base/scoped_holder.hpp"

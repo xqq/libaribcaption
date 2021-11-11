@@ -19,9 +19,9 @@
 #ifndef ARIBCAPTION_DRCS_RENDERER_HPP
 #define ARIBCAPTION_DRCS_RENDERER_HPP
 
-#include "caption.hpp"
-#include "color.hpp"
-#include "drcs.hpp"
+#include "aribcaption/caption.hpp"
+#include "aribcaption/color.hpp"
+#include "aribcaption/drcs.hpp"
 
 namespace aribcaption {
 

@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "decoder.hpp"
+#include "aribcaption/decoder.hpp"
 #include "decoder/decoder_impl.hpp"
 
 namespace aribcaption {

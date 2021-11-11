@@ -20,7 +20,7 @@
 #define ARIBCAPTION_ALPHA_BLEND_HPP
 
 #include <cstdint>
-#include "color.hpp"
+#include "aribcaption/color.hpp"
 #include "base/always_inline.hpp"
 
 namespace aribcaption::alphablend {

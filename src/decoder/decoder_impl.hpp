@@ -25,10 +25,10 @@
 #include <initializer_list>
 #include <memory>
 #include <unordered_map>
-#include "caption.hpp"
-#include "context.hpp"
-#include "decoder.hpp"
-#include "drcs.hpp"
+#include "aribcaption/caption.hpp"
+#include "aribcaption/context.hpp"
+#include "aribcaption/decoder.hpp"
+#include "aribcaption/drcs.hpp"
 #include "base/logger.hpp"
 #include "decoder/b24_codesets.hpp"
 

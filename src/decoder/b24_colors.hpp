@@ -20,7 +20,7 @@
 #define ARIBCAPTION_B24_COLORS_HPP
 
 #include <cstdint>
-#include "color.hpp"
+#include "aribcaption/color.hpp"
 
 namespace aribcaption {
 

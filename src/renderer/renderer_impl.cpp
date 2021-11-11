@@ -18,7 +18,7 @@
 
 #include <cmath>
 #include <algorithm>
-#include "context.hpp"
+#include "aribcaption/context.hpp"
 #include "renderer/renderer_impl.hpp"
 
 namespace aribcaption::internal {

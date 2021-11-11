@@ -23,8 +23,8 @@
 #include <memory>
 #include <vector>
 #include <map>
-#include "caption.hpp"
-#include "renderer.hpp"
+#include "aribcaption/caption.hpp"
+#include "aribcaption/renderer.hpp"
 #include "base/logger.hpp"
 #include "renderer/region_renderer.hpp"
 

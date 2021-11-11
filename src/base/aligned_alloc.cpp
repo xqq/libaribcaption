@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "aligned_alloc.hpp"
+#include "aribcaption/aligned_alloc.hpp"
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
     #include <malloc.h>

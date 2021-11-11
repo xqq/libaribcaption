@@ -30,7 +30,7 @@
 #include <string>
 #include <memory>
 #include <optional>
-#include "context.hpp"
+#include "aribcaption/context.hpp"
 #include "base/logger.hpp"
 #include "base/scoped_cfref.hpp"
 #include "renderer/bitmap.hpp"

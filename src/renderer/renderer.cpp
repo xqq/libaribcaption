@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "renderer.hpp"
+#include "aribcaption/renderer.hpp"
 #include "renderer/renderer_impl.hpp"
 
 namespace aribcaption {

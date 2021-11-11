@@ -20,7 +20,7 @@
 #define ARIBCAPTION_LOGGER_HPP
 
 #include <sstream>
-#include "context.hpp"
+#include "aribcaption/context.hpp"
 
 namespace aribcaption {
 

@@ -17,9 +17,9 @@
  */
 
 #include <cstdint>
-#include "context.hpp"
-#include "caption.hpp"
-#include "decoder.hpp"
+#include "aribcaption/context.hpp"
+#include "aribcaption/caption.hpp"
+#include "aribcaption/decoder.hpp"
 
 inline constexpr uint8_t test_data1[] = {
     0x80, 0xff, 0xf0, 0x04, 0x00, 0x00, 0x00, 0x4e, 0x3f, 0x00, 0x00, 0x4a, 0x1f, 0x20, 0x00, 0x00, 0x01, 0x0c,

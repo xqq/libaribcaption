@@ -5,7 +5,7 @@
 #ifndef LIBARIBCAPTION_TEST_PNG_WRITER_HPP
 #define LIBARIBCAPTION_TEST_PNG_WRITER_HPP
 
-#include "image.hpp"
+#include "aribcaption/image.hpp"
 #include "renderer/bitmap.hpp"
 
 bool png_writer_write_image(const char* filename, const aribcaption::Image& image);

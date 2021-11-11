@@ -20,7 +20,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <png.h>
-#include "image.hpp"
+#include "aribcaption/image.hpp"
 #include "renderer/bitmap.hpp"
 #include "png_writer.hpp"
 

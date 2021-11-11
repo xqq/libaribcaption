@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "context.hpp"
+#include "aribcaption/context.hpp"
 #include "base/logger.hpp"
 
 namespace aribcaption {

@@ -24,9 +24,9 @@
 #include <string>
 #include <memory>
 #include <unordered_map>
-#include "caption.hpp"
-#include "context.hpp"
-#include "image.hpp"
+#include "aribcaption/caption.hpp"
+#include "aribcaption/context.hpp"
+#include "aribcaption/image.hpp"
 #include "base/logger.hpp"
 #include "base/result.hpp"
 #include "renderer/drcs_renderer.hpp"

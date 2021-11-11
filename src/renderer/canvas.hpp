@@ -20,8 +20,8 @@
 #define ARIBCAPTION_CANVAS_HPP
 
 #include <optional>
-#include "caption.hpp"
-#include "color.hpp"
+#include "aribcaption/caption.hpp"
+#include "aribcaption/color.hpp"
 #include "renderer/rect.hpp"
 #include "renderer/text_renderer.hpp"
 

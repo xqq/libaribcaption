@@ -19,7 +19,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <memory>
-#include "decoder.hpp"
+#include "aribcaption/decoder.hpp"
 #include "renderer/canvas.hpp"
 #include "renderer/drcs_renderer.hpp"
 #include "renderer/font_provider.hpp"

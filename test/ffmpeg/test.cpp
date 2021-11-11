@@ -25,7 +25,7 @@ extern "C" {
 #include <cstdint>
 #include <cstdio>
 #include <memory>
-#include "aribcaption.hpp"
+#include "aribcaption/aribcaption.hpp"
 #include "renderer/bitmap.hpp"
 #include "renderer/canvas.hpp"
 #include "png_writer.hpp"

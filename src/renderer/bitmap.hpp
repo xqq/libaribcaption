@@ -22,9 +22,9 @@
 #include <cstdint>
 #include <vector>
 #include <type_traits>
-#include "aligned_alloc.hpp"
-#include "color.hpp"
-#include "image.hpp"
+#include "aribcaption/aligned_alloc.hpp"
+#include "aribcaption/color.hpp"
+#include "aribcaption/image.hpp"
 
 namespace aribcaption {
 

@@ -23,8 +23,8 @@
 #include <string>
 #include <memory>
 #include <optional>
-#include "context.hpp"
-#include "renderer.hpp"
+#include "aribcaption/context.hpp"
+#include "aribcaption/renderer.hpp"
 #include "base/result.hpp"
 
 namespace aribcaption {

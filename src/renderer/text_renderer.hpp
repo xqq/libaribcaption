@@ -21,9 +21,9 @@
 
 #include <memory>
 #include <optional>
-#include <caption.hpp>
-#include "context.hpp"
-#include "renderer.hpp"
+#include "aribcaption/caption.hpp"
+#include "aribcaption/context.hpp"
+#include "aribcaption/renderer.hpp"
 #include "base/result.hpp"
 #include "renderer/bitmap.hpp"
 

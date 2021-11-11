@@ -28,17 +28,17 @@ find_library(COREGRAPHICS_FRAMEWORK CoreGraphics)
 
 add_library(aribcaption
     STATIC
-        include/aligned_alloc.hpp
-        include/aribcaption.h
-        include/aribcaption.hpp
-        include/b24.hpp
-        include/caption.hpp
-        include/color.hpp
-        include/context.hpp
-        include/decoder.hpp
-        include/drcs.hpp
-        include/image.hpp
-        include/renderer.hpp
+        include/aribcaption/aligned_alloc.hpp
+        include/aribcaption/aribcaption.h
+        include/aribcaption/aribcaption.hpp
+        include/aribcaption/b24.hpp
+        include/aribcaption/caption.hpp
+        include/aribcaption/color.hpp
+        include/aribcaption/context.hpp
+        include/aribcaption/decoder.hpp
+        include/aribcaption/drcs.hpp
+        include/aribcaption/image.hpp
+        include/aribcaption/renderer.hpp
         src/base/aligned_alloc.cpp
         src/base/always_inline.hpp
         src/base/cfstr_helper.hpp

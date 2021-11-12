@@ -19,12 +19,36 @@
 cmake_minimum_required(VERSION 3.1)
 project(aribcaption LANGUAGES C CXX)
 
-find_package(Freetype REQUIRED)
-find_package(Fontconfig REQUIRED)
+if(WIN32)
+    # Windows, use DirectWrite
+    option(LIBARIBCAPTION_USE_DIRECTWRITE "Enable DirectWrite text rendering backend" ON)
+elseif(APPLE)
+    # macOS or iOS, use CoreText by default
+    option(LIBARIBCAPTION_USE_CORETEXT "Enable CoreText text rendering backend" ON)
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
+    # Android, FreeType required
+    set(LIBARIBCAPTION_IS_ANDROID TRUE CACHE BOOL "Specify target OS is Android")
+    option(LIBARIBCAPTION_USE_FREETYPE "Enable FreeType text rendering backend" ON)
+else()
+    # Linux or other Unix systems, requires Fontconfig & FreeType
+    option(LIBARIBCAPTION_USE_FONTCONFIG "Enable Fontconfig font provider" ON)
+    option(LIBARIBCAPTION_USE_FREETYPE "Enable FreeType text rendering backend" ON)
+endif()
 
-find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
-find_library(CORETEXT_FRAMEWORK CoreText)
-find_library(COREGRAPHICS_FRAMEWORK CoreGraphics)
+
+if(LIBARIBCAPTION_USE_CORETEXT)
+    find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
+    find_library(COREGRAPHICS_FRAMEWORK CoreGraphics)
+    find_library(CORETEXT_FRAMEWORK CoreText)
+endif()
+
+if(LIBARIBCAPTION_USE_FONTCONFIG)
+    find_package(Fontconfig REQUIRED)
+endif()
+
+if(LIBARIBCAPTION_USE_FREETYPE)
+    find_package(Freetype REQUIRED)
+endif()
 
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/config.h.in"
@@ -74,10 +98,10 @@ add_library(aribcaption
         src/renderer/drcs_renderer.hpp
         src/renderer/font_provider.cpp
         src/renderer/font_provider.hpp
-        src/renderer/font_provider_coretext.cpp
-        src/renderer/font_provider_coretext.hpp
-        src/renderer/font_provider_fontconfig.cpp
-        src/renderer/font_provider_fontconfig.hpp
+        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:src/renderer/font_provider_coretext.cpp>
+        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:src/renderer/font_provider_coretext.hpp>
+        $<$<BOOL:${LIBARIBCAPTION_USE_FONTCONFIG}>:src/renderer/font_provider_fontconfig.cpp>
+        $<$<BOOL:${LIBARIBCAPTION_USE_FONTCONFIG}>:src/renderer/font_provider_fontconfig.hpp>
         src/renderer/rect.hpp
         src/renderer/region_renderer.cpp
         src/renderer/region_renderer.hpp
@@ -86,32 +110,34 @@ add_library(aribcaption
         src/renderer/renderer_impl.hpp
         src/renderer/text_renderer.cpp
         src/renderer/text_renderer.hpp
-        src/renderer/text_renderer_coretext.cpp
-        src/renderer/text_renderer_coretext.hpp
-        src/renderer/text_renderer_freetype.cpp
-        src/renderer/text_renderer_freetype.hpp
+        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:src/renderer/text_renderer_coretext.cpp>
+        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:src/renderer/text_renderer_coretext.hpp>
+        $<$<BOOL:${LIBARIBCAPTION_USE_FREETYPE}>:src/renderer/text_renderer_freetype.cpp>
+        $<$<BOOL:${LIBARIBCAPTION_USE_FREETYPE}>:src/renderer/text_renderer_freetype.hpp>
         src/c_api.cpp
         src/context.cpp
 )
 
-target_compile_features(aribcaption PRIVATE cxx_std_17)
+target_compile_features(aribcaption
+    PRIVATE
+        cxx_std_17
+)
 
-# Include directories
 target_include_directories(aribcaption
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${FREETYPE_INCLUDE_DIRS}
-        ${Fontconfig_INCLUDE_DIRS}
+        $<$<BOOL:${LIBARIBCAPTION_USE_FONTCONFIG}>:${Fontconfig_INCLUDE_DIRS}>
+        $<$<BOOL:${LIBARIBCAPTION_USE_FREETYPE}>:${FREETYPE_INCLUDE_DIRS}>
 )
 
 target_link_libraries(aribcaption
     PRIVATE
-        ${FREETYPE_LIBRARIES}
-        ${Fontconfig_LIBRARIES}
-        ${COREFOUNDATION_FRAMEWORK}
-        ${CORETEXT_FRAMEWORK}
-        ${COREGRAPHICS_FRAMEWORK}
+        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${COREFOUNDATION_FRAMEWORK}>
+        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${COREGRAPHICS_FRAMEWORK}>
+        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${CORETEXT_FRAMEWORK}>
+        $<$<BOOL:${LIBARIBCAPTION_USE_FONTCONFIG}>:${Fontconfig_LIBRARIES}>
+        $<$<BOOL:${LIBARIBCAPTION_USE_FREETYPE}>:${FREETYPE_LIBRARIES}>
 )
 
 add_subdirectory(test)

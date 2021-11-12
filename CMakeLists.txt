@@ -26,6 +26,11 @@ find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
 find_library(CORETEXT_FRAMEWORK CoreText)
 find_library(COREGRAPHICS_FRAMEWORK CoreGraphics)
 
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/config.h.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/config.h"
+)
+
 add_library(aribcaption
     STATIC
         include/aribcaption/aligned_alloc.hpp

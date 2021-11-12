@@ -17,26 +17,41 @@
  */
 
 #include <memory>
+#include "aribcaption/config.h"
 #include "renderer/font_provider.hpp"
-#include "renderer/font_provider_coretext.hpp"
-#include "renderer/font_provider_fontconfig.hpp"
+
+#if defined(LIBARIBCAPTION_USE_CORETEXT)
+    #include "renderer/font_provider_coretext.hpp"
+#endif
+
+#if defined(LIBARIBCAPTION_USE_FONTCONFIG)
+    #include "renderer/font_provider_fontconfig.hpp"
+#endif
 
 namespace aribcaption {
 
 std::unique_ptr<FontProvider> FontProvider::Create(FontProviderType type, Context& context) {
     switch (type) {
+#if defined(LIBARIBCAPTION_USE_CORETEXT)
         case FontProviderType::kCoreText:
             return std::make_unique<FontProviderCoreText>(context);
+#endif
+
+#if defined(LIBARIBCAPTION_USE_FONTCONFIG)
         case FontProviderType::kFontconfig:
             return std::make_unique<FontProviderFontconfig>(context);
+#endif
+
         case FontProviderType::kAuto:
         default:
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(LIBARIBCAPTION_USE_DIRECTWRITE)
             // TODO: FontProviderDirectWrite
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && defined(LIBARIBCAPTION_USE_CORETEXT)
             return std::make_unique<FontProviderCoreText>(context);
-#else
+#elif defined(LIBARIBCAPTION_USE_FONTCONFIG)
             return std::make_unique<FontProviderFontconfig>(context);
+#else
+            static_assert(false, "No available auto-select FontProvider!");
 #endif
     }
 }

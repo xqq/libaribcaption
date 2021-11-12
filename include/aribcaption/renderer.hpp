@@ -20,6 +20,7 @@
 #define ARIBCAPTION_RENDERER_HPP
 
 #include <memory>
+#include "config.h"
 #include "context.hpp"
 #include "caption.hpp"
 #include "image.hpp"
@@ -28,16 +29,32 @@ namespace aribcaption {
 
 enum class FontProviderType {
     kAuto = 0,
+#if defined(LIBARIBCAPTION_USE_CORETEXT)
     kCoreText,
+#endif
+
+#if defined(LIBARIBCAPTION_USE_DIRECTWRITE)
     kDirectWrite,
+#endif
+
+#if defined(LIBARIBCAPTION_USE_FONTCONFIG)
     kFontconfig,
+#endif
 };
 
 enum class TextRendererType {
     kAuto = 0,
+#if defined(LIBARIBCAPTION_USE_CORETEXT)
     kCoreText,
+#endif
+
+#if defined(LIBARIBCAPTION_USE_DIRECTWRITE)
     kDirectWrite,
+#endif
+
+#if defined(LIBARIBCAPTION_USE_FREETYPE)
     kFreetype,
+#endif
 };
 
 namespace internal { class RendererImpl; }

@@ -17,7 +17,13 @@
 #
 
 cmake_minimum_required(VERSION 3.1)
-project(aribcaption LANGUAGES C CXX)
+project(libaribcaption VERSION 0.1.0 LANGUAGES C CXX)
+
+# Release build by default
+if(NOT CMAKE_BUILD_TYPE)
+    message("Build type will be Release. Set CMAKE_BUILD_TYPE to indicate other types.")
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Default to Release build" FORCE)
+endif()
 
 if(WIN32)
     # Windows, use DirectWrite
@@ -50,9 +56,10 @@ if(LIBARIBCAPTION_USE_FREETYPE)
     find_package(Freetype REQUIRED)
 endif()
 
+# Generate config header
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/config.h.in"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/config.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/config.h"
 )
 
 add_library(aribcaption
@@ -118,14 +125,19 @@ add_library(aribcaption
         src/context.cpp
 )
 
+# TODO: Enable O3 optimizations for Release build
+
 target_compile_features(aribcaption
     PRIVATE
         cxx_std_17
 )
 
 target_include_directories(aribcaption
+    PUBLIC
+        $<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         $<$<BOOL:${LIBARIBCAPTION_USE_FONTCONFIG}>:${Fontconfig_INCLUDE_DIRS}>
         $<$<BOOL:${LIBARIBCAPTION_USE_FREETYPE}>:${FREETYPE_INCLUDE_DIRS}>
@@ -140,4 +152,70 @@ target_link_libraries(aribcaption
         $<$<BOOL:${LIBARIBCAPTION_USE_FREETYPE}>:${FREETYPE_LIBRARIES}>
 )
 
-add_subdirectory(test)
+include(GNUInstallDirs)
+
+# Install public headers
+install(
+    DIRECTORY
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/
+    DESTINATION
+        ${CMAKE_INSTALL_INCLUDEDIR}/aribcaption
+    PATTERN "config.h.in" EXCLUDE
+    PATTERN ".DS_Store" EXCLUDE
+)
+
+# Install generated config header
+install(
+    FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/include/config.h
+    DESTINATION
+        ${CMAKE_INSTALL_INCLUDEDIR}/aribcaption
+)
+
+# Install
+install(
+    TARGETS aribcaption
+        EXPORT aribcaption-targets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        FRAMEWORK DESTINATION Library/Frameworks
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# Export targets to cmake script
+install(
+    EXPORT
+        aribcaption-targets
+    FILE
+        aribcaption-targets.cmake
+    DESTINATION
+        ${CMAKE_INSTALL_LIBDIR}/cmake/aribcaption
+)
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/aribcaption-config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/aribcaption-config.cmake
+    INSTALL_DESTINATION
+        ${CMAKE_INSTALL_LIBDIR}/cmake/aribcaption
+)
+
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/aribcaption-config-version.cmake
+    VERSION
+        ${PROJECT_VERSION}
+    COMPATIBILITY
+        SameMajorVersion
+)
+
+install(
+    FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/aribcaption-config.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/aribcaption-config-version.cmake
+    DESTINATION
+        ${CMAKE_INSTALL_LIBDIR}/cmake/aribcaption
+)
+
+add_subdirectory(test EXCLUDE_FROM_ALL)

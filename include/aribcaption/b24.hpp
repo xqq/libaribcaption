@@ -19,6 +19,8 @@
 #ifndef ARIBCAPTION_B24_HPP
 #define ARIBCAPTION_B24_HPP
 
+#include <cstdint>
+
 namespace aribcaption {
 
 enum class B24Type : uint8_t {

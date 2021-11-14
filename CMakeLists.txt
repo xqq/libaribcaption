@@ -125,6 +125,8 @@ add_library(aribcaption
         src/context.cpp
 )
 
+add_library(ARIBCaption::aribcaption ALIAS aribcaption)
+
 # TODO: Enable O3 optimizations for Release build
 
 target_compile_features(aribcaption
@@ -190,6 +192,8 @@ install(
         aribcaption-targets
     FILE
         aribcaption-targets.cmake
+    NAMESPACE
+        ARIBCaption::
     DESTINATION
         ${CMAKE_INSTALL_LIBDIR}/cmake/aribcaption
 )

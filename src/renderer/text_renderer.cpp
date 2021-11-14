@@ -17,7 +17,7 @@
  */
 
 #include <memory>
-#include "aribcaption/config.h"
+#include "config.h"
 #include "renderer/text_renderer.hpp"
 
 #if defined(LIBARIBCAPTION_USE_CORETEXT)

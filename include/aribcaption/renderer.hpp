@@ -30,30 +30,30 @@ namespace aribcaption {
 enum class FontProviderType {
     kAuto = 0,
 #if defined(LIBARIBCAPTION_USE_CORETEXT)
-    kCoreText,
+    kCoreText = 1,
 #endif
 
 #if defined(LIBARIBCAPTION_USE_DIRECTWRITE)
-    kDirectWrite,
+    kDirectWrite = 2,
 #endif
 
 #if defined(LIBARIBCAPTION_USE_FONTCONFIG)
-    kFontconfig,
+    kFontconfig = 3,
 #endif
 };
 
 enum class TextRendererType {
     kAuto = 0,
 #if defined(LIBARIBCAPTION_USE_CORETEXT)
-    kCoreText,
+    kCoreText = 1,
 #endif
 
 #if defined(LIBARIBCAPTION_USE_DIRECTWRITE)
-    kDirectWrite,
+    kDirectWrite = 2,
 #endif
 
 #if defined(LIBARIBCAPTION_USE_FREETYPE)
-    kFreetype,
+    kFreetype = 3,
 #endif
 };
 

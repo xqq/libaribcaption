@@ -63,7 +63,6 @@ configure_file(
 )
 
 add_library(aribcaption
-    STATIC
         include/aribcaption/aligned_alloc.hpp
         include/aribcaption/aribcaption.h
         include/aribcaption/aribcaption.hpp
@@ -126,8 +125,6 @@ add_library(aribcaption
 )
 
 add_library(ARIBCaption::aribcaption ALIAS aribcaption)
-
-# TODO: Enable O3 optimizations for Release build
 
 target_compile_features(aribcaption
     PRIVATE

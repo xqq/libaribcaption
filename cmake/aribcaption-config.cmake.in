@@ -19,7 +19,7 @@
 @PACKAGE_INIT@
 
 set_and_check(ARIBCAPTION_INCLUDE_DIR "@CMAKE_INSTALL_FULL_INCLUDEDIR@")
-set(ARIBCAPTION_LIBRARIES ARIBCaption::aribcaption)
+set(ARIBCAPTION_LIBRARIES aribcaption::aribcaption)
 
 
 if (NOT TARGET aribcaption::aribcaption)

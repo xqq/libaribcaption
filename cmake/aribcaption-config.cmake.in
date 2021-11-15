@@ -22,7 +22,7 @@ set_and_check(ARIBCAPTION_INCLUDE_DIR "@CMAKE_INSTALL_FULL_INCLUDEDIR@")
 set(ARIBCAPTION_LIBRARIES ARIBCaption::aribcaption)
 
 
-if (NOT TARGET ARIBCaption::aribcaption)
+if (NOT TARGET aribcaption::aribcaption)
     include("${CMAKE_CURRENT_LIST_DIR}/aribcaption-targets.cmake")
 endif()
 

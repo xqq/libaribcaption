@@ -124,7 +124,7 @@ add_library(aribcaption
         src/context.cpp
 )
 
-add_library(ARIBCaption::aribcaption ALIAS aribcaption)
+add_library(aribcaption::aribcaption ALIAS aribcaption)
 
 target_compile_features(aribcaption
     PRIVATE
@@ -190,7 +190,7 @@ install(
     FILE
         aribcaption-targets.cmake
     NAMESPACE
-        ARIBCaption::
+        aribcaption::
     DESTINATION
         ${CMAKE_INSTALL_LIBDIR}/cmake/aribcaption
 )

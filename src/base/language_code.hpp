@@ -20,7 +20,7 @@
 #define ARIBCAPTION_LANGUAGE_CODE_HPP
 
 #include <cstdint>
-#include "caption.hpp"
+#include "aribcaption/caption.hpp"
 
 namespace aribcaption {
 

@@ -24,6 +24,10 @@
     #include "renderer/font_provider_coretext.hpp"
 #endif
 
+#if defined(LIBARIBCAPTION_USE_DIRECTWRITE)
+    #include "renderer/font_provider_directwrite.hpp"
+#endif
+
 #if defined(LIBARIBCAPTION_USE_FONTCONFIG)
     #include "renderer/font_provider_fontconfig.hpp"
 #endif
@@ -37,6 +41,11 @@ std::unique_ptr<FontProvider> FontProvider::Create(FontProviderType type, Contex
             return std::make_unique<FontProviderCoreText>(context);
 #endif
 
+#if defined(LIBARIBCAPTION_USE_DIRECTWRITE)
+        case FontProviderType::kDirectWrite:
+            return std::make_unique<FontProviderDirectWrite>(context);
+#endif
+
 #if defined(LIBARIBCAPTION_USE_FONTCONFIG)
         case FontProviderType::kFontconfig:
             return std::make_unique<FontProviderFontconfig>(context);
@@ -45,7 +54,7 @@ std::unique_ptr<FontProvider> FontProvider::Create(FontProviderType type, Contex
         case FontProviderType::kAuto:
         default:
 #if defined(_WIN32) && defined(LIBARIBCAPTION_USE_DIRECTWRITE)
-            // TODO: FontProviderDirectWrite
+            return std::make_unique<FontProviderDirectWrite>(context);
 #elif defined(__APPLE__) && defined(LIBARIBCAPTION_USE_CORETEXT)
             return std::make_unique<FontProviderCoreText>(context);
 #elif defined(LIBARIBCAPTION_USE_FONTCONFIG)

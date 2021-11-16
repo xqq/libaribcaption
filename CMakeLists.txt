@@ -107,6 +107,8 @@ add_library(aribcaption
         src/renderer/font_provider.hpp
         $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:src/renderer/font_provider_coretext.cpp>
         $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:src/renderer/font_provider_coretext.hpp>
+        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:src/renderer/font_provider_directwrite.cpp>
+        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:src/renderer/font_provider_directwrite.hpp>
         $<$<BOOL:${LIBARIBCAPTION_USE_FONTCONFIG}>:src/renderer/font_provider_fontconfig.cpp>
         $<$<BOOL:${LIBARIBCAPTION_USE_FONTCONFIG}>:src/renderer/font_provider_fontconfig.hpp>
         src/renderer/rect.hpp
@@ -150,6 +152,7 @@ target_link_libraries(aribcaption
         $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${COREFOUNDATION_FRAMEWORK}>
         $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${COREGRAPHICS_FRAMEWORK}>
         $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${CORETEXT_FRAMEWORK}>
+        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:dwrite>
 )
 
 # vcpkg uses optimized/debug keyword in XXXXX_LIBRARIES variables

@@ -16,6 +16,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifdef _WIN32
+    #include <Windows.h>
+#endif
+
 extern "C" {
     #include <libavformat/avformat.h>
     #include <libavcodec/avcodec.h>
@@ -38,6 +42,20 @@ constexpr int margin_left = 0;
 constexpr int margin_top = 0;
 constexpr int margin_right = 0;
 constexpr int margin_bottom = 0;
+
+#ifdef _WIN32
+class UTF8CodePage {
+public:
+    UTF8CodePage() : old_codepage_(GetConsoleOutputCP()) {
+        SetConsoleOutputCP(CP_UTF8);
+    }
+    ~UTF8CodePage() {
+        SetConsoleOutputCP(old_codepage_);
+    }
+private:
+    UINT old_codepage_;
+};
+#endif
 
 class CaptionDecodeRendererFFmpeg {
 public:
@@ -185,6 +203,10 @@ private:
 };
 
 int main(int argc, const char* argv[]) {
+#ifdef _WIN32
+    UTF8CodePage enable_utf8_console;
+#endif
+
     if (argc < 2) {
         printf("Usage: %s input \n\n", argv[0]);
         return -1;

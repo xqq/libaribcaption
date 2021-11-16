@@ -16,6 +16,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifdef _WIN32
+    #include <Windows.h>
+#endif
+
 #include <cstdint>
 #include "aribcaption/context.hpp"
 #include "aribcaption/caption.hpp"
@@ -79,11 +83,29 @@ inline constexpr uint8_t test_data2[] = {
     0x43, 0x0f, 0x21, 0x44, 0x89, 0xa2, 0x3d, 0xe2
 };
 
+#ifdef _WIN32
+class UTF8CodePage {
+public:
+    UTF8CodePage() : old_codepage_(GetConsoleOutputCP()) {
+        SetConsoleOutputCP(CP_UTF8);
+    }
+    ~UTF8CodePage() {
+        SetConsoleOutputCP(old_codepage_);
+    }
+private:
+    UINT old_codepage_;
+};
+#endif
+
 auto decoder_callback = [](std::unique_ptr<aribcaption::Caption> caption) -> void {
     printf("%s\n", caption->text.c_str());
 };
 
 int main(int argc, const char* argv[]) {
+#ifdef _WIN32
+    UTF8CodePage enable_utf8_console;
+#endif
+
     aribcaption::Context context;
     context.SetLogcatCallback([](aribcaption::LogLevel level, const char* message) {
         if (level == aribcaption::LogLevel::kError) {

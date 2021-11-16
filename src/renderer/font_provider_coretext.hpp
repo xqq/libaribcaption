@@ -33,10 +33,10 @@
 
 namespace aribcaption {
 
-struct FontProviderCoreTextPrivate : public FontProviderPrivate {
+struct FontfaceInfoPrivateCoreText : public FontfaceInfoPrivate {
 public:
-    FontProviderCoreTextPrivate() = default;
-    ~FontProviderCoreTextPrivate() override = default;
+    FontfaceInfoPrivateCoreText() = default;
+    ~FontfaceInfoPrivateCoreText() override = default;
 public:
     ScopedCFRef<CTFontRef> ct_font;
 };

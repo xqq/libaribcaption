@@ -29,10 +29,10 @@
 
 namespace aribcaption {
 
-struct FontProviderPrivate {
+struct FontfaceInfoPrivate {
 public:
-    FontProviderPrivate() = default;
-    virtual ~FontProviderPrivate() = default;
+    FontfaceInfoPrivate() = default;
+    virtual ~FontfaceInfoPrivate() = default;
 private:
     int placeholder_ = 0;
 };
@@ -43,7 +43,7 @@ struct FontfaceInfo {
     std::string filename;
     int face_index = 0;
     FontProviderType provider_type = FontProviderType::kAuto;
-    std::unique_ptr<FontProviderPrivate> provider_priv;
+    std::unique_ptr<FontfaceInfoPrivate> provider_priv;
 };
 
 enum class FontProviderError {

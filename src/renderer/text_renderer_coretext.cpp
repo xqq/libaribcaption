@@ -241,7 +241,7 @@ auto TextRendererCoreText::LoadCTFont(std::optional<uint32_t> codepoint, std::op
         return Err(FontProviderError::kOtherError);
     }
 
-    auto priv = static_cast<FontProviderCoreTextPrivate*>(info.provider_priv.get());
+    auto priv = static_cast<FontfaceInfoPrivateCoreText*>(info.provider_priv.get());
 
     return Ok(std::make_pair(std::move(priv->ct_font), font_index));
 }

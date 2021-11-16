@@ -165,7 +165,7 @@ auto FontProviderCoreText::GetFontFace(const std::string& font_name,
     info.face_index = -1;
     info.provider_type = FontProviderType::kCoreText;
 
-    auto priv = std::make_unique<FontProviderCoreTextPrivate>();
+    auto priv = std::make_unique<FontfaceInfoPrivateCoreText>();
     priv->ct_font = std::move(ct_font);
     info.provider_priv = std::move(priv);
 

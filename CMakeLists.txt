@@ -62,6 +62,7 @@ configure_file(
     "${CMAKE_CURRENT_BINARY_DIR}/include/config.h"
 )
 
+### Source files
 add_library(aribcaption
         include/aribcaption/aligned_alloc.hpp
         include/aribcaption/aribcaption.h
@@ -131,6 +132,7 @@ target_compile_features(aribcaption
         cxx_std_17
 )
 
+### Includes
 target_include_directories(aribcaption
     PUBLIC
         $<INSTALL_INTERFACE:include>
@@ -142,15 +144,32 @@ target_include_directories(aribcaption
         $<$<BOOL:${LIBARIBCAPTION_USE_FREETYPE}>:${FREETYPE_INCLUDE_DIRS}>
 )
 
+### Linking
 target_link_libraries(aribcaption
     PRIVATE
         $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${COREFOUNDATION_FRAMEWORK}>
         $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${COREGRAPHICS_FRAMEWORK}>
         $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${CORETEXT_FRAMEWORK}>
-        $<$<BOOL:${LIBARIBCAPTION_USE_FONTCONFIG}>:${Fontconfig_LIBRARIES}>
-        $<$<BOOL:${LIBARIBCAPTION_USE_FREETYPE}>:${FREETYPE_LIBRARIES}>
 )
 
+# vcpkg uses optimized/debug keyword in XXXXX_LIBRARIES variables
+# which is incompatible with generator expressions
+if(LIBARIBCAPTION_USE_FONTCONFIG)
+    target_link_libraries(aribcaption
+        PRIVATE
+            ${Fontconfig_LIBRARIES}
+    )
+endif()
+
+if(LIBARIBCAPTION_USE_FREETYPE)
+    target_link_libraries(aribcaption
+        PRIVATE
+            ${FREETYPE_LIBRARIES}
+    )
+endif()
+
+
+### Installing
 include(GNUInstallDirs)
 
 # Install public headers

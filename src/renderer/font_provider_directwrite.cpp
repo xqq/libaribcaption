@@ -48,6 +48,10 @@ bool FontProviderDirectWrite::Initialize() {
     return true;
 }
 
+ComPtr<IDWriteFactory> FontProviderDirectWrite::GetDWriteFactory() {
+    return dwrite_factory_;
+}
+
 void FontProviderDirectWrite::SetLanguage(uint32_t iso6392_language_code) {
     iso6392_language_code_ = iso6392_language_code;
 }

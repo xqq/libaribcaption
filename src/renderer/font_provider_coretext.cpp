@@ -33,6 +33,10 @@ namespace aribcaption {
 
 FontProviderCoreText::FontProviderCoreText(Context& context) : log_(GetContextLogger(context)) {}
 
+FontProviderType FontProviderCoreText::GetType() {
+    return FontProviderType::kCoreText;
+}
+
 bool FontProviderCoreText::Initialize() {
     return true;
 }

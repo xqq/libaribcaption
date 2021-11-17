@@ -28,6 +28,10 @@ FontProviderFontconfig::FontProviderFontconfig(Context& context) :
 
 FontProviderFontconfig::~FontProviderFontconfig() = default;
 
+FontProviderType FontProviderFontconfig::GetType() {
+    return FontProviderType::kFontconfig;
+}
+
 bool FontProviderFontconfig::Initialize() {
     FcConfig* config = nullptr;
     if (!(config = FcInitLoadConfigAndFonts())) {

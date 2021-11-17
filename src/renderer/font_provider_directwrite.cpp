@@ -26,6 +26,10 @@ constexpr IID IID_IDWriteFactory = {0xb859ee5a, 0xd838, 0x4b5b, {0xa2, 0xe8, 0x1
 
 FontProviderDirectWrite::FontProviderDirectWrite(Context& context) : log_(GetContextLogger(context)) {}
 
+FontProviderType FontProviderDirectWrite::GetType() {
+    return FontProviderType::kDirectWrite;
+}
+
 bool FontProviderDirectWrite::Initialize() {
     HRESULT hr = DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED,
                                      IID_IDWriteFactory,

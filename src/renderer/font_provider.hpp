@@ -59,6 +59,7 @@ public:
     FontProvider() = default;
     virtual ~FontProvider() = default;
 public:
+    virtual FontProviderType GetType() = 0;
     virtual bool Initialize() = 0;
     virtual void SetLanguage(uint32_t iso6392_language_code) = 0;
     virtual Result<FontfaceInfo, FontProviderError> GetFontFace(const std::string& font_name,

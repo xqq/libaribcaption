@@ -45,6 +45,7 @@ public:
     ~TextRendererCoreText() override;
 public:
     bool Initialize() override;
+    void SetLanguage(uint32_t iso6392_language_code) override;
     bool SetFontFamily(const std::vector<std::string>& font_family) override;
     auto DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color, int stroke_width,
                   int char_width,

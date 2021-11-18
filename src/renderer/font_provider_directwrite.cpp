@@ -18,6 +18,7 @@
 
 #include <Windows.h>
 #include <initguid.h>
+#include "base/wchar_helper.hpp"
 #include "renderer/font_provider_directwrite.hpp"
 
 namespace aribcaption {
@@ -82,29 +83,6 @@ static std::string ConvertFamilyName(const std::string& family_name, uint32_t is
     return font_name;
 }
 
-static std::wstring UTF8ToWideString(const char* input) {
-    std::wstring result;
-    int length = MultiByteToWideChar(CP_UTF8, 0, input, -1, nullptr, 0);
-    if (length > 0) {
-        result.resize(length);
-        MultiByteToWideChar(CP_UTF8, 0, input, -1, const_cast<LPWSTR>(result.c_str()), length);
-    }
-    return result;
-}
-
-static std::string WideStringToUTF8(const wchar_t* input) {
-    int src_length = static_cast<int>(wcslen(input));
-    int length = WideCharToMultiByte(CP_UTF8, 0, input, src_length, nullptr, 0, nullptr, nullptr);
-
-    std::string result;
-    if (length > 0) {
-        result.resize(length + 1);
-        WideCharToMultiByte(CP_UTF8, 0, input, src_length, &result[0], length, nullptr, nullptr);
-        result[length] = '\0';
-    }
-    return result;
-}
-
 static uint32_t GetDWriteLocaleIndex(IDWriteLocalizedStrings* strs) {
     uint32_t index = 0;
     BOOL exists = FALSE;
@@ -150,14 +128,14 @@ static std::string DWriteLocalizedStringsToUTF8(IDWriteLocalizedStrings* strs,
     hr = strs->GetString(index, wstr.data(), len + 1);
     if (FAILED(hr)) return u8str;
 
-    u8str = WideStringToUTF8(wstr.c_str());
+    u8str = wchar::WideStringToUTF8(wstr);
     return u8str;
 }
 
 auto FontProviderDirectWrite::GetFontFace(const std::string& font_name,
                                           std::optional<uint32_t> ucs4) -> Result<FontfaceInfo, FontProviderError> {
     std::string converted_family_name = ConvertFamilyName(font_name, iso6392_language_code_);
-    std::wstring wide_font_name = UTF8ToWideString(converted_family_name.c_str());
+    std::wstring wide_font_name = wchar::UTF8ToWideString(converted_family_name);
 
     LOGFONTW lf = {0};
     wcscpy_s(lf.lfFaceName, wide_font_name.c_str());
@@ -272,7 +250,7 @@ auto FontProviderDirectWrite::GetFontFace(const std::string& font_name,
 
 
     FontfaceInfo fontface_info;
-    fontface_info.filename = WideStringToUTF8(file_path.c_str());
+    fontface_info.filename = wchar::WideStringToUTF8(file_path);
     fontface_info.family_name = DWriteLocalizedStringsToUTF8(localized_family_names.Get());
     fontface_info.postscript_name = DWriteLocalizedStringsToUTF8(localized_postscript_names.Get(), 0);
     fontface_info.face_index = static_cast<int>(dwrite_fontface->GetIndex());

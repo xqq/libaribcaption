@@ -87,6 +87,7 @@ add_library(aribcaption
         src/base/scoped_cfref.hpp
         src/base/scoped_holder.hpp
         src/base/utf_helper.hpp
+        src/base/wchar_helper.hpp
         src/decoder/b24_codesets.hpp
         src/decoder/b24_colors.hpp
         src/decoder/b24_controlsets.hpp

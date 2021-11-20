@@ -123,6 +123,8 @@ add_library(aribcaption
         src/renderer/text_renderer.hpp
         $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:src/renderer/text_renderer_coretext.cpp>
         $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:src/renderer/text_renderer_coretext.hpp>
+        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:src/renderer/text_renderer_directwrite.cpp>
+        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:src/renderer/text_renderer_directwrite.hpp>
         $<$<BOOL:${LIBARIBCAPTION_USE_FREETYPE}>:src/renderer/text_renderer_freetype.cpp>
         $<$<BOOL:${LIBARIBCAPTION_USE_FREETYPE}>:src/renderer/text_renderer_freetype.hpp>
         src/c_api.cpp
@@ -154,7 +156,9 @@ target_link_libraries(aribcaption
         $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${COREFOUNDATION_FRAMEWORK}>
         $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${COREGRAPHICS_FRAMEWORK}>
         $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${CORETEXT_FRAMEWORK}>
+        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:d2d1>
         $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:dwrite>
+        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:windowscodecs>
 )
 
 # vcpkg uses optimized/debug keyword in XXXXX_LIBRARIES variables

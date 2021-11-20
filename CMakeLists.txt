@@ -85,6 +85,7 @@ add_library(aribcaption
         src/base/md5_helper.hpp
         src/base/result.hpp
         src/base/scoped_cfref.hpp
+        src/base/scoped_com_initializer.hpp
         src/base/scoped_holder.hpp
         src/base/utf_helper.hpp
         src/base/wchar_helper.hpp

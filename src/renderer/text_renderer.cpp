@@ -24,6 +24,10 @@
     #include "renderer/text_renderer_coretext.hpp"
 #endif
 
+#if defined(LIBARIBCAPTION_USE_DIRECTWRITE)
+    #include "renderer/text_renderer_directwrite.hpp"
+#endif
+
 #if defined(LIBARIBCAPTION_USE_FREETYPE)
     #include "renderer/text_renderer_freetype.hpp"
 #endif
@@ -37,6 +41,11 @@ std::unique_ptr<TextRenderer> TextRenderer::Create(TextRendererType type, Contex
             return std::make_unique<TextRendererCoreText>(context, font_provider);
 #endif
 
+#if defined(LIBARIBCAPTION_USE_DIRECTWRITE)
+        case TextRendererType::kDirectWrite:
+            return std::make_unique<TextRendererDirectWrite>(context, font_provider);
+#endif
+
 #if defined(LIBARIBCAPTION_USE_FREETYPE)
         case TextRendererType::kFreetype:
             return std::make_unique<TextRendererFreetype>(context, font_provider);
@@ -45,7 +54,7 @@ std::unique_ptr<TextRenderer> TextRenderer::Create(TextRendererType type, Contex
         case TextRendererType::kAuto:
         default:
 #if defined(_WIN32) && defined(LIBARIBCAPTION_USE_DIRECTWRITE)
-            // TODO: TextRendererDirectWrite
+            return std::make_unique<TextRendererDirectWrite>(context, font_provider);
 #elif defined(__APPLE__) && defined(LIBARIBCAPTION_USE_CORETEXT)
             return std::make_unique<TextRendererCoreText>(context, font_provider);
 #elif defined(LIBARIBCAPTION_USE_FREETYPE)

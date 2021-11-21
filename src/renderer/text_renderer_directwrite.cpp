@@ -381,6 +381,13 @@ auto TextRendererDirectWrite::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA
         horizontal_scale = static_cast<float>(char_width) / static_cast<float>(char_height);
     }
 
+    // Calculate reserve spaces for outline stroke
+    int margin_x = 0;
+    int margin_y = 0;
+    if (style & CharStyle::kCharStyleStroke && stroke_width > 0.0f) {
+        margin_x = margin_y = static_cast<int>(ceilf(stroke_width));
+    }
+
     // Get rendered text's width & height
     DWRITE_TEXT_METRICS metrics = {0};
     hr = text_layout->GetMetrics(&metrics);
@@ -389,19 +396,23 @@ auto TextRendererDirectWrite::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA
         return TextRenderStatus::kOtherError;
     }
 
-    int text_width = static_cast<int>(ceilf(metrics.width));
-    int text_height = static_cast<int>(ceilf(metrics.height));
-    if (text_width == 0) {
-        text_width = static_cast<int>(static_cast<float>(text_height) * horizontal_scale);
+    // Calculate WIC bitmap size
+    int bmp_width = static_cast<int>(ceilf((metrics.width + (float)margin_x * 2) * horizontal_scale));
+    int bmp_height = static_cast<int>(ceilf(metrics.height)) + margin_y * 2;
+    if (bmp_width == 0) {
+        bmp_width = static_cast<int>(static_cast<float>(bmp_height) * horizontal_scale);
     }
 
-    // Adjust target_y based on actual text layout height
-    int y_adjust = (char_height - text_height) / 2;
+    // Adjust x coordinate for reserve spaces
+    target_x -= margin_x;
+
+    // Adjust target_y based on actual text bitmap height
+    int y_adjust = (char_height - bmp_height) / 2;
     target_y += y_adjust;
 
     // Create WIC bitmap
     ComPtr<IWICBitmap> wic_bitmap;
-    hr = wic_factory_->CreateBitmap(static_cast<UINT>(text_width), static_cast<UINT>(text_height),
+    hr = wic_factory_->CreateBitmap(static_cast<UINT>(bmp_width), static_cast<UINT>(bmp_height),
                                     GUID_WICPixelFormat32bppPRGBA, WICBitmapCreateCacheOption::WICBitmapCacheOnLoad,
                                     &wic_bitmap);
     if (FAILED(hr)) {
@@ -449,7 +460,10 @@ auto TextRendererDirectWrite::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA
         horizontal_scale, 1.0f, style & CharStyle::kCharStyleStroke, stroke_width * 2,
         stroke_style_, d2d_factory_, render_target, fill_brush, outline_brush, underline_callback));
 
-    text_layout->Draw(nullptr, outline_text_renderer.Get(), 0.0f, 0.0f);
+    text_layout->Draw(nullptr,
+                      outline_text_renderer.Get(),
+                      static_cast<float>(margin_x),
+                      static_cast<float>(margin_y));
 
     hr = render_target->EndDraw();
     if (FAILED(hr)) {
@@ -575,12 +589,22 @@ bool TextRendererDirectWrite::BlendWICBitmapToBitmap(IWICBitmap* wic_bitmap,
     lock->GetDataPointer(&buffer_size, &buffer);
 
     for (uint32_t y = 0; y < height; y++) {
+        bool should_exit = false;
         for (uint32_t x = 0; x < width; x++) {
             uint32_t src_offset = y * stride + x * 4;
-            ColorRGBA* src_addr = reinterpret_cast<ColorRGBA*>(buffer + src_offset);
+            auto src_addr = reinterpret_cast<ColorRGBA*>(buffer + src_offset);
 
-            int dst_x = target_x + x;
-            int dst_y = target_y + y;
+            int dst_x = target_x + static_cast<int>(x);
+            int dst_y = target_y + static_cast<int>(y);
+
+            if (dst_x < 0 || dst_y < 0) {
+                continue;
+            } else if (dst_x >= target_bmp.width()) {
+                break;
+            } else if (dst_y >= target_bmp.height()) {
+                should_exit = true;
+                break;
+            }
 
             ColorRGBA* dst_addr = target_bmp.GetPixelAt(dst_x, dst_y);
 
@@ -589,13 +613,18 @@ bool TextRendererDirectWrite::BlendWICBitmapToBitmap(IWICBitmap* wic_bitmap,
 
             *dst_addr = alphablend::BlendColor(bg_color, fg_color);
         }
+        if (should_exit)
+            break;
     }
 
     return true;
 }
 
 D2D1_COLOR_F TextRendererDirectWrite::RGBAToD2DColor(ColorRGBA color) {
-    return D2D1::ColorF(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
+    return D2D1::ColorF(static_cast<float>(color.r) / 255.0f,
+                        static_cast<float>(color.g) / 255.0f,
+                        static_cast<float>(color.b) / 255.0f,
+                        static_cast<float>(color.a) / 255.0f);
 }
 
 bool TextRendererDirectWrite::FontfaceHasCharacter(FontfaceInfo& fontface, uint32_t ucs4) {

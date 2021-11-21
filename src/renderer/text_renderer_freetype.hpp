@@ -54,8 +54,6 @@ private:
                       std::optional<size_t> begin_index = std::nullopt)
         -> Result<std::pair<FT_Face, size_t>, FontProviderError>;  // Result<Pair<face, font_index>, error>
 private:
-    static TextRenderStatus FontProviderErrorToStatus(FontProviderError error);
-private:
     std::shared_ptr<Logger> log_;
 
     FontProvider& font_provider_;

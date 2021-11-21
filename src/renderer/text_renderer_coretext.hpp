@@ -59,7 +59,6 @@ private:
     static auto RGBAToCGColor(ColorRGBA rgba) -> ScopedCFRef<CGColorRef>;
     static auto CreateBitmapTargetCGContext(Bitmap& bitmap) -> ScopedCFRef<CGContextRef>;
     static auto CreateSizedCTFont(CTFontRef ctfont, int char_height) -> ScopedCFRef<CTFontRef>;
-    static auto FontProviderErrorToStatus(FontProviderError error) -> TextRenderStatus;
 private:
     std::shared_ptr<Logger> log_;
 

@@ -342,16 +342,4 @@ auto TextRendererFreetype::LoadFontFace(std::optional<uint32_t> codepoint, std::
     return Ok(std::make_pair(face, font_index));
 }
 
-TextRenderStatus TextRendererFreetype::FontProviderErrorToStatus(FontProviderError error) {
-    switch (error) {
-        case FontProviderError::kFontNotFound:
-            return TextRenderStatus::kFontNotFound;
-        case FontProviderError::kCodePointNotFound:
-            return TextRenderStatus::kCodePointNotFound;
-        case FontProviderError::kOtherError:
-        default:
-            return TextRenderStatus::kOtherError;
-    }
-}
-
 }  // namespace aribcaption

@@ -636,16 +636,4 @@ bool TextRendererDirectWrite::FontfaceHasCharacter(FontfaceInfo& fontface, uint3
     return SUCCEEDED(hr) && ucs4_exists;
 }
 
-auto TextRendererDirectWrite::FontProviderErrorToStatus(FontProviderError error) -> TextRenderStatus {
-    switch (error) {
-        case FontProviderError::kFontNotFound:
-            return TextRenderStatus::kFontNotFound;
-        case FontProviderError::kCodePointNotFound:
-            return TextRenderStatus::kCodePointNotFound;
-        case FontProviderError::kOtherError:
-        default:
-            return TextRenderStatus::kOtherError;
-    }
-}
-
 }  // namespace aribcaption

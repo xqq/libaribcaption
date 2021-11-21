@@ -26,6 +26,7 @@
 #include "aribcaption/renderer.hpp"
 #include "base/result.hpp"
 #include "renderer/bitmap.hpp"
+#include "renderer/font_provider.hpp"
 
 namespace aribcaption {
 
@@ -41,11 +42,11 @@ enum class TextRenderStatus {
     kOtherError
 };
 
-class FontProvider;
-
 class TextRenderer {
 public:
     static std::unique_ptr<TextRenderer> Create(TextRendererType type, Context& context, FontProvider& font_provider);
+protected:
+    static auto FontProviderErrorToStatus(FontProviderError error) -> TextRenderStatus;
 public:
     TextRenderer() = default;
     virtual ~TextRenderer() = default;

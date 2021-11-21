@@ -57,8 +57,6 @@ private:
     static D2D1_COLOR_F RGBAToD2DColor(ColorRGBA color);
     static bool FontfaceHasCharacter(FontfaceInfo& fontface, uint32_t ucs4);
 private:
-    static auto FontProviderErrorToStatus(FontProviderError error) -> TextRenderStatus;
-private:
     std::shared_ptr<Logger> log_;
 
     FontProvider& font_provider_;

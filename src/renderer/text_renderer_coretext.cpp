@@ -288,16 +288,4 @@ auto TextRendererCoreText::CreateSizedCTFont(CTFontRef ctfont, int char_height) 
     return sized_ctfont;
 }
 
-auto TextRendererCoreText::FontProviderErrorToStatus(FontProviderError error) -> TextRenderStatus {
-    switch (error) {
-        case FontProviderError::kFontNotFound:
-            return TextRenderStatus::kFontNotFound;
-        case FontProviderError::kCodePointNotFound:
-            return TextRenderStatus::kCodePointNotFound;
-        case FontProviderError::kOtherError:
-        default:
-            return TextRenderStatus::kOtherError;
-    }
-}
-
 }  // namespace aribcaption

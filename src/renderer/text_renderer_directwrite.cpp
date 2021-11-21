@@ -274,11 +274,13 @@ bool TextRendererDirectWrite::SetFontFamily(const std::vector<std::string>& font
 }
 
 auto TextRendererDirectWrite::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
-                                       int stroke_width, int char_width, int char_height,
+                                       float stroke_width, int char_width, int char_height,
                                        Bitmap& target_bmp, int target_x, int target_y,
                                        std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
-    assert(stroke_width >= 0);
     assert(char_height > 0);
+    if (stroke_width < 0.0f) {
+        stroke_width = 0.0f;
+    }
 
     // Handle space characters
     if (ucs4 == 0x0009 || ucs4 == 0x0020 || ucs4 == 0x00A0 || ucs4 == 0x1680 ||
@@ -444,7 +446,7 @@ auto TextRendererDirectWrite::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA
     render_target->CreateSolidColorBrush(RGBAToD2DColor(stroke_color), &outline_brush);
 
     ComPtr<OutlineTextRenderer> outline_text_renderer(new OutlineTextRenderer(
-        horizontal_scale, 1.0f, style & CharStyle::kCharStyleStroke, static_cast<float>(stroke_width * 2),
+        horizontal_scale, 1.0f, style & CharStyle::kCharStyleStroke, stroke_width * 2,
         stroke_style_, d2d_factory_, render_target, fill_brush, outline_brush, underline_callback));
 
     text_layout->Draw(nullptr, outline_text_renderer.Get(), 0.0f, 0.0f);

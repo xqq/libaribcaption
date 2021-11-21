@@ -53,12 +53,9 @@ public:
     virtual bool Initialize() = 0;
     virtual void SetLanguage(uint32_t iso6392_language_code) = 0;
     virtual bool SetFontFamily(const std::vector<std::string>& font_family) = 0;
-    virtual auto DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color, int stroke_width,
-                          int char_width,
-                          int char_height,
-                          Bitmap& target_bmp,
-                          int x,
-                          int y,
+    virtual auto DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
+                          float stroke_width, int char_width, int char_height,
+                          Bitmap& target_bmp, int x, int y,
                           std::optional<UnderlineInfo> underline_info) -> TextRenderStatus = 0;
 public:
     // Disallow copy and assign

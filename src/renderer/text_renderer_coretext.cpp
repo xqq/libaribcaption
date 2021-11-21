@@ -61,11 +61,13 @@ bool TextRendererCoreText::SetFontFamily(const std::vector<std::string>& font_fa
 }
 
 auto TextRendererCoreText::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
-                                    int stroke_width, int char_width, int char_height,
+                                    float stroke_width, int char_width, int char_height,
                                     Bitmap& target_bmp, int target_x, int target_y,
                                     std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
-    assert(stroke_width >= 0);
     assert(char_height > 0);
+    if (stroke_width < 0.0f) {
+        stroke_width = 0.0f;
+    }
 
     // Handle space characters
     if (ucs4 == 0x0009 || ucs4 == 0x0020 || ucs4 == 0x00A0 || ucs4 == 0x1680 ||
@@ -196,7 +198,7 @@ auto TextRendererCoreText::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
     }
 
     // Draw stroke border if required
-    if (style & CharStyle::kCharStyleStroke) {
+    if (style & CharStyle::kCharStyleStroke && stroke_width > 0.0f) {
         CGAffineTransform path_matrix = CGAffineTransformMakeTranslation(origin.x, origin.y);
         ScopedCFRef<CGPathRef> path(CTFontCreatePathForGlyph(ctfont, glyphs[0], &path_matrix));
         CGContextAddPath(ctx.get(), path.get());

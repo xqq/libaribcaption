@@ -68,15 +68,13 @@ bool TextRendererFreetype::SetFontFamily(const std::vector<std::string>& font_fa
 }
 
 auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
-                                    int stroke_width,
-                                    int char_width,
-                                    int char_height,
-                                    Bitmap& target_bmp,
-                                    int target_x,
-                                    int target_y,
+                                    float stroke_width, int char_width, int char_height,
+                                    Bitmap& target_bmp, int target_x, int target_y,
                                     std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
-    assert(stroke_width >= 0);
     assert(char_height > 0);
+    if (stroke_width < 0.0f) {
+        stroke_width = 0.0f;
+    }
 
     // Handle space characters
     if (ucs4 == 0x0009 || ucs4 == 0x0020 || ucs4 == 0x00A0 || ucs4 == 0x1680 ||
@@ -163,7 +161,7 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
     ScopedHolder<FT_Glyph> border_glyph_image(nullptr, FT_Done_Glyph);
 
     // If we need stroke text (border)
-    if (style & CharStyle::kCharStyleStroke) {
+    if (style & CharStyle::kCharStyleStroke && stroke_width > 0.0f) {
         // Generate glyph bitmap for stroke border
         ScopedHolder<FT_Glyph> stroke_glyph(nullptr, FT_Done_Glyph);
         if (FT_Get_Glyph(face->glyph, &stroke_glyph)) {
@@ -173,7 +171,11 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
 
         ScopedHolder<FT_Stroker> stroker(nullptr, FT_Stroker_Done);
         FT_Stroker_New(library_, &stroker);
-        FT_Stroker_Set(stroker, stroke_width * 64, FT_STROKER_LINECAP_ROUND, FT_STROKER_LINEJOIN_ROUND, 0);
+        FT_Stroker_Set(stroker,
+                       static_cast<FT_Fixed>(stroke_width * 64),
+                       FT_STROKER_LINECAP_ROUND,
+                       FT_STROKER_LINEJOIN_ROUND,
+                       0);
 
         FT_Glyph_StrokeBorder(&stroke_glyph, stroker, false, true);
 

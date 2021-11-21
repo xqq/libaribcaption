@@ -164,7 +164,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
         CaptionCharType type = ch.type;
         CharStyle style = ch.style;
         ColorRGBA stroke_color = ch.stroke_color;
-        int stroke_width = ScaleX(stroke_width_);  // use floor
+        float stroke_width = stroke_width_ * x_magnification_;
         UnderlineInfo underline_info{section_rect.left, section_rect.width()};
 
         if (force_stroke_text_ && !(ch.style & CharStyle::kCharStyleStroke)) {
@@ -222,7 +222,8 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
             auto iter = drcs_map.find(ch.drcs_id);
             if (iter != drcs_map.end()) {
                 const DRCS& drcs = iter->second;
-                bool ret = drcs_renderer_.DrawDRCS(drcs, style, ch.text_color, stroke_color, stroke_width,
+                bool ret = drcs_renderer_.DrawDRCS(drcs, style, ch.text_color, stroke_color,
+                                                   static_cast<int>(stroke_width),
                                                    char_width, char_height, bitmap, char_x, char_y);
                 if (ret) {
                     succeed++;

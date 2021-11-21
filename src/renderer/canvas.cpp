@@ -119,8 +119,8 @@ void Canvas::DrawBitmap(const Bitmap& bmp, const Rect& rect) {
     }
 }
 
-auto Canvas::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color, int stroke_width,
-                      int char_width, int char_height, int x, int y,
+auto Canvas::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
+                      float stroke_width, int char_width, int char_height, int x, int y,
                       std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
     assert(text_renderer_);
     return text_renderer_->DrawChar(ucs4, style, color, stroke_color,

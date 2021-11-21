@@ -169,8 +169,8 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
 
         if (force_stroke_text_ && !(ch.style & CharStyle::kCharStyleStroke)) {
             style = static_cast<CharStyle>(ch.style | CharStyle::kCharStyleStroke);
-            // Use background color with alpha 255 for stroke text when forcing stroke text
-            stroke_color = ColorRGBA(ch.back_color, 255);
+            // Use background color for stroke text when forcing stroke text
+            stroke_color = ch.back_color;
         }
 
         // Draw char

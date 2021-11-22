@@ -31,15 +31,15 @@ struct Caption;
 
 namespace internal { class DecoderImpl; }
 
+enum class DecodeStatus {
+    kError = 0,
+    kNoCaption = 1,
+    kGotCaption = 2
+};
+
 class Decoder {
 public:
     using OutputCB = std::function<void(std::unique_ptr<Caption> caption)>;
-
-    enum DecodeStatus {
-        kDecodeStatusError = 0,
-        kDecodeStatusNoCaption = 1,
-        kDecodeStatusGotCaption = 2
-    };
 public:
     explicit Decoder(Context& context);
     ~Decoder();
@@ -53,7 +53,7 @@ public:
     void SetDefaultLanguage(uint32_t iso6392_language_code);
     [[nodiscard]]
     uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;
-    Decoder::DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts,
+    DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts,
                                  const Decoder::OutputCB& output_cb);
     bool Flush();
 public:

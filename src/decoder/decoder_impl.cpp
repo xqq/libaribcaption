@@ -72,12 +72,12 @@ uint32_t DecoderImpl::QueryISO6392LanguageCode(B24LanguageId language_id) const 
     return info.iso6392_language_code;
 }
 
-Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t pts,
-                                          const Decoder::OutputCB& output_cb) {
+DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t pts,
+                                 const Decoder::OutputCB& output_cb) {
     assert(pes_data != nullptr && length > 0);
     if (length < 3) {
         log_->e("DecoderImpl: pes_data size < 3, cannot parse");
-        return Decoder::kDecodeStatusError;
+        return DecodeStatus::kError;
     }
 
     pts_ = pts;
@@ -89,22 +89,22 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
 
     if (data_identifier != 0x80 && data_identifier != 0x81) {
         log_->e("DecoderImpl: Invalid data_identifier: 0x", std::hex, data_identifier);
-        return Decoder::kDecodeStatusError;
+        return DecodeStatus::kError;
     } else if (data_identifier != static_cast<uint8_t>(type_)) {
         log_->e("DecoderImpl: data_identifier mismatch, found: 0x", std::hex, data_identifier,
                 ", expected: 0x", static_cast<uint8_t>(type_));
-        return Decoder::kDecodeStatusError;
+        return DecodeStatus::kError;
     }
 
     if (private_stream_id != 0xFF) {
         log_->e("DecoderImpl: Invalid private_stream_id: 0x", std::hex, private_stream_id);
-        return Decoder::kDecodeStatusError;
+        return DecodeStatus::kError;
     }
 
     size_t data_group_begin = 3 + PES_data_packet_header_length;
     if (data_group_begin + 5 > length) {
         log_->e("DecoderImpl: pes_data length does not enough for a whole data_group");
-        return Decoder::kDecodeStatusError;
+        return DecodeStatus::kError;
     }
 
     uint8_t data_group_id = (data[data_group_begin] & 0b11111100) >> 2;
@@ -112,7 +112,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
                              ((size_t)data[data_group_begin + 4] << 0);
 
     if (data_group_size == 0) {
-        return Decoder::kDecodeStatusNoCaption;
+        return DecodeStatus::kNoCaption;
     }
 
     uint8_t dgi_id = data_group_id & 0x0F;
@@ -131,7 +131,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
              * For caption management data, if data_group_id group equals to previous management data's group
              * This packet could be considered as retransmission, ignore it
              */
-            return Decoder::kDecodeStatusNoCaption;
+            return DecodeStatus::kNoCaption;
         } else {
             // Handle caption management data
             prev_dgi_group_ = dgi_group;
@@ -141,7 +141,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
         // Caption statement data
         if (dgi_id != static_cast<uint8_t>(language_id_)) {
             // Non-expected language id, ignore it
-            return Decoder::kDecodeStatusNoCaption;
+            return DecodeStatus::kNoCaption;
         } else {
             // Handle caption statement data
             ret = ParseCaptionStatementData(data + data_group_begin + 5, data_group_size);
@@ -150,7 +150,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
 
     if (!ret) {
         caption_.reset();
-        return Decoder::kDecodeStatusError;
+        return DecodeStatus::kError;
     }
 
     if (caption_ && !caption_->text.empty()) {
@@ -164,10 +164,10 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
         caption_->builtin_sound_id = builtin_sound_id_;
 
         output_cb(std::move(caption_));
-        return Decoder::kDecodeStatusGotCaption;
+        return DecodeStatus::kGotCaption;
     }
 
-    return Decoder::kDecodeStatusNoCaption;
+    return DecodeStatus::kNoCaption;
 }
 
 bool DecoderImpl::Flush() {

@@ -115,7 +115,7 @@ int main(int argc, const char* argv[]) {
         caption = std::move(cap);
     });
 
-    if (status == Decoder::DecodeStatus::kDecodeStatusError) {
+    if (status == DecodeStatus::kError) {
         fprintf(stderr, "Decoder::Decode() returned error\n");
         return -1;
     }

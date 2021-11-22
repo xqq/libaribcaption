@@ -26,6 +26,7 @@ extern "C" {
 }
 
 #include <cinttypes>
+#include <cstdlib>
 #include <cstdint>
 #include <cstdio>
 #include <memory>
@@ -146,13 +147,14 @@ private:
             caption = std::move(cap);
         });
 
-        if (status == Decoder::kDecodeStatusGotCaption) {
+        if (status == DecodeStatus::kGotCaption) {
             printf("%s\n", caption->text.c_str());
+            fflush(stdout);
             if (caption->iso6392_language_code == 0) {
                 caption->iso6392_language_code = ThreeCC("jpn");
             }
             aribcc_renderer_.AppendCaption(*caption);
-        } else if (status == Decoder::kDecodeStatusError) {
+        } else if (status == DecodeStatus::kError) {
             fprintf(stderr, "Decoder::Decode() returned error\n");
             return false;
         }
@@ -165,6 +167,7 @@ private:
 
         auto render_status = aribcc_renderer_.Render(packet->pts, [&](int64_t pts, int64_t duration, auto& imgs) {
             printf("Render: pts = %" PRId64 ", duration = %" PRId64 "\n", pts, duration);
+            fflush(stdout);
             images = imgs;
         });
 

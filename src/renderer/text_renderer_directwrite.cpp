@@ -586,7 +586,11 @@ bool TextRendererDirectWrite::BlendWICBitmapToBitmap(IWICBitmap* wic_bitmap,
 
     uint32_t buffer_size = 0;
     uint8_t* buffer = nullptr;
-    lock->GetDataPointer(&buffer_size, &buffer);
+    hr = lock->GetDataPointer(&buffer_size, &buffer);
+    if (FAILED(hr) || !buffer) {
+        log_->e("TextRendererDirectWrite: IWICBitmapLock::GetDataPointer() failed");
+        return false;
+    }
 
     for (uint32_t y = 0; y < height; y++) {
         bool should_exit = false;

@@ -217,15 +217,15 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
 
         FT_Bitmap& border_bitmap = border_bitmap_glyph->bitmap;
 
-        for (int y = 0; y < border_bitmap.rows; y++) {
+        for (uint32_t y = 0; y < border_bitmap.rows; y++) {
             bool should_exit = false;
-            for (int x = 0; x < border_bitmap.width; x++) {
-                intptr_t src_index = y * border_bitmap.pitch + x;
+            for (uint32_t x = 0; x < border_bitmap.width; x++) {
+                uint32_t src_index = y * border_bitmap.pitch + x;
                 uint8_t src = border_bitmap.buffer[src_index];
                 if (src == 0) continue;
 
-                int dst_x = start_x + x;
-                int dst_y = start_y + y;
+                int dst_x = start_x + static_cast<int>(x);
+                int dst_y = start_y + static_cast<int>(y);
 
                 if (dst_x < 0 || dst_y < 0) {
                     continue;
@@ -256,15 +256,15 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
 
         FT_Bitmap& fill_bitmap = bitmap_glyph->bitmap;
 
-        for (int y = 0; y < fill_bitmap.rows; y++) {
+        for (uint32_t y = 0; y < fill_bitmap.rows; y++) {
             bool should_exit = false;
-            for (int x = 0; x < fill_bitmap.width; x++) {
-                intptr_t src_index = y * fill_bitmap.pitch + x;
+            for (uint32_t x = 0; x < fill_bitmap.width; x++) {
+                uint32_t src_index = y * fill_bitmap.pitch + x;
                 uint8_t src = fill_bitmap.buffer[src_index];
                 if (src == 0) continue;
 
-                int dst_x = start_x + x;
-                int dst_y = start_y + y;
+                int dst_x = start_x + static_cast<int>(x);
+                int dst_y = start_y + static_cast<int>(y);
 
                 if (dst_x < 0 || dst_y < 0) {
                     continue;

@@ -59,16 +59,16 @@ enum class TextRendererType {
 
 namespace internal { class RendererImpl; }
 
+enum RenderStatus {
+    kError = 0,
+    kNoImage = 1,
+    kGotImage = 2,
+    kGotImageUnchanged = 3,
+};
+
 class Renderer {
 public:
     using OutputCB = std::function<void(int64_t pts, int64_t duration, const std::vector<Image>& images)>;
-
-    enum RenderStatus {
-        kRenderStatusError = 0,
-        kRenderStatusNoImage = 1,
-        kRenderStatusGotImage = 2,
-        kRenderStatusGotImageUnchanged = 3,
-    };
 public:
     explicit Renderer(Context& context);
     ~Renderer();
@@ -90,7 +90,7 @@ public:
     bool AppendCaption(const Caption& caption);
     bool AppendCaption(Caption&& caption);
 
-    Renderer::RenderStatus Render(int64_t pts, const Renderer::OutputCB& output_cb);
+    RenderStatus Render(int64_t pts, const Renderer::OutputCB& output_cb);
     bool Flush();
 public:
     Renderer(const Renderer&) = delete;

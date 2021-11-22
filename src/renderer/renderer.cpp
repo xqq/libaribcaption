@@ -71,7 +71,7 @@ bool Renderer::AppendCaption(Caption&& caption) {
     return pimpl_->AppendCaption(std::move(caption));
 }
 
-Renderer::RenderStatus Renderer::Render(int64_t pts, const Renderer::OutputCB& output_cb) {
+RenderStatus Renderer::Render(int64_t pts, const Renderer::OutputCB& output_cb) {
     return pimpl_->Render(pts, output_cb);
 }
 

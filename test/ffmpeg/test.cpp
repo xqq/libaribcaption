@@ -171,7 +171,7 @@ private:
             images = imgs;
         });
 
-        if (render_status == Renderer::kRenderStatusError) {
+        if (render_status == RenderStatus::kError) {
             fprintf(stderr, "Renderer::Render() returned error\n");
             return false;
         }

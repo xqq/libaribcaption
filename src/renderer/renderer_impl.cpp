@@ -184,7 +184,7 @@ bool RendererImpl::AppendCaption(Caption&& caption) {
     return true;
 }
 
-Renderer::RenderStatus RendererImpl::Render(int64_t pts, const Renderer::OutputCB& output_cb) {
+RenderStatus RendererImpl::Render(int64_t pts, const Renderer::OutputCB& output_cb) {
     assert(frame_size_inited_ && margins_inited_ && "Frame size / margins must be indicated first");
 
     if (has_prev_rendered_caption_) {
@@ -192,15 +192,15 @@ Renderer::RenderStatus RendererImpl::Render(int64_t pts, const Renderer::OutputC
             if (!prev_rendered_images_.empty()) {
                 // Re-use previous rendered images
                 output_cb(prev_rendered_caption_pts_, prev_rendered_caption_duration_, prev_rendered_images_);
-                return Renderer::kRenderStatusGotImageUnchanged;
+                return RenderStatus::kGotImageUnchanged;
             } else {
-                return Renderer::kRenderStatusNoImage;
+                return RenderStatus::kNoImage;
             }
         }
     }
 
     if (captions_.empty()) {
-        return Renderer::kRenderStatusNoImage;
+        return RenderStatus::kNoImage;
     }
 
     auto iter = captions_.lower_bound(pts);
@@ -213,7 +213,7 @@ Renderer::RenderStatus RendererImpl::Render(int64_t pts, const Renderer::OutputC
     Caption& caption = iter->second;
     if (pts < caption.pts || (caption.duration != DURATION_INDEFINITE && pts >= caption.pts + caption.duration)) {
         // Timeout
-        return Renderer::kRenderStatusNoImage;
+        return RenderStatus::kNoImage;
     }
 
     // Prepare for rendering
@@ -238,7 +238,7 @@ Renderer::RenderStatus RendererImpl::Render(int64_t pts, const Renderer::OutputC
             images.push_back(std::move(result.value()));
         } else {
             log_->e("RendererImpl: Render caption region failed: ", static_cast<int>(result.error()));
-            return Renderer::kRenderStatusError;
+            return RenderStatus::kError;
         }
     }
 
@@ -248,7 +248,7 @@ Renderer::RenderStatus RendererImpl::Render(int64_t pts, const Renderer::OutputC
     prev_rendered_images_ = std::move(images);
 
     output_cb(caption.pts, caption.duration, prev_rendered_images_);
-    return Renderer::kRenderStatusGotImage;
+    return RenderStatus::kGotImage;
 }
 
 void RendererImpl::AdjustCaptionArea(int origin_plane_width, int origin_plane_height) {

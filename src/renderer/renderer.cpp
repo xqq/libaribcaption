@@ -43,6 +43,10 @@ void Renderer::SetForceStrokeText(bool force_stroke) {
     pimpl_->SetForceStrokeText(force_stroke);
 }
 
+void Renderer::SetForceNoRuby(bool force_no_ruby) {
+    pimpl_->SetForceNoRuby(force_no_ruby);
+}
+
 void Renderer::SetForceNoBackground(bool force_no_background) {
     pimpl_->SetForceNoBackground(force_no_background);
 }

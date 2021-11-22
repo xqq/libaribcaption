@@ -42,6 +42,7 @@ public:
     void SetStrokeWidth(float dots);
     void SetReplaceDRCS(bool replace);
     void SetForceStrokeText(bool force_stroke);
+    void SetForceNoRuby(bool force_no_ruby);
     void SetForceNoBackground(bool force_no_background);
 
     bool SetDefaultFontFamily(const std::vector<std::string>& font_family, bool force_default);
@@ -71,6 +72,7 @@ private:
     // language code 0 as default FontFamily
     std::unordered_map<uint32_t, std::vector<std::string>> language_font_family_;
 
+    bool force_no_ruby_ = false;
     bool force_default_font_family_ = false;
 
     bool frame_size_inited_ = false;

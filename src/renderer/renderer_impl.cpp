@@ -82,6 +82,10 @@ void RendererImpl::SetForceStrokeText(bool force_stroke) {
     region_renderer_.SetForceStrokeText(force_stroke);
 }
 
+void RendererImpl::SetForceNoRuby(bool force_no_ruby) {
+    force_no_ruby_ = force_no_ruby;
+}
+
 void RendererImpl::SetForceNoBackground(bool force_no_background) {
     region_renderer_.SetForceNoBackground(force_no_background);
 }
@@ -233,6 +237,10 @@ RenderStatus RendererImpl::Render(int64_t pts, const Renderer::OutputCB& output_
 
     std::vector<Image> images;
     for (CaptionRegion& region : caption.regions) {
+        if (region.is_ruby && force_no_ruby_) {
+            continue;
+        }
+
         Result<Image, RegionRenderError> result = region_renderer_.RenderCaptionRegion(region, caption.drcs_map);
         if (result.is_ok()) {
             images.push_back(std::move(result.value()));

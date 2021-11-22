@@ -59,7 +59,7 @@ enum class TextRendererType {
 
 namespace internal { class RendererImpl; }
 
-enum RenderStatus {
+enum class RenderStatus {
     kError = 0,
     kNoImage = 1,
     kGotImage = 2,

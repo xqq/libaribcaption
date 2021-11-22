@@ -38,7 +38,7 @@ inline std::string GetDigest(const uint8_t* buffer, size_t length) {
             length -= 64;
             ptr += 64;
         } else {
-            MD5_Update(&ctx, ptr, length);
+            MD5_Update(&ctx, ptr, static_cast<unsigned long>(length));
             length -= length;
             ptr += length;
         }
@@ -48,7 +48,7 @@ inline std::string GetDigest(const uint8_t* buffer, size_t length) {
     MD5_Final(&digest[0], &ctx);
 
     std::string digest_str(32, '\0');
-    for (int i = 0; i < 16; i++) {
+    for (size_t i = 0; i < 16; i++) {
         snprintf(&digest_str[i * 2], 16 * 2, "%02x", static_cast<uint32_t>(digest[i]));
     }
 

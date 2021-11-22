@@ -62,13 +62,13 @@ public:
 
     [[nodiscard]]
     inline ColorRGBA* GetPixelAt(int x, int y) {
-        uint8_t* ptr = pixels.data() + y * stride_ + x * sizeof(ColorRGBA);
+        uint8_t* ptr = pixels.data() + y * (size_t)stride_ + x * sizeof(ColorRGBA);
         return reinterpret_cast<ColorRGBA*>(ptr);
     };
 
     [[nodiscard]]
     inline const ColorRGBA* GetPixelAt(int x, int y) const {
-        const uint8_t* ptr = pixels.data() + y * stride_ + x * sizeof(ColorRGBA);
+        const uint8_t* ptr = pixels.data() + y * (size_t)stride_ + x * sizeof(ColorRGBA);
         return reinterpret_cast<const ColorRGBA*>(ptr);
     };
 

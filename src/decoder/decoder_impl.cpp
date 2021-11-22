@@ -85,7 +85,7 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
 
     uint8_t data_identifier = data[0];
     uint8_t private_stream_id = data[1];
-    uint8_t PES_data_packet_header_length = data[2] & 0x0F;
+    size_t PES_data_packet_header_length = data[2] & 0x0F;
 
     if (data_identifier != 0x80 && data_identifier != 0x81) {
         log_->e("DecoderImpl: Invalid data_identifier: 0x", std::hex, data_identifier);
@@ -108,7 +108,8 @@ Decoder::DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length
     }
 
     uint8_t data_group_id = (data[data_group_begin] & 0b11111100) >> 2;
-    uint16_t data_group_size = ((uint16_t)data[data_group_begin + 3] << 8) | data[data_group_begin + 4];
+    size_t data_group_size = ((size_t)data[data_group_begin + 3] << 8) |
+                             ((size_t)data[data_group_begin + 4] << 0);
 
     if (data_group_size == 0) {
         return Decoder::kDecodeStatusNoCaption;
@@ -360,9 +361,9 @@ bool DecoderImpl::ParseCaptionManagementData(const uint8_t* data, size_t length)
         return false;
     }
 
-    uint32_t data_unit_loop_length = ((uint32_t)data[offset + 0] << 16) |
-                                     ((uint32_t)data[offset + 1] <<  8) |
-                                     ((uint32_t)data[offset + 2] <<  0);
+    size_t data_unit_loop_length = ((size_t)data[offset + 0] << 16) |
+                                   ((size_t)data[offset + 1] <<  8) |
+                                   ((size_t)data[offset + 2] <<  0);
     offset += 3;
 
     if (data_unit_loop_length == 0) {
@@ -394,9 +395,9 @@ bool DecoderImpl::ParseCaptionStatementData(const uint8_t* data, size_t length) 
         return false;
     }
 
-    uint32_t data_unit_loop_length = ((uint32_t)data[offset + 0] << 16) |
-                                     ((uint32_t)data[offset + 1] <<  8) |
-                                     ((uint32_t)data[offset + 2] <<  0);
+    size_t data_unit_loop_length = ((size_t)data[offset + 0] << 16) |
+                                   ((size_t)data[offset + 1] <<  8) |
+                                   ((size_t)data[offset + 2] <<  0);
     offset += 3;
 
     if (data_unit_loop_length == 0) {
@@ -421,9 +422,9 @@ bool DecoderImpl::ParseDataUnit(const uint8_t* data, size_t length) {
     while (offset < length) {
         uint8_t unit_separator = data[offset];
         uint8_t data_unit_parameter = data[offset + 1];
-        uint32_t data_unit_size =  ((uint32_t)data[offset + 2] << 16) |
-                                   ((uint32_t)data[offset + 3] <<  8) |
-                                   ((uint32_t)data[offset + 4] <<  0);
+        size_t data_unit_size = ((size_t)data[offset + 2] << 16) |
+                                ((size_t)data[offset + 3] <<  8) |
+                                ((size_t)data[offset + 4] <<  0);
 
         if (unit_separator != 0x1F) {
             log_->e("DecoderImpl: Invalid unit_separator: 0x", std::hex, unit_separator);
@@ -566,7 +567,8 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
             } else {
                 uint8_t region_x = data[offset];
                 uint8_t region_y = data[offset + 1];
-                uint16_t geometric_data_length = ((uint16_t)data[offset + 2] << 8) | data[offset + 3];
+                size_t geometric_data_length = ((size_t)data[offset + 2] << 8) |
+                                               ((size_t)data[offset + 3] << 0);
                 offset += 4 + geometric_data_length;
             }
         }
@@ -873,7 +875,7 @@ bool DecoderImpl::HandleC1(const uint8_t* data, size_t remain_bytes, size_t* byt
                 return false;
             if (data[1] == 0x20) {
                 uint8_t p2 = data[2] & 0b00111111;
-                duration_ += p2 * 100;
+                duration_ += static_cast<int64_t>(p2) * 100;
                 bytes = 3;
             } else if (data[1] == 0x28) {
                 // Not used according to ARIB TR-B14
@@ -1047,14 +1049,14 @@ bool DecoderImpl::HandleCSI(const uint8_t* data, size_t remain_bytes, size_t* by
 bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* bytes_processed, CodesetEntry* entry) {
     if (entry->graphics_set == GraphicSet::kHiragana ||
                entry->graphics_set == GraphicSet::kProportionalHiragana) {
-        size_t index = (data[0] & 0x7F) - 0x21;
+        size_t index = ((size_t)data[0] & 0x7F) - 0x21;
         uint32_t ucs4 = kHiraganaTable[index];
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kKatakana ||
                entry->graphics_set == GraphicSet::kProportionalKatakana ||
                entry->graphics_set == GraphicSet::kJIS_X0201_Katakana) {
-        size_t index = (data[0] & 0x7F) - 0x21;
+        size_t index = ((size_t)data[0] & 0x7F) - 0x21;
         uint32_t ucs4 = kKatakanaTable[index];
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
@@ -1062,15 +1064,15 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
                entry->graphics_set == GraphicSet::kJIS_X0213_2004_Kanji_1 ||
                entry->graphics_set == GraphicSet::kJIS_X0213_2004_Kanji_2 ||
                entry->graphics_set == GraphicSet::kAdditionalSymbols) {
-        size_t idx1 = (data[0] & 0x7F) - 0x21;
-        size_t idx2 = (data[1] & 0x7F) - 0x21;
+        size_t idx1 = ((size_t)data[0] & 0x7F) - 0x21;
+        size_t idx2 = ((size_t)data[1] & 0x7F) - 0x21;
         size_t index = idx1 * 94 + idx2;
         uint32_t ucs4 = kKanjiTable[index];
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kAlphanumeric ||
                entry->graphics_set == GraphicSet::kProportionalAlphanumeric) {
-        size_t index = (data[0] & 0x7F) - 0x21;
+        size_t index = ((size_t)data[0] & 0x7F) - 0x21;
         uint32_t ucs4 = 0;
         if (IsLatinLanguage()) {
             ucs4 = kAlphanumericTable_Latin[index];
@@ -1082,12 +1084,12 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kLatinExtension) {
-        size_t index = (data[0] & 0x7F) - 0x21;
+        size_t index = ((size_t)data[0] & 0x7F) - 0x21;
         uint32_t ucs4 = kLatinExtensionTable[index];
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kLatinSpecial) {
-        size_t index = (data[0] & 0x7F) - 0x21;
+        size_t index = ((size_t)data[0] & 0x7F) - 0x21;
         uint32_t ucs4 = kLatinSpecialTable[index];
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
@@ -1100,7 +1102,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         }
     } else if (entry->graphics_set >= GraphicSet::kDRCS_0 &&
                entry->graphics_set <= GraphicSet::kDRCS_15) {
-        size_t map_index = static_cast<size_t>(entry->graphics_set) - static_cast<size_t>(GraphicSet::kDRCS_0);
+        uint32_t map_index = static_cast<uint32_t>(entry->graphics_set) - static_cast<uint32_t>(GraphicSet::kDRCS_0);
         auto& drcs_map = drcs_maps_[map_index];
         uint16_t key = data[0] & 0x7F;
         if (entry->bytes == 2) {

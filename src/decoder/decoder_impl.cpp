@@ -1047,6 +1047,11 @@ bool DecoderImpl::HandleCSI(const uint8_t* data, size_t remain_bytes, size_t* by
 }
 
 bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* bytes_processed, CodesetEntry* entry) {
+    uint8_t ch = data[0] & 0x7F;
+    if (ch < 0x21 || ch >= 0x7F) {
+        return false;
+    }
+
     if (entry->graphics_set == GraphicSet::kHiragana ||
                entry->graphics_set == GraphicSet::kProportionalHiragana) {
         size_t index = ((size_t)data[0] & 0x7F) - 0x21;

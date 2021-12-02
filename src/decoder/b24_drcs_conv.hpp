@@ -315,6 +315,7 @@ inline const std::unordered_map<std::string, uint32_t> kDRCSReplacementMap = {
     {"8dc47c6e65beb788da7ed9efd59f0934", 0x8cb7},
     {"e28d4c57d97fbe4a0d67aec2cc92e7c8", 0x6365},
     {"9374173a2e4b7f1dcac75eccd5ee7e7f", 0x698a},
+    {"ec7b2c805a5ba3d52c281ee2296b94d7", 0x8523},
 };
 
 }  // namespace aribcaption

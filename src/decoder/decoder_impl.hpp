@@ -71,6 +71,7 @@ private:
     void ApplyCaptionCharCommonProperties(CaptionChar& caption_char);
     bool NeedNewCaptionRegion();
     void MakeNewCaptionRegion();
+    void StoreCurrentCaption();
     [[nodiscard]]
     bool IsLatinLanguage() const;
     [[nodiscard]]
@@ -108,6 +109,7 @@ private:
     int prev_dgi_group_ = -1;
 
     std::unique_ptr<Caption> caption_;
+    std::vector<Caption> captions_;
 
     CodesetEntry* GL_ = nullptr;
     CodesetEntry* GR_ = nullptr;
@@ -120,7 +122,6 @@ private:
     std::vector<std::unordered_map<uint16_t, DRCS>> drcs_maps_;
 
     int64_t pts_ = PTS_NOPTS;  // in milliseconds
-    int64_t duration_ = 0;     // in milliseconds
 
     uint8_t swf_ = 7;
 

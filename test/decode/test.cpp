@@ -97,8 +97,10 @@ private:
 };
 #endif
 
-auto decoder_callback = [](std::unique_ptr<aribcaption::Caption> caption) -> void {
-    printf("%s\n", caption->text.c_str());
+auto decoder_callback = [](std::vector<aribcaption::Caption> captions) -> void {
+    for (const auto& caption : captions) {
+        printf("%s\n", caption.text.c_str());
+    }
 };
 
 int main(int argc, const char* argv[]) {

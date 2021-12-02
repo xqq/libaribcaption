@@ -161,9 +161,9 @@ bool RendererImpl::AppendCaption(const Caption& caption) {
     }
 
     auto prev = captions_.rbegin();
-    if (prev != captions_.rend() && prev->second.duration == DURATION_INDEFINITE) {
+    if (prev != captions_.rend() && prev->second.wait_duration == DURATION_INDEFINITE) {
         Caption& prev_caption = prev->second;
-        prev_caption.duration = caption.pts - prev_caption.pts;
+        prev_caption.wait_duration = caption.pts - prev_caption.pts;
     }
 
     captions_.insert_or_assign(captions_.end(), caption.pts, caption);
@@ -179,9 +179,9 @@ bool RendererImpl::AppendCaption(Caption&& caption) {
     }
 
     auto prev = captions_.rbegin();
-    if (prev != captions_.rend() && prev->second.duration == DURATION_INDEFINITE) {
+    if (prev != captions_.rend() && prev->second.wait_duration == DURATION_INDEFINITE) {
         Caption& prev_caption = prev->second;
-        prev_caption.duration = caption.pts - prev_caption.pts;
+        prev_caption.wait_duration = caption.pts - prev_caption.pts;
     }
 
     captions_.insert_or_assign(captions_.end(), caption.pts, std::move(caption));
@@ -215,7 +215,7 @@ RenderStatus RendererImpl::Render(int64_t pts, const Renderer::OutputCB& output_
     }
 
     Caption& caption = iter->second;
-    if (pts < caption.pts || (caption.duration != DURATION_INDEFINITE && pts >= caption.pts + caption.duration)) {
+    if (pts < caption.pts || (caption.wait_duration != DURATION_INDEFINITE && pts >= caption.pts + caption.wait_duration)) {
         // Timeout
         return RenderStatus::kNoImage;
     }
@@ -252,10 +252,10 @@ RenderStatus RendererImpl::Render(int64_t pts, const Renderer::OutputCB& output_
 
     has_prev_rendered_caption_ = true;
     prev_rendered_caption_pts_ = caption.pts;
-    prev_rendered_caption_duration_ = caption.duration;
+    prev_rendered_caption_duration_ = caption.wait_duration;
     prev_rendered_images_ = std::move(images);
 
-    output_cb(caption.pts, caption.duration, prev_rendered_images_);
+    output_cb(caption.pts, caption.wait_duration, prev_rendered_images_);
     return RenderStatus::kGotImage;
 }
 

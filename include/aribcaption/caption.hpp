@@ -144,7 +144,7 @@ struct Caption {
     std::unordered_map<uint32_t, DRCS> drcs_map;
 
     int64_t pts = 0;
-    int64_t duration = 0;
+    int64_t wait_duration = 0;
     int plane_width = 0;
     int plane_height = 0;
 

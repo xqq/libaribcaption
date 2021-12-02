@@ -141,32 +141,37 @@ private:
     }
 
     bool DecodeRenderAndSave(AVPacket* packet) {
-        std::unique_ptr<Caption> caption;
+        std::vector<Caption> captions;
 
-        auto status = aribcc_decoder_.Decode(packet->data, packet->size, packet->pts, [&](auto cap) -> void {
-            caption = std::move(cap);
+        auto status = aribcc_decoder_.Decode(packet->data, packet->size, packet->pts, [&](std::vector<Caption> caps) -> void {
+            captions = std::move(caps);
         });
 
         if (status == DecodeStatus::kGotCaption) {
-            printf("%s\n", caption->text.c_str());
-            fflush(stdout);
-            if (caption->iso6392_language_code == 0) {
-                caption->iso6392_language_code = ThreeCC("jpn");
+            for (auto& caption : captions) {
+                printf("Decode: pts = %" PRId64 ", duration = %" PRId64 ", %s\n",
+                       caption.pts,
+                       caption.wait_duration,
+                       caption.text.c_str());
+                fflush(stdout);
+                if (caption.iso6392_language_code == 0) {
+                    caption.iso6392_language_code = ThreeCC("jpn");
+                }
+                aribcc_renderer_.AppendCaption(std::move(caption));
             }
-            aribcc_renderer_.AppendCaption(*caption);
         } else if (status == DecodeStatus::kError) {
             fprintf(stderr, "Decoder::Decode() returned error\n");
             return false;
         }
 
-        if (!caption) {
+        if (captions.empty()) {
             return true;
         }
 
         std::vector<Image> images;
 
         auto render_status = aribcc_renderer_.Render(packet->pts, [&](int64_t pts, int64_t duration, auto& imgs) {
-            printf("Render: pts = %" PRId64 ", duration = %" PRId64 "\n", pts, duration);
+            printf("Render: pts = %" PRId64 ", duration = %" PRId64 ", images = %zu\n", pts, duration, imgs.size());
             fflush(stdout);
             images = imgs;
         });

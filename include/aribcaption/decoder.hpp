@@ -21,6 +21,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <vector>
 #include <memory>
 #include "b24.hpp"
 #include "context.hpp"
@@ -39,7 +40,7 @@ enum class DecodeStatus {
 
 class Decoder {
 public:
-    using OutputCB = std::function<void(std::unique_ptr<Caption> caption)>;
+    using OutputCB = std::function<void(std::vector<Caption> captions)>;
 public:
     explicit Decoder(Context& context);
     ~Decoder();

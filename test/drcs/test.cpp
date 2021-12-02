@@ -109,29 +109,27 @@ int main(int argc, const char* argv[]) {
     Decoder decoder(context);
     decoder.Initialize();
 
-    std::unique_ptr<Caption> caption;
+    Caption caption;
 
-    auto status = decoder.Decode(test_data1, sizeof(test_data1), 0, [&](std::unique_ptr<Caption> cap) -> void {
-        caption = std::move(cap);
+    auto status = decoder.Decode(test_data1, sizeof(test_data1), 0, [&](std::vector<Caption> caps) -> void {
+        caption = std::move(caps[0]);
     });
 
     if (status == DecodeStatus::kError) {
         fprintf(stderr, "Decoder::Decode() returned error\n");
         return -1;
-    }
-
-    if (!caption) {
+    } else if (status == DecodeStatus::kNoCaption) {
         printf("kDecodeStatusNoCaption\n");
         return 0;
     }
 
-    Bitmap caption_frame(caption->plane_width * scale_factor,
-                         caption->plane_height * scale_factor,
+    Bitmap caption_frame(caption.plane_width * scale_factor,
+                         caption.plane_height * scale_factor,
                          PixelFormat::kRGBA8888);
     Canvas caption_canvas(caption_frame);
 
-    for (size_t i = 0; i < caption->regions.size(); i++) {
-        CaptionRegion& region = caption->regions[i];
+    for (size_t i = 0; i < caption.regions.size(); i++) {
+        CaptionRegion& region = caption.regions[i];
         Bitmap region_bmp(region.width * scale_factor,
                           region.height * scale_factor,
                           PixelFormat::kRGBA8888);
@@ -167,7 +165,7 @@ int main(int argc, const char* argv[]) {
                 || ch.type == CaptionCharType::kDRCSReplaced
                 || ch.type == CaptionCharType::kDRCSReplacedGaiji) {
 
-                DRCS& drcs = caption->drcs_map[ch.drcs_id];
+                DRCS& drcs = caption.drcs_map[ch.drcs_id];
                 bool ret = drcs_renderer.DrawDRCS(drcs, style, ch.text_color, stroke_color, stroke_width,
                                        char_width, char_height, region_bmp, x, y);
                 if (!ret) {

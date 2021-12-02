@@ -150,24 +150,20 @@ DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t
 
     if (!ret) {
         caption_.reset();
+        captions_.clear();
         return DecodeStatus::kError;
     }
 
-    if (caption_ && !caption_->text.empty()) {
-        caption_->type = static_cast<CaptionType>(type_);
-        caption_->iso6392_language_code = current_iso6392_language_code_;
-        caption_->pts = pts;
-        caption_->duration = duration_ == 0 ? DURATION_INDEFINITE : duration_;
-        caption_->plane_width = caption_plane_width_;
-        caption_->plane_height = caption_plane_height_;
-        caption_->has_builtin_sound = has_builtin_sound_;
-        caption_->builtin_sound_id = builtin_sound_id_;
-
-        output_cb(std::move(caption_));
-        return DecodeStatus::kGotCaption;
+    if (!caption_->regions.empty() || caption_->wait_duration > 0) {
+        StoreCurrentCaption();
     }
 
-    return DecodeStatus::kNoCaption;
+    if (captions_.empty()) {
+        return DecodeStatus::kNoCaption;
+    }
+
+    output_cb(std::move(captions_));
+    return DecodeStatus::kGotCaption;
 }
 
 bool DecoderImpl::Flush() {
@@ -265,9 +261,6 @@ void DecoderImpl::ResetInternalState() {
 
     ResetGraphicSets();
     ResetWritingFormat();
-
-    pts_ = PTS_NOPTS;
-    duration_ = 0;
 
     display_area_start_x_ = 0;
     display_area_start_y_ = 0;
@@ -602,10 +595,14 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             MoveRelativeActivePos(0, -1);
             bytes = 1;
             break;
-        case JIS8::CS:   // Clear screen
+        case JIS8::CS: { // Clear screen
+            if (!caption_->regions.empty() || caption_->wait_duration > 0) {
+                StoreCurrentCaption();
+            }
             ResetInternalState();
             bytes = 1;
             break;
+        }
         case JIS8::APR:  // Active position return
             utf::UTF8AppendCodePoint(caption_->text, 0x000A);  // \n
             MoveActivePosToNewline();
@@ -875,7 +872,7 @@ bool DecoderImpl::HandleC1(const uint8_t* data, size_t remain_bytes, size_t* byt
                 return false;
             if (data[1] == 0x20) {
                 uint8_t p2 = data[2] & 0b00111111;
-                duration_ += static_cast<int64_t>(p2) * 100;
+                caption_->wait_duration += static_cast<int64_t>(p2) * 100;
                 bytes = 3;
             } else if (data[1] == 0x28) {
                 // Not used according to ARIB TR-B14
@@ -1247,6 +1244,26 @@ void DecoderImpl::MakeNewCaptionRegion() {
     if (IsRubyMode()) {
         region.is_ruby = true;
     }
+}
+
+void DecoderImpl::StoreCurrentCaption() {
+    captions_.push_back(std::move(*caption_));
+    Caption& caption = captions_.back();
+
+    caption.type = static_cast<CaptionType>(type_);
+    caption.iso6392_language_code = current_iso6392_language_code_;
+    caption.plane_width = caption_plane_width_;
+    caption.plane_height = caption_plane_height_;
+    caption.has_builtin_sound = has_builtin_sound_;
+    caption.builtin_sound_id = builtin_sound_id_;
+
+    caption.pts = pts_;
+
+    if (caption.wait_duration == 0) {
+        caption.wait_duration = DURATION_INDEFINITE;
+    }
+
+    pts_ += caption.wait_duration;
 }
 
 bool DecoderImpl::IsLatinLanguage() const {

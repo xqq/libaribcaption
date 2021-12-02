@@ -30,8 +30,8 @@
 
 namespace aribcaption {
 
-constexpr int64_t PTS_NOPTS = ((int64_t)UINT64_C(0x8000000000000000));
-constexpr int64_t DURATION_INDEFINITE = ((int64_t)UINT64_C(0x8000000000000000));
+constexpr int64_t PTS_NOPTS = ((int64_t)UINT64_C(0x8000000000000000));            // -1
+constexpr int64_t DURATION_INDEFINITE = ((int64_t)UINT64_C(0x7FFFFFFFFFFFFFFF));  // int64_t max value
 
 // For encoding ISO 639-2 3-char language codes
 template <size_t N>

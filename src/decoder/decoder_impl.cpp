@@ -1116,8 +1116,8 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
 
         auto iter = drcs_map.find(key);
         if (iter == drcs_map.end()) {
-            // Unfindable DRCS character, insert Ideographic Space instead
-            PushCharacter(0x3000);
+            // Unfindable DRCS character, insert Geta Mark instead
+            PushCharacter(0x3013);
         } else {
             DRCS& drcs = iter->second;
             uint32_t id = (map_index << 16) | key;
@@ -1150,7 +1150,7 @@ void DecoderImpl::PushDRCSCharacter(uint32_t id, DRCS& drcs) {
 
     if (drcs.alternative_text.empty()) {
         caption_char.type = CaptionCharType::kDRCS;
-        utf::UTF8AppendCodePoint(caption_->text, 0x3000);  // Fill a Ideographic Space here
+        utf::UTF8AppendCodePoint(caption_->text, 0x3013);  // Fill a Geta Mark here
     } else {
         caption_char.type = CaptionCharType::kDRCSReplaced;
         caption_char.ch = drcs.alternative_text;

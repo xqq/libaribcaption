@@ -138,6 +138,12 @@ target_compile_features(aribcaption
         cxx_std_17
 )
 
+# Enable /utf-8 for MSVC
+target_compile_options(aribcaption
+    PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/utf-8>
+)
+
 ### Includes
 target_include_directories(aribcaption
     PUBLIC

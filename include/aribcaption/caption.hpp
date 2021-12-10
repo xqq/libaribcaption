@@ -132,8 +132,15 @@ public:
     CaptionRegion& operator=(CaptionRegion&&) = default;
 };
 
+enum CaptionFlags : uint8_t {
+    kCaptionFlagsDefault = 0,
+    kCaptionFlagsClearScreen = 1u << 0,
+    kCaptionFlagsWaitDuration =  1u << 1
+};
+
 struct Caption {
     CaptionType type = CaptionType::kDefault;
+    CaptionFlags flags = CaptionFlags::kCaptionFlagsDefault;
 
     // ISO 639-2 3-char language code, in Big Endian
     // e.g. "jpn" => 6A 70 6E => 0x006A706E

@@ -120,9 +120,7 @@ DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t
 
     bool ret = false;
 
-    if (!caption_) {
-        caption_ = std::make_unique<Caption>();
-    }
+    caption_ = std::make_unique<Caption>();
 
     if (dgi_id == 0) {
         // Caption management data
@@ -154,7 +152,9 @@ DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t
         return DecodeStatus::kError;
     }
 
-    if (!caption_->regions.empty() || caption_->wait_duration > 0) {
+    if (!caption_->regions.empty()) {
+        StoreCurrentCaption();
+    } else if (caption_->flags && captions_.empty()) {
         StoreCurrentCaption();
     }
 
@@ -596,10 +596,11 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             bytes = 1;
             break;
         case JIS8::CS: { // Clear screen
-            if (!caption_->regions.empty() || caption_->wait_duration > 0) {
+            if (!caption_->regions.empty() || (caption_->flags & CaptionFlags::kCaptionFlagsWaitDuration)) {
                 StoreCurrentCaption();
             }
             ResetInternalState();
+            caption_->flags = static_cast<CaptionFlags>(caption_->flags | CaptionFlags::kCaptionFlagsClearScreen);
             bytes = 1;
             break;
         }
@@ -873,6 +874,7 @@ bool DecoderImpl::HandleC1(const uint8_t* data, size_t remain_bytes, size_t* byt
             if (data[1] == 0x20) {
                 uint8_t p2 = data[2] & 0b00111111;
                 caption_->wait_duration += static_cast<int64_t>(p2) * 100;
+                caption_->flags = static_cast<CaptionFlags>(caption_->flags | CaptionFlags::kCaptionFlagsWaitDuration);
                 bytes = 3;
             } else if (data[1] == 0x28) {
                 // Not used according to ARIB TR-B14
@@ -1248,6 +1250,7 @@ void DecoderImpl::MakeNewCaptionRegion() {
 
 void DecoderImpl::StoreCurrentCaption() {
     captions_.push_back(std::move(*caption_));
+    caption_.reset();
     Caption& caption = captions_.back();
 
     caption.type = static_cast<CaptionType>(type_);
@@ -1261,9 +1264,9 @@ void DecoderImpl::StoreCurrentCaption() {
 
     if (caption.wait_duration == 0) {
         caption.wait_duration = DURATION_INDEFINITE;
+    } else {
+        pts_ += caption.wait_duration;
     }
-
-    pts_ += caption.wait_duration;
 }
 
 bool DecoderImpl::IsLatinLanguage() const {

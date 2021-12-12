@@ -175,6 +175,8 @@ private:
         if (render_status == RenderStatus::kError) {
             fprintf(stderr, "Renderer::Render() returned error\n");
             return false;
+        } else if (render_status == RenderStatus::kNoImage) {
+            return true;
         }
 
         Bitmap screen_bmp(frame_area_width, frame_area_height, PixelFormat::kRGBA8888);

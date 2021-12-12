@@ -219,6 +219,9 @@ RenderStatus RendererImpl::Render(int64_t pts, const Renderer::OutputCB& output_
         // Timeout
         return RenderStatus::kNoImage;
     }
+    if (caption.regions.empty()) {
+        return RenderStatus::kNoImage;
+    }
 
     // Prepare for rendering
 

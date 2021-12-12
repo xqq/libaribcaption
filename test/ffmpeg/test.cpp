@@ -124,7 +124,7 @@ public:
 private:
     void InitCaptionDecoderRenderer() {
         aribcc_context_.SetLogcatCallback([](LogLevel level, const char* message) {
-            if (level == LogLevel::kError) {
+            if (level == LogLevel::kError || level == LogLevel::kWarning) {
                 fprintf(stderr, "%s\n", message);
             } else {
                 printf("%s\n", message);
@@ -141,31 +141,27 @@ private:
     }
 
     bool DecodeRenderAndSave(AVPacket* packet) {
-        std::vector<Caption> captions;
+        std::unique_ptr<Caption> caption;
 
-        auto status = aribcc_decoder_.Decode(packet->data, packet->size, packet->pts, [&](std::vector<Caption> caps) -> void {
-            captions = std::move(caps);
+        auto status = aribcc_decoder_.Decode(packet->data, packet->size, packet->pts, [&](std::unique_ptr<Caption> cap) -> void {
+            caption = std::move(cap);
         });
 
         if (status == DecodeStatus::kGotCaption) {
-            for (auto& caption : captions) {
-                printf("Decode: pts = %" PRId64 ", duration = %" PRId64 ", %s\n",
-                       caption.pts,
-                       caption.wait_duration,
-                       caption.text.c_str());
-                fflush(stdout);
-                if (caption.iso6392_language_code == 0) {
-                    caption.iso6392_language_code = ThreeCC("jpn");
-                }
-                aribcc_renderer_.AppendCaption(std::move(caption));
+            printf("Decode: pts = %" PRId64 ", duration = %" PRId64 ", %s\n",
+                   caption->pts,
+                   caption->wait_duration,
+                   caption->text.c_str());
+            fflush(stdout);
+            if (caption->iso6392_language_code == 0) {
+                caption->iso6392_language_code = ThreeCC("jpn");
             }
+            aribcc_renderer_.AppendCaption(std::move(*caption));
+        } else if (status == DecodeStatus::kNoCaption) {
+            return true;
         } else if (status == DecodeStatus::kError) {
             fprintf(stderr, "Decoder::Decode() returned error\n");
             return false;
-        }
-
-        if (captions.empty()) {
-            return true;
         }
 
         std::vector<Image> images;

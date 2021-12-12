@@ -21,7 +21,6 @@
 
 #include <cstdint>
 #include <functional>
-#include <vector>
 #include <memory>
 #include "b24.hpp"
 #include "context.hpp"
@@ -40,7 +39,7 @@ enum class DecodeStatus {
 
 class Decoder {
 public:
-    using OutputCB = std::function<void(std::vector<Caption> captions)>;
+    using OutputCB = std::function<void(std::unique_ptr<Caption> caption)>;
 public:
     explicit Decoder(Context& context);
     ~Decoder();
@@ -55,7 +54,7 @@ public:
     [[nodiscard]]
     uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;
     DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts,
-                                 const Decoder::OutputCB& output_cb);
+                        const Decoder::OutputCB& output_cb);
     bool Flush();
 public:
     Decoder(const Decoder&) = delete;

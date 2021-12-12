@@ -71,7 +71,6 @@ private:
     void ApplyCaptionCharCommonProperties(CaptionChar& caption_char);
     bool NeedNewCaptionRegion();
     void MakeNewCaptionRegion();
-    void StoreCurrentCaption();
     [[nodiscard]]
     bool IsLatinLanguage() const;
     [[nodiscard]]
@@ -109,7 +108,6 @@ private:
     int prev_dgi_group_ = -1;
 
     std::unique_ptr<Caption> caption_;
-    std::vector<Caption> captions_;
 
     CodesetEntry* GL_ = nullptr;
     CodesetEntry* GR_ = nullptr;

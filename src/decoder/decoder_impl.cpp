@@ -148,22 +148,28 @@ DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t
 
     if (!ret) {
         caption_.reset();
-        captions_.clear();
         return DecodeStatus::kError;
     }
 
-    if (!caption_->regions.empty()) {
-        StoreCurrentCaption();
-    } else if (caption_->flags && captions_.empty()) {
-        StoreCurrentCaption();
+    if (!caption_->regions.empty() || caption_->flags) {
+        caption_->type = static_cast<CaptionType>(type_);
+        caption_->iso6392_language_code = current_iso6392_language_code_;
+        caption_->plane_width = caption_plane_width_;
+        caption_->plane_height = caption_plane_height_;
+        caption_->has_builtin_sound = has_builtin_sound_;
+        caption_->builtin_sound_id = builtin_sound_id_;
+
+        caption_->pts = pts_;
+
+        if (caption_->wait_duration == 0) {
+            caption_->wait_duration = DURATION_INDEFINITE;
+        }
+
+        output_cb(std::move(caption_));
+        return DecodeStatus::kGotCaption;
     }
 
-    if (captions_.empty()) {
-        return DecodeStatus::kNoCaption;
-    }
-
-    output_cb(std::move(captions_));
-    return DecodeStatus::kGotCaption;
+    return DecodeStatus::kNoCaption;
 }
 
 bool DecoderImpl::Flush() {
@@ -257,8 +263,6 @@ void DecoderImpl::ResetWritingFormat() {
 }
 
 void DecoderImpl::ResetInternalState() {
-    caption_ = std::make_unique<Caption>();
-
     ResetGraphicSets();
     ResetWritingFormat();
 
@@ -596,9 +600,6 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             bytes = 1;
             break;
         case JIS8::CS: { // Clear screen
-            if (!caption_->regions.empty() || (caption_->flags & CaptionFlags::kCaptionFlagsWaitDuration)) {
-                StoreCurrentCaption();
-            }
             ResetInternalState();
             caption_->flags = static_cast<CaptionFlags>(caption_->flags | CaptionFlags::kCaptionFlagsClearScreen);
             bytes = 1;
@@ -1245,27 +1246,6 @@ void DecoderImpl::MakeNewCaptionRegion() {
 
     if (IsRubyMode()) {
         region.is_ruby = true;
-    }
-}
-
-void DecoderImpl::StoreCurrentCaption() {
-    captions_.push_back(std::move(*caption_));
-    caption_.reset();
-    Caption& caption = captions_.back();
-
-    caption.type = static_cast<CaptionType>(type_);
-    caption.iso6392_language_code = current_iso6392_language_code_;
-    caption.plane_width = caption_plane_width_;
-    caption.plane_height = caption_plane_height_;
-    caption.has_builtin_sound = has_builtin_sound_;
-    caption.builtin_sound_id = builtin_sound_id_;
-
-    caption.pts = pts_;
-
-    if (caption.wait_duration == 0) {
-        caption.wait_duration = DURATION_INDEFINITE;
-    } else {
-        pts_ += caption.wait_duration;
     }
 }
 

@@ -53,7 +53,7 @@ public:
     bool AppendCaption(const Caption& caption);
     bool AppendCaption(Caption&& caption);
 
-    RenderStatus Render(int64_t pts, const Renderer::OutputCB& output_cb);
+    RenderStatus Render(int64_t pts, RenderResult& out_result);
     bool Flush();
 private:
     void LoadDefaultFontFamilies();

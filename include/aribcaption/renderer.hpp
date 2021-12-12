@@ -66,9 +66,13 @@ enum class RenderStatus {
     kGotImageUnchanged = 3,
 };
 
+struct RenderResult {
+    int64_t pts = 0;
+    int64_t duration = 0;
+    std::vector<Image> images;
+};
+
 class Renderer {
-public:
-    using OutputCB = std::function<void(int64_t pts, int64_t duration, const std::vector<Image>& images)>;
 public:
     explicit Renderer(Context& context);
     ~Renderer();
@@ -91,7 +95,7 @@ public:
     bool AppendCaption(const Caption& caption);
     bool AppendCaption(Caption&& caption);
 
-    RenderStatus Render(int64_t pts, const Renderer::OutputCB& output_cb);
+    RenderStatus Render(int64_t pts, RenderResult& out_result);
     bool Flush();
 public:
     Renderer(const Renderer&) = delete;

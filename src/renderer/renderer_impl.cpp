@@ -188,14 +188,20 @@ bool RendererImpl::AppendCaption(Caption&& caption) {
     return true;
 }
 
-RenderStatus RendererImpl::Render(int64_t pts, const Renderer::OutputCB& output_cb) {
+RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
     assert(frame_size_inited_ && margins_inited_ && "Frame size / margins must be indicated first");
+
+    out_result.pts = 0;
+    out_result.duration = 0;
+    out_result.images.clear();
 
     if (has_prev_rendered_caption_) {
         if (pts >= prev_rendered_caption_pts_ && pts < prev_rendered_caption_pts_ + prev_rendered_caption_duration_) {
             if (!prev_rendered_images_.empty()) {
                 // Re-use previous rendered images
-                output_cb(prev_rendered_caption_pts_, prev_rendered_caption_duration_, prev_rendered_images_);
+                out_result.pts = prev_rendered_caption_pts_;
+                out_result.duration = prev_rendered_caption_duration_;
+                out_result.images = prev_rendered_images_;
                 return RenderStatus::kGotImageUnchanged;
             } else {
                 return RenderStatus::kNoImage;
@@ -258,7 +264,9 @@ RenderStatus RendererImpl::Render(int64_t pts, const Renderer::OutputCB& output_
     prev_rendered_caption_duration_ = caption.wait_duration;
     prev_rendered_images_ = std::move(images);
 
-    output_cb(caption.pts, caption.wait_duration, prev_rendered_images_);
+    out_result.pts = caption.pts;
+    out_result.duration = caption.wait_duration;
+    out_result.images = prev_rendered_images_;
     return RenderStatus::kGotImage;
 }
 

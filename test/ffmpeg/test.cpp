@@ -163,25 +163,27 @@ private:
             return false;
         }
 
-        std::vector<Image> images;
+        RenderResult render_result;
 
-        auto render_status = aribcc_renderer_.Render(packet->pts, [&](int64_t pts, int64_t duration, auto& imgs) {
-            printf("Render: pts = %" PRId64 ", duration = %" PRId64 ", images = %zu\n", pts, duration, imgs.size());
-            fflush(stdout);
-            images = imgs;
-        });
+        auto render_status = aribcc_renderer_.Render(packet->pts, render_result);
 
         if (render_status == RenderStatus::kError) {
             fprintf(stderr, "Renderer::Render() returned error\n");
             return false;
         } else if (render_status == RenderStatus::kNoImage) {
             return true;
+        } else {
+            printf("Render: pts = %" PRId64 ", duration = %" PRId64 ", images = %zu\n",
+                   render_result.pts,
+                   render_result.duration,
+                   render_result.images.size());
+            fflush(stdout);
         }
 
         Bitmap screen_bmp(frame_area_width, frame_area_height, PixelFormat::kRGBA8888);
         Canvas screen_canvas(screen_bmp);
 
-        for (Image& img : images) {
+        for (Image& img : render_result.images) {
             int dst_x = img.dst_x;
             int dst_y = img.dst_y;
             Bitmap bmp = Bitmap::FromImage(std::move(img));

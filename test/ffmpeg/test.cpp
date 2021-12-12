@@ -141,13 +141,12 @@ private:
     }
 
     bool DecodeRenderAndSave(AVPacket* packet) {
-        std::unique_ptr<Caption> caption;
+        DecodeResult decode_result;
 
-        auto status = aribcc_decoder_.Decode(packet->data, packet->size, packet->pts, [&](std::unique_ptr<Caption> cap) -> void {
-            caption = std::move(cap);
-        });
+        auto status = aribcc_decoder_.Decode(packet->data, packet->size, packet->pts, decode_result);
 
         if (status == DecodeStatus::kGotCaption) {
+            std::unique_ptr<Caption> caption = std::move(decode_result.caption);
             printf("Decode: pts = %" PRId64 ", duration = %" PRId64 ", %s\n",
                    caption->pts,
                    caption->wait_duration,

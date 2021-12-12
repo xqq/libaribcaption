@@ -109,11 +109,9 @@ int main(int argc, const char* argv[]) {
     Decoder decoder(context);
     decoder.Initialize();
 
-    std::unique_ptr<Caption> caption;
+    DecodeResult result;
 
-    auto status = decoder.Decode(test_data1, sizeof(test_data1), 0, [&](std::unique_ptr<Caption> cap) -> void {
-        caption = std::move(cap);
-    });
+    auto status = decoder.Decode(test_data1, sizeof(test_data1), 0, result);
 
     if (status == DecodeStatus::kError) {
         fprintf(stderr, "Decoder::Decode() returned error\n");
@@ -122,6 +120,8 @@ int main(int argc, const char* argv[]) {
         printf("kDecodeStatusNoCaption\n");
         return 0;
     }
+
+    std::unique_ptr<Caption> caption = std::move(result.caption);
 
     Bitmap caption_frame(caption->plane_width * scale_factor,
                          caption->plane_height * scale_factor,

@@ -72,9 +72,11 @@ uint32_t DecoderImpl::QueryISO6392LanguageCode(B24LanguageId language_id) const 
     return info.iso6392_language_code;
 }
 
-DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t pts,
-                                 const Decoder::OutputCB& output_cb) {
+DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result) {
     assert(pes_data != nullptr && length > 0);
+
+    out_result.caption.reset();
+
     if (length < 3) {
         log_->e("DecoderImpl: pes_data size < 3, cannot parse");
         return DecodeStatus::kError;
@@ -165,7 +167,7 @@ DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t
             caption_->wait_duration = DURATION_INDEFINITE;
         }
 
-        output_cb(std::move(caption_));
+        out_result.caption = std::move(caption_);
         return DecodeStatus::kGotCaption;
     }
 

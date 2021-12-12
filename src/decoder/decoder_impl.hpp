@@ -48,8 +48,7 @@ public:
     void SetDefaultLanguage(uint32_t iso6392_language_code);
     [[nodiscard]]
     uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;
-    DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts,
-                        const Decoder::OutputCB& output_cb);
+    DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result);
     bool Flush();
 private:
     void ResetGraphicSets();

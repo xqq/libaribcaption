@@ -49,11 +49,8 @@ uint32_t Decoder::QueryISO6392LanguageCode(B24LanguageId language_id) const {
     return pimpl_->QueryISO6392LanguageCode(language_id);
 }
 
-DecodeStatus Decoder::Decode(const uint8_t* pes_data,
-                             size_t length,
-                             int64_t pts,
-                             const Decoder::OutputCB& output_cb) {
-    return pimpl_->Decode(pes_data, length, pts, output_cb);
+DecodeStatus Decoder::Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result) {
+    return pimpl_->Decode(pes_data, length, pts, out_result);
 }
 
 bool Decoder::Flush() {

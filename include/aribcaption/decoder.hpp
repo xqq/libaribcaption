@@ -37,9 +37,11 @@ enum class DecodeStatus {
     kGotCaption = 2
 };
 
+struct DecodeResult {
+    std::unique_ptr<Caption> caption;
+};
+
 class Decoder {
-public:
-    using OutputCB = std::function<void(std::unique_ptr<Caption> caption)>;
 public:
     explicit Decoder(Context& context);
     ~Decoder();
@@ -53,8 +55,7 @@ public:
     void SetDefaultLanguage(uint32_t iso6392_language_code);
     [[nodiscard]]
     uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;
-    DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts,
-                        const Decoder::OutputCB& output_cb);
+    DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result);
     bool Flush();
 public:
     Decoder(const Decoder&) = delete;

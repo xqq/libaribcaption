@@ -97,10 +97,6 @@ private:
 };
 #endif
 
-auto decoder_callback = [](std::unique_ptr<aribcaption::Caption> caption) -> void {
-    printf("%s\n", caption->text.c_str());
-};
-
 int main(int argc, const char* argv[]) {
 #ifdef _WIN32
     UTF8CodePage enable_utf8_console;
@@ -118,11 +114,19 @@ int main(int argc, const char* argv[]) {
     aribcaption::Decoder decoder(context);
     decoder.Initialize();
 
-    auto status = decoder.Decode(test_data2, sizeof(test_data2), 0, decoder_callback);
-    printf("DecodeStatus: %d\n", status);
+    aribcaption::DecodeResult result;
 
-    status = decoder.Decode(test_data1, sizeof(test_data1), 0, decoder_callback);
+    auto status = decoder.Decode(test_data2, sizeof(test_data2), 0, result);
     printf("DecodeStatus: %d\n", status);
+    if (status == aribcaption::DecodeStatus::kGotCaption) {
+        printf("%s\n", result.caption->text.c_str());
+    }
+
+    status = decoder.Decode(test_data1, sizeof(test_data1), 0, result);
+    printf("DecodeStatus: %d\n", status);
+    if (status == aribcaption::DecodeStatus::kGotCaption) {
+        printf("%s\n", result.caption->text.c_str());
+    }
 
     return 0;
 }

@@ -87,6 +87,8 @@ add_library(aribcaption
         src/base/scoped_cfref.hpp
         src/base/scoped_com_initializer.hpp
         src/base/scoped_holder.hpp
+        src/base/tinyxml2.cpp
+        src/base/tinyxml2.h
         src/base/utf_helper.hpp
         src/base/wchar_helper.hpp
         src/decoder/b24_codesets.hpp

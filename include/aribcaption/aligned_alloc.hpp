@@ -50,13 +50,9 @@ public:
     template <class U>
     explicit AlignedAllocator(const AlignedAllocator<U, N>&) noexcept {}
 
-    pointer allocate(size_type n, const_pointer hint = nullptr) const {
+    pointer allocate(size_type n, const_pointer hint = nullptr) const noexcept {
         size_t size = n * sizeof(T);
         void* ptr = AlignedAlloc(size, N);
-
-        if (!ptr) {
-            throw std::bad_alloc();
-        }
         return reinterpret_cast<pointer>(ptr);
     }
 

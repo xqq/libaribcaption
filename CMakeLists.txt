@@ -35,34 +35,34 @@ endif()
 
 if(WIN32)
     # Windows, use DirectWrite
-    option(LIBARIBCAPTION_USE_DIRECTWRITE "Enable DirectWrite text rendering backend" ON)
+    option(ARIBCC_USE_DIRECTWRITE "Enable DirectWrite text rendering backend" ON)
 elseif(APPLE)
     # macOS or iOS, use CoreText by default
-    option(LIBARIBCAPTION_USE_CORETEXT "Enable CoreText text rendering backend" ON)
+    option(ARIBCC_USE_CORETEXT "Enable CoreText text rendering backend" ON)
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
     # Android, FreeType required
-    set(LIBARIBCAPTION_IS_ANDROID TRUE CACHE BOOL "Specify target OS is Android")
-    option(LIBARIBCAPTION_USE_FREETYPE "Enable FreeType text rendering backend" ON)
+    set(ARIBCC_IS_ANDROID TRUE CACHE BOOL "Specify target OS is Android")
+    option(ARIBCC_USE_FREETYPE "Enable FreeType text rendering backend" ON)
 else()
     # Linux or other Unix systems, requires Fontconfig & FreeType
-    option(LIBARIBCAPTION_USE_FONTCONFIG "Enable Fontconfig font provider" ON)
-    option(LIBARIBCAPTION_USE_FREETYPE "Enable FreeType text rendering backend" ON)
+    option(ARIBCC_USE_FONTCONFIG "Enable Fontconfig font provider" ON)
+    option(ARIBCC_USE_FREETYPE "Enable FreeType text rendering backend" ON)
 endif()
 
-option(LIBARIBCAPTION_USE_EMBEDDED_FREETYPE "Use embedded FreeType instead of find_package from system" OFF)
+option(ARIBCC_USE_EMBEDDED_FREETYPE "Use embedded FreeType instead of find_package from system" OFF)
 
-if(LIBARIBCAPTION_USE_CORETEXT)
+if(ARIBCC_USE_CORETEXT)
     find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
     find_library(COREGRAPHICS_FRAMEWORK CoreGraphics)
     find_library(CORETEXT_FRAMEWORK CoreText)
 endif()
 
-if(LIBARIBCAPTION_USE_FONTCONFIG)
+if(ARIBCC_USE_FONTCONFIG)
     find_package(Fontconfig REQUIRED)
 endif()
 
-if(LIBARIBCAPTION_USE_FREETYPE)
-    if(LIBARIBCAPTION_USE_EMBEDDED_FREETYPE)
+if(ARIBCC_USE_FREETYPE)
+    if(ARIBCC_USE_EMBEDDED_FREETYPE)
         include(FetchContent)
         FetchContent_Declare(freetype
             GIT_REPOSITORY https://github.com/freetype/freetype.git
@@ -133,12 +133,12 @@ add_library(aribcaption
         src/renderer/drcs_renderer.hpp
         src/renderer/font_provider.cpp
         src/renderer/font_provider.hpp
-        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:src/renderer/font_provider_coretext.cpp>
-        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:src/renderer/font_provider_coretext.hpp>
-        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:src/renderer/font_provider_directwrite.cpp>
-        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:src/renderer/font_provider_directwrite.hpp>
-        $<$<BOOL:${LIBARIBCAPTION_USE_FONTCONFIG}>:src/renderer/font_provider_fontconfig.cpp>
-        $<$<BOOL:${LIBARIBCAPTION_USE_FONTCONFIG}>:src/renderer/font_provider_fontconfig.hpp>
+        $<$<BOOL:${ARIBCC_USE_CORETEXT}>:src/renderer/font_provider_coretext.cpp>
+        $<$<BOOL:${ARIBCC_USE_CORETEXT}>:src/renderer/font_provider_coretext.hpp>
+        $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:src/renderer/font_provider_directwrite.cpp>
+        $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:src/renderer/font_provider_directwrite.hpp>
+        $<$<BOOL:${ARIBCC_USE_FONTCONFIG}>:src/renderer/font_provider_fontconfig.cpp>
+        $<$<BOOL:${ARIBCC_USE_FONTCONFIG}>:src/renderer/font_provider_fontconfig.hpp>
         src/renderer/rect.hpp
         src/renderer/region_renderer.cpp
         src/renderer/region_renderer.hpp
@@ -147,12 +147,12 @@ add_library(aribcaption
         src/renderer/renderer_impl.hpp
         src/renderer/text_renderer.cpp
         src/renderer/text_renderer.hpp
-        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:src/renderer/text_renderer_coretext.cpp>
-        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:src/renderer/text_renderer_coretext.hpp>
-        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:src/renderer/text_renderer_directwrite.cpp>
-        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:src/renderer/text_renderer_directwrite.hpp>
-        $<$<BOOL:${LIBARIBCAPTION_USE_FREETYPE}>:src/renderer/text_renderer_freetype.cpp>
-        $<$<BOOL:${LIBARIBCAPTION_USE_FREETYPE}>:src/renderer/text_renderer_freetype.hpp>
+        $<$<BOOL:${ARIBCC_USE_CORETEXT}>:src/renderer/text_renderer_coretext.cpp>
+        $<$<BOOL:${ARIBCC_USE_CORETEXT}>:src/renderer/text_renderer_coretext.hpp>
+        $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:src/renderer/text_renderer_directwrite.cpp>
+        $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:src/renderer/text_renderer_directwrite.hpp>
+        $<$<BOOL:${ARIBCC_USE_FREETYPE}>:src/renderer/text_renderer_freetype.cpp>
+        $<$<BOOL:${ARIBCC_USE_FREETYPE}>:src/renderer/text_renderer_freetype.hpp>
         src/c_api.cpp
         src/context.cpp
 )
@@ -178,31 +178,31 @@ target_include_directories(aribcaption
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
-        $<$<BOOL:${LIBARIBCAPTION_USE_FONTCONFIG}>:${Fontconfig_INCLUDE_DIRS}>
-        $<$<BOOL:${LIBARIBCAPTION_USE_FREETYPE}>:${FREETYPE_INCLUDE_DIRS}>
+        $<$<BOOL:${ARIBCC_USE_FONTCONFIG}>:${Fontconfig_INCLUDE_DIRS}>
+        $<$<BOOL:${ARIBCC_USE_FREETYPE}>:${FREETYPE_INCLUDE_DIRS}>
 )
 
 ### Linking
 target_link_libraries(aribcaption
     PRIVATE
-        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${COREFOUNDATION_FRAMEWORK}>
-        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${COREGRAPHICS_FRAMEWORK}>
-        $<$<BOOL:${LIBARIBCAPTION_USE_CORETEXT}>:${CORETEXT_FRAMEWORK}>
-        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:d2d1>
-        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:dwrite>
-        $<$<BOOL:${LIBARIBCAPTION_USE_DIRECTWRITE}>:windowscodecs>
+        $<$<BOOL:${ARIBCC_USE_CORETEXT}>:${COREFOUNDATION_FRAMEWORK}>
+        $<$<BOOL:${ARIBCC_USE_CORETEXT}>:${COREGRAPHICS_FRAMEWORK}>
+        $<$<BOOL:${ARIBCC_USE_CORETEXT}>:${CORETEXT_FRAMEWORK}>
+        $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:d2d1>
+        $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:dwrite>
+        $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:windowscodecs>
 )
 
 # vcpkg uses optimized/debug keyword in XXXXX_LIBRARIES variables
 # which is incompatible with generator expressions
-if(LIBARIBCAPTION_USE_FONTCONFIG)
+if(ARIBCC_USE_FONTCONFIG)
     target_link_libraries(aribcaption
         PRIVATE
             ${Fontconfig_LIBRARIES}
     )
 endif()
 
-if(LIBARIBCAPTION_USE_FREETYPE)
+if(ARIBCC_USE_FREETYPE)
     target_link_libraries(aribcaption
         PRIVATE
             ${FREETYPE_LIBRARIES}

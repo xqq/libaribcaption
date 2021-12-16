@@ -29,30 +29,30 @@ namespace aribcaption {
 
 enum class FontProviderType {
     kAuto = 0,
-#if defined(LIBARIBCAPTION_USE_CORETEXT)
+#if defined(ARIBCC_USE_CORETEXT)
     kCoreText = 1,
 #endif
 
-#if defined(LIBARIBCAPTION_USE_DIRECTWRITE)
+#if defined(ARIBCC_USE_DIRECTWRITE)
     kDirectWrite = 2,
 #endif
 
-#if defined(LIBARIBCAPTION_USE_FONTCONFIG)
+#if defined(ARIBCC_USE_FONTCONFIG)
     kFontconfig = 3,
 #endif
 };
 
 enum class TextRendererType {
     kAuto = 0,
-#if defined(LIBARIBCAPTION_USE_CORETEXT)
+#if defined(ARIBCC_USE_CORETEXT)
     kCoreText = 1,
 #endif
 
-#if defined(LIBARIBCAPTION_USE_DIRECTWRITE)
+#if defined(ARIBCC_USE_DIRECTWRITE)
     kDirectWrite = 2,
 #endif
 
-#if defined(LIBARIBCAPTION_USE_FREETYPE)
+#if defined(ARIBCC_USE_FREETYPE)
     kFreetype = 3,
 #endif
 };

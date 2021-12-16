@@ -20,15 +20,15 @@
 #include "config.h"
 #include "renderer/text_renderer.hpp"
 
-#if defined(LIBARIBCAPTION_USE_CORETEXT)
+#if defined(ARIBCC_USE_CORETEXT)
     #include "renderer/text_renderer_coretext.hpp"
 #endif
 
-#if defined(LIBARIBCAPTION_USE_DIRECTWRITE)
+#if defined(ARIBCC_USE_DIRECTWRITE)
     #include "renderer/text_renderer_directwrite.hpp"
 #endif
 
-#if defined(LIBARIBCAPTION_USE_FREETYPE)
+#if defined(ARIBCC_USE_FREETYPE)
     #include "renderer/text_renderer_freetype.hpp"
 #endif
 
@@ -36,28 +36,28 @@ namespace aribcaption {
 
 std::unique_ptr<TextRenderer> TextRenderer::Create(TextRendererType type, Context& context, FontProvider& font_provider) {
     switch (type) {
-#if defined(LIBARIBCAPTION_USE_CORETEXT)
+#if defined(ARIBCC_USE_CORETEXT)
         case TextRendererType::kCoreText:
             return std::make_unique<TextRendererCoreText>(context, font_provider);
 #endif
 
-#if defined(LIBARIBCAPTION_USE_DIRECTWRITE)
+#if defined(ARIBCC_USE_DIRECTWRITE)
         case TextRendererType::kDirectWrite:
             return std::make_unique<TextRendererDirectWrite>(context, font_provider);
 #endif
 
-#if defined(LIBARIBCAPTION_USE_FREETYPE)
+#if defined(ARIBCC_USE_FREETYPE)
         case TextRendererType::kFreetype:
             return std::make_unique<TextRendererFreetype>(context, font_provider);
 #endif
 
         case TextRendererType::kAuto:
         default:
-#if defined(_WIN32) && defined(LIBARIBCAPTION_USE_DIRECTWRITE)
+#if defined(_WIN32) && defined(ARIBCC_USE_DIRECTWRITE)
             return std::make_unique<TextRendererDirectWrite>(context, font_provider);
-#elif defined(__APPLE__) && defined(LIBARIBCAPTION_USE_CORETEXT)
+#elif defined(__APPLE__) && defined(ARIBCC_USE_CORETEXT)
             return std::make_unique<TextRendererCoreText>(context, font_provider);
-#elif defined(LIBARIBCAPTION_USE_FREETYPE)
+#elif defined(ARIBCC_USE_FREETYPE)
             return std::make_unique<TextRendererFreetype>(context, font_provider);
 #else
             static_assert(false, "No available auto-select TextRenderer!");

@@ -67,6 +67,11 @@ if(ARIBCC_USE_FREETYPE)
         FetchContent_Declare(freetype
             GIT_REPOSITORY https://github.com/freetype/freetype.git
             GIT_TAG VER-2-11-1
+            GIT_SHALLOW TRUE             # Get only target tag version
+            GIT_PROGRESS TRUE            # Show download progress
+            USES_TERMINAL_DOWNLOAD TRUE  # show download progress in ninja
+            USES_TERMINAL_CONFIGURE TRUE # show configure progress in ninja
+            USES_TERMINAL_BUILD TRUE     # show build progress in ninja
         )
         set(FT_DISABLE_ZLIB TRUE CACHE BOOL "Disable zlib" FORCE)
         set(FT_DISABLE_PNG TRUE CACHE BOOL "Disable libpng" FORCE)

@@ -18,8 +18,13 @@
 
 cmake_minimum_required(VERSION 3.1)
 
-find_package(Freetype REQUIRED)
-find_package(Fontconfig REQUIRED)
+if(NOT LIBARIBCAPTION_USE_FREETYPE)
+    find_package(Freetype)
+endif()
+
+if(NOT LIBARIBCAPTION_USE_FONTCONFIG)
+    find_package(Fontconfig REQUIRED)
+endif()
 
 add_executable(test_drcs
     EXCLUDE_FROM_ALL

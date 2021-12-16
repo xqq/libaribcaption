@@ -61,8 +61,9 @@ if(ARIBCC_USE_FONTCONFIG)
     find_package(Fontconfig REQUIRED)
 endif()
 
-if(ARIBCC_USE_FREETYPE)
+if(ARIBCC_USE_FREETYPE OR ARIBCC_USE_EMBEDDED_FREETYPE)
     if(ARIBCC_USE_EMBEDDED_FREETYPE)
+        set(ARIBCC_USE_FREETYPE ON CACHE BOOL "Enable Freetype by ARIBCC_USE_EMBEDDED_FREETYPE" FORCE)
         include(FetchContent)
         FetchContent_Declare(freetype
             GIT_REPOSITORY https://github.com/freetype/freetype.git
@@ -73,9 +74,9 @@ if(ARIBCC_USE_FREETYPE)
             USES_TERMINAL_CONFIGURE TRUE # show configure progress in ninja
             USES_TERMINAL_BUILD TRUE     # show build progress in ninja
         )
-        set(FT_DISABLE_ZLIB TRUE CACHE BOOL "Disable zlib" FORCE)
-        set(FT_DISABLE_PNG TRUE CACHE BOOL "Disable libpng" FORCE)
-        set(FT_DISABLE_HARFBUZZ TRUE CACHE BOOL "Disable harfbuzz" FORCE)
+        set(FT_DISABLE_ZLIB ON CACHE BOOL "Disable zlib for embedded Freetype" FORCE)
+        set(FT_DISABLE_PNG ON CACHE BOOL "Disable libpng for embedded Freetype" FORCE)
+        set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "Disable harfbuzz for embedded Freetype" FORCE)
         FetchContent_MakeAvailable(freetype)
         set(FREETYPE_INCLUDE_DIRS "${freetype_BINARY_DIR}/include;${freetype_SOURCE_DIR}/include")
         set(FREETYPE_LIBRARIES freetype)

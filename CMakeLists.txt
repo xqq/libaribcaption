@@ -16,7 +16,8 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.11)
+
 project(libaribcaption VERSION 0.1.0 LANGUAGES C CXX)
 
 # Release build by default
@@ -41,6 +42,7 @@ else()
     option(LIBARIBCAPTION_USE_FREETYPE "Enable FreeType text rendering backend" ON)
 endif()
 
+option(LIBARIBCAPTION_USE_EMBEDDED_FREETYPE "Use embedded FreeType instead of find_package from system" OFF)
 
 if(LIBARIBCAPTION_USE_CORETEXT)
     find_library(COREFOUNDATION_FRAMEWORK CoreFoundation)
@@ -53,7 +55,22 @@ if(LIBARIBCAPTION_USE_FONTCONFIG)
 endif()
 
 if(LIBARIBCAPTION_USE_FREETYPE)
-    find_package(Freetype REQUIRED)
+    if(LIBARIBCAPTION_USE_EMBEDDED_FREETYPE)
+        include(FetchContent)
+        FetchContent_Declare(freetype
+            GIT_REPOSITORY https://github.com/freetype/freetype.git
+            GIT_TAG VER-2-11-1
+        )
+        set(FT_DISABLE_ZLIB TRUE CACHE BOOL "Disable zlib" FORCE)
+        set(FT_DISABLE_PNG TRUE CACHE BOOL "Disable libpng" FORCE)
+        set(FT_DISABLE_HARFBUZZ TRUE CACHE BOOL "Disable harfbuzz" FORCE)
+        FetchContent_MakeAvailable(freetype)
+        set(FREETYPE_INCLUDE_DIRS "${freetype_BINARY_DIR}/include;${freetype_SOURCE_DIR}/include")
+        set(FREETYPE_LIBRARIES freetype)
+    else()
+        # Use system-wide installed freetype
+        find_package(Freetype)
+    endif()
 endif()
 
 # Generate config header

@@ -20,6 +20,13 @@ cmake_minimum_required(VERSION 3.11)
 
 project(libaribcaption VERSION 0.1.0 LANGUAGES C CXX)
 
+# main project detecting
+# avoid building test subdirectory if used as subproject (e.g. add_subdirectory)
+set(IS_MAIN_PROJECT FALSE)
+if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    set(IS_MAIN_PROJECT TRUE)
+endif()
+
 # Release build by default
 if(NOT CMAKE_BUILD_TYPE)
     message("Build type will be Release. Set CMAKE_BUILD_TYPE to indicate other types.")
@@ -272,4 +279,6 @@ install(
         ${CMAKE_INSTALL_LIBDIR}/cmake/aribcaption
 )
 
-add_subdirectory(test EXCLUDE_FROM_ALL)
+if(IS_MAIN_PROJECT)
+    add_subdirectory(test EXCLUDE_FROM_ALL)
+endif()

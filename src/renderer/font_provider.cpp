@@ -32,6 +32,10 @@
     #include "renderer/font_provider_fontconfig.hpp"
 #endif
 
+#if defined(ARIBCC_IS_ANDROID)
+    #include "renderer/font_provider_android.hpp"
+#endif
+
 namespace aribcaption {
 
 std::unique_ptr<FontProvider> FontProvider::Create(FontProviderType type, Context& context) {
@@ -51,12 +55,19 @@ std::unique_ptr<FontProvider> FontProvider::Create(FontProviderType type, Contex
             return std::make_unique<FontProviderFontconfig>(context);
 #endif
 
+#if defined(ARIBCC_IS_ANDROID)
+        case FontProviderType::kAndroid:
+            return std::make_unique<FontProviderAndroid>(context);
+#endif
+
         case FontProviderType::kAuto:
         default:
 #if defined(_WIN32) && defined(ARIBCC_USE_DIRECTWRITE)
             return std::make_unique<FontProviderDirectWrite>(context);
 #elif defined(__APPLE__) && defined(ARIBCC_USE_CORETEXT)
             return std::make_unique<FontProviderCoreText>(context);
+#elif defined(ARIBCC_IS_ANDROID)
+            return std::make_unique<FontProviderAndroid>(context);
 #elif defined(ARIBCC_USE_FONTCONFIG)
             return std::make_unique<FontProviderFontconfig>(context);
 #else

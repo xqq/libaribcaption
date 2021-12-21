@@ -54,6 +54,10 @@ void RendererImpl::LoadDefaultFontFamilies() {
         "Hiragino Sans",
         "sans-serif",
     };
+#elif defined(__ANDROID__)
+    jpn_default_font_family = {
+        "sans-serif"
+    };
 #else  // Linux, or other platforms
     jpn_default_font_family = {
         "Noto Sans CJK JP",

@@ -117,8 +117,8 @@ add_library(aribcaption
         src/base/scoped_cfref.hpp
         src/base/scoped_com_initializer.hpp
         src/base/scoped_holder.hpp
-        src/base/tinyxml2.cpp
-        src/base/tinyxml2.h
+        $<$<BOOL:${ARIBCC_IS_ANDROID}>:src/base/tinyxml2.cpp>
+        $<$<BOOL:${ARIBCC_IS_ANDROID}>:src/base/tinyxml2.h>
         src/base/utf_helper.hpp
         src/base/wchar_helper.hpp
         src/decoder/b24_codesets.hpp
@@ -139,6 +139,8 @@ add_library(aribcaption
         src/renderer/drcs_renderer.hpp
         src/renderer/font_provider.cpp
         src/renderer/font_provider.hpp
+        $<$<BOOL:${ARIBCC_IS_ANDROID}>:src/renderer/font_provider_android.cpp>
+        $<$<BOOL:${ARIBCC_IS_ANDROID}>:src/renderer/font_provider_android.hpp>
         $<$<BOOL:${ARIBCC_USE_CORETEXT}>:src/renderer/font_provider_coretext.cpp>
         $<$<BOOL:${ARIBCC_USE_CORETEXT}>:src/renderer/font_provider_coretext.hpp>
         $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:src/renderer/font_provider_directwrite.cpp>

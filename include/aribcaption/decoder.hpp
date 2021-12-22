@@ -23,11 +23,10 @@
 #include <functional>
 #include <memory>
 #include "b24.hpp"
+#include "caption.hpp"
 #include "context.hpp"
 
 namespace aribcaption {
-
-struct Caption;
 
 namespace internal { class DecoderImpl; }
 

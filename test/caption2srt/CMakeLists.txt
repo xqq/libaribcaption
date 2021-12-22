@@ -16,9 +16,38 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-add_subdirectory(caption2srt)
-add_subdirectory(png_writer)
-add_subdirectory(decode)
-add_subdirectory(drcs)
-add_subdirectory(ffmpeg)
-add_subdirectory(fontconfig_freetype)
+cmake_minimum_required(VERSION 3.1)
+
+find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h)
+find_library(AVCODEC_LIBRARY avcodec)
+
+find_path(AVFORMAT_INCLUDE_DIR libavformat/avformat.h)
+find_library(AVFORMAT_LIBRARY avformat)
+
+add_executable(test_caption2srt
+    EXCLUDE_FROM_ALL
+        main.cpp
+)
+
+target_compile_features(test_caption2srt
+    PRIVATE
+        cxx_std_17
+)
+
+target_include_directories(test_caption2srt
+    PRIVATE
+        ${AVCODEC_INCLUDE_DIR}
+        ${AVFORMAT_INCLUDE_DIR}
+)
+
+target_link_libraries(test_caption2srt
+    PRIVATE
+        aribcaption
+        ${AVCODEC_LIBRARY}
+        ${AVFORMAT_LIBRARY}
+)
+
+set_target_properties(test_caption2srt
+    PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)

@@ -61,29 +61,41 @@ if(ARIBCC_USE_FONTCONFIG)
     find_package(Fontconfig REQUIRED)
 endif()
 
-if(ARIBCC_USE_FREETYPE OR ARIBCC_USE_EMBEDDED_FREETYPE)
-    if(ARIBCC_USE_EMBEDDED_FREETYPE)
-        set(ARIBCC_USE_FREETYPE ON CACHE BOOL "Enable Freetype by ARIBCC_USE_EMBEDDED_FREETYPE" FORCE)
-        include(FetchContent)
-        FetchContent_Declare(freetype
-            GIT_REPOSITORY https://github.com/freetype/freetype.git
-            GIT_TAG VER-2-11-1
-            GIT_SHALLOW TRUE             # Get only target tag version
-            GIT_PROGRESS TRUE            # Show download progress
-            USES_TERMINAL_DOWNLOAD TRUE  # show download progress in ninja
-            USES_TERMINAL_CONFIGURE TRUE # show configure progress in ninja
-            USES_TERMINAL_BUILD TRUE     # show build progress in ninja
-        )
-        set(FT_DISABLE_ZLIB ON CACHE BOOL "Disable zlib for embedded Freetype" FORCE)
-        set(FT_DISABLE_PNG ON CACHE BOOL "Disable libpng for embedded Freetype" FORCE)
-        set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "Disable harfbuzz for embedded Freetype" FORCE)
-        FetchContent_MakeAvailable(freetype)
-        set(FREETYPE_INCLUDE_DIRS "${freetype_BINARY_DIR}/include;${freetype_SOURCE_DIR}/include")
-        set(FREETYPE_LIBRARIES freetype)
+function(import_embedded_freetype)
+    include(FetchContent)
+    FetchContent_Declare(freetype
+        GIT_REPOSITORY https://github.com/freetype/freetype.git
+        GIT_TAG VER-2-11-1
+        GIT_SHALLOW TRUE             # Get only target tag version
+        GIT_PROGRESS TRUE            # Show download progress
+        USES_TERMINAL_DOWNLOAD TRUE  # show download progress in ninja
+        USES_TERMINAL_CONFIGURE TRUE # show configure progress in ninja
+        USES_TERMINAL_BUILD TRUE     # show build progress in ninja
+    )
+    set(FT_DISABLE_ZLIB ON CACHE BOOL "Disable zlib for embedded Freetype" FORCE)
+    set(FT_DISABLE_PNG ON CACHE BOOL "Disable libpng for embedded Freetype" FORCE)
+    set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "Disable harfbuzz for embedded Freetype" FORCE)
+    set(BUILD_SHARED_LIBS OFF)       # Force static link
+    FetchContent_MakeAvailable(freetype)
+    set(FREETYPE_INCLUDE_DIRS "${freetype_BINARY_DIR}/include;${freetype_SOURCE_DIR}/include" PARENT_SCOPE)
+    set(FREETYPE_LIBRARIES freetype PARENT_SCOPE)
+endfunction()
+
+if(ARIBCC_USE_FREETYPE AND (NOT ARIBCC_USE_EMBEDDED_FREETYPE))
+    # Try Use system-wide installed freetype
+    find_package(Freetype)
+    if(NOT FREETYPE_FOUND)
+        # System-wide freetype not found, use FetchContent to import embedded freetype
+        set(ARIBCC_USE_EMBEDDED_FREETYPE ON CACHE BOOL "Force embedded FreeType" FORCE)
     else()
-        # Use system-wide installed freetype
-        find_package(Freetype)
+        message(STATUS "Use system-wide installed FreeType library from find_package")
     endif()
+endif()
+
+if(ARIBCC_USE_EMBEDDED_FREETYPE)
+    set(ARIBCC_USE_FREETYPE ON CACHE BOOL "Enable Freetype by ARIBCC_USE_EMBEDDED_FREETYPE" FORCE)
+    message(STATUS "Use static-linked embedded FreeType library")
+    import_embedded_freetype()
 endif()
 
 # Generate config header

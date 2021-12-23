@@ -17,7 +17,7 @@
  */
 
 #include <memory>
-#include "config.h"
+#include "aribcc_config.h"
 #include "renderer/text_renderer.hpp"
 
 #if defined(ARIBCC_USE_CORETEXT)

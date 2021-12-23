@@ -88,8 +88,8 @@ endif()
 
 # Generate config header
 configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/config.h.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/include/config.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aribcc_config.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/aribcc_config.h"
 )
 
 ### Source files
@@ -227,7 +227,7 @@ install(
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/
     DESTINATION
         ${CMAKE_INSTALL_INCLUDEDIR}/aribcaption
-    PATTERN "config.h.in" EXCLUDE
+    PATTERN "aribcc_config.h.in" EXCLUDE
     PATTERN ".DS_Store" EXCLUDE
 )
 

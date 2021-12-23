@@ -20,7 +20,7 @@
 #define ARIBCAPTION_RENDERER_HPP
 
 #include <memory>
-#include "config.h"
+#include "aribcc_config.h"
 #include "context.hpp"
 #include "caption.hpp"
 #include "image.hpp"

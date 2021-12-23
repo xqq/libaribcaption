@@ -16,6 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <unistd.h>
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
@@ -127,21 +128,23 @@ bool FontProviderAndroid::ParseAndroidSystemFonts() {
     // First, try parse the fonts.xml with new format (Lollipop+)
     // /system/etc/fonts.xml
     if (!ParseFontsXML(kAndroidFontsXML_LMP)) {
-        log_->v("FontProviderAndroid: Load Lollipop+ config ", kAndroidFontsXML_LMP, " failed");
+        log_->w("FontProviderAndroid: Load Lollipop+ config ", kAndroidFontsXML_LMP, " failed");
+
+        bool legacy_config_load_succeed = false;
 
         // If failed, fallback to parse the old system_fonts.xml & fallback_fonts.xml
         // /system/etc/system_fonts.xml
         if (!ParseFontsXML(kAndroidFontsXML_OLD_System)) {
-            log_->e("FontProviderAndroid: Load legacy config ", kAndroidFontsXML_OLD_System, " failed");
-            return false;
+            log_->w("FontProviderAndroid: Load legacy config ", kAndroidFontsXML_OLD_System, " failed");
+        } else {
+            legacy_config_load_succeed = true;
         }
 
         // /system/etc/fallback_fonts-ja.xml
         if (!ParseFontsXML(kAndroidFontsXML_OLD_Fallback_JA)) {
             // /system/etc/fallback_fonts.xml
             if (!ParseFontsXML(kAndroidFontsXML_OLD_Fallback)) {
-                log_->e("FontProviderAndroid: Load legacy fallback config ", kAndroidFontsXML_OLD_Fallback, " failed");
-                return false;
+                log_->w("FontProviderAndroid: Load legacy fallback config ", kAndroidFontsXML_OLD_Fallback, " failed");
             }
         }
 
@@ -153,9 +156,57 @@ bool FontProviderAndroid::ParseAndroidSystemFonts() {
             }
         }
 
+        // If failed, consider Android version is below 4.x (e.g. 2.x, 3.x)
+        if (!legacy_config_load_succeed) {
+            if (!PrepareFontsForGingerbread()) {
+                log_->w("FontProviderAndroid: Search fonts for Android 2.x (Gingerbread) failed");
+                return false;
+            }
+        }
+
         AnnotateLanguageForOldFamilySets();
     }
 
+    return true;
+}
+
+static bool CheckFileExists(const char* filename) {
+    return access(filename, R_OK) == 0;
+}
+
+bool FontProviderAndroid::CheckFileAndAppendFontFamily(const char* family_name, const char* filename, bool is_fallback) {
+    std::string full_filename = base_font_path_ + filename;
+    if (!CheckFileExists(full_filename.c_str())) {
+        return false;
+    }
+
+    FontFamily& family = font_families_.emplace_back();
+    if (family_name) {
+        family.names.emplace_back(family_name);
+    }
+    if (is_fallback) {
+        family.is_fallback = true;
+        family.fallback_for = "sans-serif";
+    }
+
+    FontFile& font = family.fonts.emplace_back();
+    font.filename = filename;
+    font.weight = 400;
+    return true;
+}
+
+bool FontProviderAndroid::PrepareFontsForGingerbread() {
+    bool ret = CheckFileAndAppendFontFamily("sans-serif", "DroidSans.ttf", false);
+    if (!ret) {
+        return false;
+    }
+
+    CheckFileAndAppendFontFamily("serif", "DroidSerif-Regular.ttf", false);
+    CheckFileAndAppendFontFamily("monospace", "DroidSansMono.ttf", false);
+
+    CheckFileAndAppendFontFamily(nullptr, "MTLmr3m.ttf", true);
+    CheckFileAndAppendFontFamily(nullptr, "DroidSansJapanese.ttf", true);
+    CheckFileAndAppendFontFamily(nullptr, "DroidSansFallback.ttf", true);
     return true;
 }
 

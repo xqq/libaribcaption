@@ -74,7 +74,10 @@ private:
                                                                      const char* fallback_for);
     bool ParseAndroidSystemFonts();
     bool ParseFontsXML(const char* xml_path);
+    bool PrepareFontsForGingerbread();
     bool AnnotateLanguageForOldFamilySets();
+private:
+    bool CheckFileAndAppendFontFamily(const char* family_name, const char* filename, bool is_fallback);
 private:
     bool HandleFamilySetLMP(tinyxml2::XMLElement* root);
     bool LMPHandleFamily(tinyxml2::XMLElement* element);

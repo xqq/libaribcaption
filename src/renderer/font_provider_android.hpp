@@ -75,6 +75,12 @@ private:
     bool ParseFontsXML(const char* xml_path);
     bool HandleFamilySetLMP(tinyxml2::XMLElement* root);
     bool HandleFamilySetOld(tinyxml2::XMLElement* root);
+    bool AnnotateLanguageForOldFamilySets();
+private:
+    static bool JBHandleFamily(tinyxml2::XMLElement* element, internal::FontFamily& family);
+    static bool JBHandleNameset(tinyxml2::XMLElement* element, internal::FontFamily& family);
+    static bool JBHandleFileset(tinyxml2::XMLElement* element, internal::FontFamily& family);
+    static bool JBHandleFile(tinyxml2::XMLElement* element, internal::FontFamily& family);
 private:
     std::shared_ptr<Logger> log_;
 

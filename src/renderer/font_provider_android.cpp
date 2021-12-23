@@ -18,6 +18,7 @@
 
 #include <cstring>
 #include <cstdlib>
+#include <algorithm>
 #include "renderer/font_provider_android.hpp"
 
 using namespace tinyxml2;
@@ -28,6 +29,7 @@ inline constexpr const char* kAndroidFontsXML_Old_System = "/system/etc/system_f
 inline constexpr const char* kAndroidFontsXML_Old_Fallback = "/system/etc/fallback_fonts.xml";
 inline constexpr const char* kAndroidFontsXML_Old_Fallback_JA = "/system/etc/fallback_fonts-ja.xml";
 inline constexpr const char* kAndroidFontsXML_Old_Vendor = "/vendor/etc/fallback_fonts.xml";
+inline constexpr const char* kAndroidFontsXML_Old_Vendor_JA = "/vendor/etc/fallback_fonts-ja.xml";
 
 namespace aribcaption {
 
@@ -51,11 +53,10 @@ void FontProviderAndroid::SetLanguage(uint32_t iso6392_language_code) {
 
 auto FontProviderAndroid::GetFontFace(const std::string &font_name,
                                       std::optional<uint32_t> ucs4) -> Result<FontfaceInfo, FontProviderError> {
-    FontFamily* family = nullptr;
     FontFile* font_file = nullptr;
 
     if (iso6392_language_code_ == ThreeCC("jpn") || iso6392_language_code_ == 0) {
-        family = FindFallbackFamilyByLanguageAndFallbackFor("ja", font_name.c_str());
+        FontFamily* family = FindFallbackFamilyByLanguageAndFallbackFor("ja", font_name.c_str());
         if (!family) {
             family = FindFallbackFamilyByLanguageAndFallbackFor("ja", "sans-serif");
         }
@@ -69,7 +70,7 @@ auto FontProviderAndroid::GetFontFace(const std::string &font_name,
             }
         }
     } else {
-        family = FindFamilyByName(font_name.c_str());
+        FontFamily* family = FindFamilyByName(font_name.c_str());
         if (!family) {
             return Err(FontProviderError::kFontNotFound);
         }
@@ -129,35 +130,93 @@ FontFamily* FontProviderAndroid::FindFallbackFamilyByLanguageAndFallbackFor(cons
 }
 
 bool FontProviderAndroid::ParseAndroidSystemFonts() {
+    // First, try parse the fonts.xml with new format (Lollipop+)
+    // /system/etc/fonts.xml
     if (!ParseFontsXML(kAndroidFontsXML_LMP)) {
-        log_->w("FontProviderAndroid: Load or parse ", kAndroidFontsXML_LMP, " failed");
+        log_->v("FontProviderAndroid: Load Lollipop+ config ", kAndroidFontsXML_LMP, " failed");
 
+        // If failed, fallback to parse the old system_fonts.xml & fallback_fonts.xml
+        // /system/etc/system_fonts.xml
         if (!ParseFontsXML(kAndroidFontsXML_Old_System)) {
-            log_->e("FontProviderAndroid: Load or parse ", kAndroidFontsXML_Old_System, " failed");
+            log_->e("FontProviderAndroid: Load legacy config ", kAndroidFontsXML_Old_System, " failed");
             return false;
         }
 
+        // /system/etc/fallback_fonts-ja.xml
         if (!ParseFontsXML(kAndroidFontsXML_Old_Fallback_JA)) {
+            // /system/etc/fallback_fonts.xml
             if (!ParseFontsXML(kAndroidFontsXML_Old_Fallback)) {
-                log_->e("FontProviderAndroid: Load or parse ", kAndroidFontsXML_Old_Fallback, " failed");
+                log_->e("FontProviderAndroid: Load legacy fallback config ", kAndroidFontsXML_Old_Fallback, " failed");
                 return false;
             }
         }
 
-        if (!ParseFontsXML(kAndroidFontsXML_Old_Vendor)) {
-            log_->e("FontProviderAndroid: Load or parse ", kAndroidFontsXML_Old_Vendor, " failed");
-            return false;
+        // /vendor/etc/fallback_fonts-ja.xml
+        if (!ParseFontsXML(kAndroidFontsXML_Old_Vendor_JA)) {
+            // /vendor/etc/fallback_fonts.xml
+            if (!ParseFontsXML(kAndroidFontsXML_Old_Vendor)) {
+                log_->v("FontProviderAndroid: Cannot load legacy vendor config ", kAndroidFontsXML_Old_Vendor);
+            }
         }
+
+        AnnotateLanguageForOldFamilySets();
     }
 
     return true;
+}
+
+static bool AnnotateJAForSpecificFontFile(std::vector<FontFamily>& font_families, const char* font_filename) {
+    bool detected_filename = false;
+
+    for (auto& family : font_families) {
+        for (auto& font : family.fonts) {
+            if (font.filename == font_filename) {
+                detected_filename = true;
+                family.languages.emplace_back("ja");
+            }
+        }
+    }
+
+    return detected_filename;
+}
+
+bool FontProviderAndroid::AnnotateLanguageForOldFamilySets() {
+    bool detected_ja_font = false;
+
+    for (auto& family : font_families_) {
+        for (auto& lang : family.languages) {
+            if (lang == "ja") detected_ja_font = true;
+        }
+    }
+
+    if (detected_ja_font) {
+        return true;
+    }
+    // else: annotate lang="ja" for MTLmr3m.ttf, DroidSansJapanese.ttf or DroidSansFallback.ttf
+
+    bool ret = AnnotateJAForSpecificFontFile(font_families_, "MTLmr3m.ttf");
+    if (ret) {
+        return true;
+    }
+
+    ret = AnnotateJAForSpecificFontFile(font_families_, "DroidSansJapanese.ttf");
+    if (ret) {
+        return true;
+    }
+
+    ret = AnnotateJAForSpecificFontFile(font_families_, "DroidSansFallback.ttf");
+    if (ret) {
+        return true;
+    }
+
+    return false;
 }
 
 bool FontProviderAndroid::ParseFontsXML(const char *xml_path) {
     XMLDocument doc(true, Whitespace::COLLAPSE_WHITESPACE);
     XMLError err = doc.LoadFile(xml_path);
     if (err != XMLError::XML_SUCCESS) {
-        log_->w("FontProviderAndroid: Open ", xml_path, " failed");
+        log_->v("FontProviderAndroid: Open ", xml_path, " failed");
         return false;
     }
 
@@ -312,7 +371,115 @@ bool FontProviderAndroid::HandleFamilySetLMP(XMLElement* root) {
 }
 
 bool FontProviderAndroid::HandleFamilySetOld(XMLElement* root) {
-    // TODO
+    XMLElement* element = root->FirstChildElement();
+    while (element) {
+        if (strcmp(element->Name(), "family") == 0) {
+            FontFamily family;
+            if (JBHandleFamily(element, family)) {
+                // Parse success
+                font_families_.push_back(std::move(family));
+            }
+        }
+        element = element->NextSiblingElement();
+    }
+    return true;
+}
+
+bool FontProviderAndroid::JBHandleFamily(XMLElement* element, FontFamily& family) {
+    bool has_nameset = false;
+    element = element->FirstChildElement();
+
+    while (element) {
+        if (strcmp(element->Name(), "nameset") == 0) {
+            has_nameset = true;
+            if (!JBHandleNameset(element, family))
+                return false;
+        } else if (strcmp(element->Name(), "fileset") == 0) {
+            if (!JBHandleFileset(element, family))
+                return false;
+        }
+        element = element->NextSiblingElement();
+    }
+
+    if (!has_nameset) {
+        family.is_fallback = true;
+        family.fallback_for = "sans-serif";
+    }
+
+    return true;
+}
+
+bool FontProviderAndroid::JBHandleNameset(XMLElement* element, FontFamily& family) {
+    element = element->FirstChildElement();
+    while (element) {
+        if (strcmp(element->Name(), "name") == 0) {
+            family.names.emplace_back(element->GetText());
+        }
+        element = element->NextSiblingElement();
+    }
+    return true;
+}
+
+bool FontProviderAndroid::JBHandleFileset(XMLElement* element, FontFamily& family) {
+    element = element->FirstChildElement();
+    while (element) {
+        if (strcmp(element->Name(), "file") == 0) {
+            if (!JBHandleFile(element, family))
+                return false;
+        }
+        element = element->NextSiblingElement();
+    }
+    return true;
+}
+
+bool FontProviderAndroid::JBHandleFile(XMLElement* element, FontFamily& family) {
+    FontFile& font = family.fonts.emplace_back();
+    font.filename = element->GetText();
+
+    std::string filename_lcase(font.filename.length(), 0);
+    std::transform(font.filename.begin(),
+                   font.filename.end(),
+                   filename_lcase.begin(),
+                   [](char c) { return std::tolower(c); });
+
+    if (filename_lcase.find("thin") != std::string::npos) {
+        font.weight = 100;
+    } else if (filename_lcase.find("light") != std::string::npos) {
+        font.weight = 300;
+    } else if (filename_lcase.find("regular") != std::string::npos) {
+        font.weight = 400;
+    } else if (filename_lcase.find("medium") != std::string::npos) {
+        font.weight = 500;
+    } else if (filename_lcase.find("black") != std::string::npos) {
+        font.weight = 900;
+    } else if (filename_lcase.find("bold") != std::string::npos) {
+        font.weight = 700;
+    } else {
+        // default as 400 (Regular)
+        font.weight = 400;
+    }
+
+    if (filename_lcase.find("italic") != std::string::npos) {
+        font.is_italic = true;
+    }
+
+    if (const XMLAttribute* lang_attr = element->FindAttribute("lang")) {
+        const char* lang = lang_attr->Value();
+        auto& languages = family.languages;
+        if (languages.empty() || std::find(languages.begin(), languages.end(), lang) == languages.end()) {
+            languages.emplace_back(lang);
+        }
+    }
+
+    if (const XMLAttribute* variant_attr = element->FindAttribute("variant")) {
+        const char* variant = variant_attr->Value();
+        if (strcmp(variant, "elegant") == 0) {
+            family.variant = FontVariant::kElegant;
+        } else if (strcmp(variant, "compact") == 0) {
+            family.variant = FontVariant::kCompact;
+        }
+    }
+
     return true;
 }
 

@@ -21,6 +21,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 #include "aribcaption/context.hpp"
 #include "base/logger.hpp"
 #include "base/tinyxml2.h"
@@ -73,10 +74,14 @@ private:
                                                                      const char* fallback_for);
     bool ParseAndroidSystemFonts();
     bool ParseFontsXML(const char* xml_path);
-    bool HandleFamilySetLMP(tinyxml2::XMLElement* root);
-    bool HandleFamilySetOld(tinyxml2::XMLElement* root);
     bool AnnotateLanguageForOldFamilySets();
 private:
+    bool HandleFamilySetLMP(tinyxml2::XMLElement* root);
+    bool LMPHandleFamily(tinyxml2::XMLElement* element);
+    bool LMPHandleFont(tinyxml2::XMLElement* element, internal::FontFamily& family);
+    bool LMPHandleAlias(tinyxml2::XMLElement* element);
+private:
+    bool HandleFamilySetOLD(tinyxml2::XMLElement* root);
     static bool JBHandleFamily(tinyxml2::XMLElement* element, internal::FontFamily& family);
     static bool JBHandleNameset(tinyxml2::XMLElement* element, internal::FontFamily& family);
     static bool JBHandleFileset(tinyxml2::XMLElement* element, internal::FontFamily& family);

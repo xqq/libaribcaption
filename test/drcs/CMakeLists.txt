@@ -18,11 +18,11 @@
 
 cmake_minimum_required(VERSION 3.1)
 
-if(NOT LIBARIBCAPTION_USE_FREETYPE)
+if(NOT ARIBCC_USE_FREETYPE)
     find_package(Freetype)
 endif()
 
-if(NOT LIBARIBCAPTION_USE_FONTCONFIG)
+if(NOT ARIBCC_USE_FONTCONFIG)
     find_package(Fontconfig REQUIRED)
 endif()
 

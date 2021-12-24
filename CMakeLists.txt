@@ -71,16 +71,25 @@ function(import_embedded_freetype)
         USES_TERMINAL_CONFIGURE TRUE # show configure progress in ninja
         USES_TERMINAL_BUILD TRUE     # show build progress in ninja
     )
-    set(FT_DISABLE_ZLIB ON CACHE BOOL "Disable zlib for embedded Freetype" FORCE)
-    set(FT_DISABLE_PNG ON CACHE BOOL "Disable libpng for embedded Freetype" FORCE)
-    set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "Disable harfbuzz for embedded Freetype" FORCE)
-    set(BUILD_SHARED_LIBS OFF)       # Force static link
-    # Suppress CMake Policy CMP0048 warning
-    set(CMAKE_PROJECT_INCLUDE_BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EnableCMP0048.cmake")
-    FetchContent_MakeAvailable(freetype)
-    unset(CMAKE_PROJECT_INCLUDE_BEFORE)
-    set(FREETYPE_INCLUDE_DIRS "${freetype_BINARY_DIR}/include;${freetype_SOURCE_DIR}/include" PARENT_SCOPE)
-    set(FREETYPE_LIBRARIES freetype PARENT_SCOPE)
+    FetchContent_GetProperties(freetype)
+    if(NOT freetype_POPULATED)
+        # Fetch the content
+        FetchContent_Populate(freetype)
+        # Set variables for FreeType
+        set(FT_DISABLE_ZLIB ON CACHE BOOL "Disable zlib for embedded Freetype" FORCE)
+        set(FT_DISABLE_PNG ON CACHE BOOL "Disable libpng for embedded Freetype" FORCE)
+        set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "Disable harfbuzz for embedded Freetype" FORCE)
+        set(BUILD_SHARED_LIBS OFF)       # Force static link
+
+        # Suppress CMake Policy CMP0048 warning
+        set(CMAKE_PROJECT_INCLUDE_BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EnableCMP0048.cmake")
+        # Import FreeType directory
+        add_subdirectory(${freetype_SOURCE_DIR} ${freetype_BINARY_DIR} EXCLUDE_FROM_ALL)
+        unset(CMAKE_PROJECT_INCLUDE_BEFORE)
+
+        set(FREETYPE_INCLUDE_DIRS "${freetype_BINARY_DIR}/include;${freetype_SOURCE_DIR}/include" PARENT_SCOPE)
+        set(FREETYPE_LIBRARIES freetype PARENT_SCOPE)
+    endif()
 endfunction()
 
 if(ARIBCC_USE_FREETYPE AND (NOT ARIBCC_USE_EMBEDDED_FREETYPE))

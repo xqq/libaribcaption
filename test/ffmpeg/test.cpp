@@ -147,10 +147,16 @@ private:
 
         if (status == DecodeStatus::kGotCaption) {
             std::unique_ptr<Caption> caption = std::move(decode_result.caption);
-            printf("Decode: pts = %" PRId64 ", duration = %" PRId64 ", %s\n",
-                   caption->pts,
-                   caption->wait_duration,
-                   caption->text.c_str());
+            if (caption->wait_duration == DURATION_INDEFINITE) {
+                printf("[%.3lfs][INDEFINITE] %s\n",
+                       (double)caption->pts / 1000.0f,
+                       caption->text.c_str());
+            } else {
+                printf("[%.3lfs][%.7lfs] %s\n",
+                       (double)caption->pts / 1000.0f,
+                       (double)caption->wait_duration / 1000.0f,
+                       caption->text.c_str());
+            }
             fflush(stdout);
             if (caption->iso6392_language_code == 0) {
                 caption->iso6392_language_code = ThreeCC("jpn");
@@ -173,10 +179,16 @@ private:
         } else if (render_status == RenderStatus::kNoImage) {
             return true;
         } else {
-            printf("Render: pts = %" PRId64 ", duration = %" PRId64 ", images = %zu\n",
-                   render_result.pts,
-                   render_result.duration,
-                   render_result.images.size());
+            if (render_result.duration == DURATION_INDEFINITE) {
+                printf("[%.3lfs][INDEFINITE] images = %zu\n",
+                       (double)render_result.pts / 1000.0f,
+                       render_result.images.size());
+            } else {
+                printf("[%.3lfs][%.7lfs] images = %zu\n",
+                       (double)render_result.pts / 1000.0f,
+                       (double)render_result.duration / 1000.0f,
+                       render_result.images.size());
+            }
             fflush(stdout);
         }
 

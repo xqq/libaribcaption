@@ -258,7 +258,7 @@ install(
 # Install generated config header
 install(
     FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/include/config.h
+        ${CMAKE_CURRENT_BINARY_DIR}/include/aribcc_config.h
     DESTINATION
         ${CMAKE_INSTALL_INCLUDEDIR}/aribcaption
 )

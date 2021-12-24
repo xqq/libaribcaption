@@ -75,7 +75,10 @@ function(import_embedded_freetype)
     set(FT_DISABLE_PNG ON CACHE BOOL "Disable libpng for embedded Freetype" FORCE)
     set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "Disable harfbuzz for embedded Freetype" FORCE)
     set(BUILD_SHARED_LIBS OFF)       # Force static link
+    # Suppress CMake Policy CMP0048 warning
+    set(CMAKE_PROJECT_INCLUDE_BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/EnableCMP0048.cmake")
     FetchContent_MakeAvailable(freetype)
+    unset(CMAKE_PROJECT_INCLUDE_BEFORE)
     set(FREETYPE_INCLUDE_DIRS "${freetype_BINARY_DIR}/include;${freetype_SOURCE_DIR}/include" PARENT_SCOPE)
     set(FREETYPE_LIBRARIES freetype PARENT_SCOPE)
 endfunction()

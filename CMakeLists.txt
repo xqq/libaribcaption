@@ -85,6 +85,7 @@ if(ARIBCC_USE_FREETYPE AND (NOT ARIBCC_USE_EMBEDDED_FREETYPE))
     find_package(Freetype)
     if(NOT FREETYPE_FOUND)
         # System-wide freetype not found, use FetchContent to import embedded freetype
+        message(STATUS "System-wide installed FreeType not found, fallback to use embedded FreeType")
         set(ARIBCC_USE_EMBEDDED_FREETYPE ON CACHE BOOL "Force embedded FreeType" FORCE)
     else()
         message(STATUS "Use system-wide installed FreeType library from find_package")

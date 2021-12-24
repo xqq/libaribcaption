@@ -189,6 +189,15 @@ target_compile_options(aribcaption
         $<$<CXX_COMPILER_ID:MSVC>:/utf-8>
 )
 
+target_compile_definitions(aribcaption
+    PRIVATE
+        $<$<BOOL:${WIN32}>:
+            NOMINMAX
+            UNICODE
+            _UNICODE
+        >
+)
+
 ### Includes
 target_include_directories(aribcaption
     PUBLIC

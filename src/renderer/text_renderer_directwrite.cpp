@@ -592,33 +592,17 @@ bool TextRendererDirectWrite::BlendWICBitmapToBitmap(IWICBitmap* wic_bitmap,
         return false;
     }
 
-    for (uint32_t y = 0; y < height; y++) {
-        bool should_exit = false;
-        for (uint32_t x = 0; x < width; x++) {
-            uint32_t src_offset = y * stride + x * 4;
-            auto src_addr = reinterpret_cast<ColorRGBA*>(buffer + src_offset);
+    Rect rect{target_x, target_y, target_x + (int)width, target_y + (int)height};
+    Rect clipped = Rect::ClipRect(target_bmp.GetRect(), rect);
+    int clip_x_offset = clipped.left - target_x;
+    int clip_y_offset = clipped.top - target_y;
+    auto line_width = static_cast<size_t>(clipped.width());
 
-            int dst_x = target_x + static_cast<int>(x);
-            int dst_y = target_y + static_cast<int>(y);
-
-            if (dst_x < 0 || dst_y < 0) {
-                continue;
-            } else if (dst_x >= target_bmp.width()) {
-                break;
-            } else if (dst_y >= target_bmp.height()) {
-                should_exit = true;
-                break;
-            }
-
-            ColorRGBA* dst_addr = target_bmp.GetPixelAt(dst_x, dst_y);
-
-            ColorRGBA bg_color = *dst_addr;
-            ColorRGBA fg_color = *src_addr;
-
-            *dst_addr = alphablend::BlendColor(bg_color, fg_color);
-        }
-        if (should_exit)
-            break;
+    for (int y = clipped.top; y < clipped.bottom; y++) {
+        ColorRGBA* dest_begin = target_bmp.GetPixelAt(clipped.left, y);
+        int src_begin_offset = (clip_y_offset + y - clipped.top) * (int)stride + clip_x_offset * 4;
+        auto src_begin = reinterpret_cast<const ColorRGBA*>(buffer + src_begin_offset);
+        alphablend::BlendLine(dest_begin, src_begin, line_width);
     }
 
     return true;

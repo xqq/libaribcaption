@@ -187,6 +187,8 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
         border_glyph_image = std::move(stroke_glyph);
     }
 
+    Canvas canvas(target_bmp);
+
     // Draw Underline if required
     if ((style & kCharStyleUnderline) && underline_info && underline_thickness > 0) {
         int underline_y = target_y + baseline + em_adjust_y + std::abs(underline);
@@ -205,7 +207,6 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
             underline_rect.bottom += half_thickness;
         }
 
-        Canvas canvas(target_bmp);
         canvas.DrawRect(color, underline_rect);
     }
 
@@ -215,37 +216,10 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
         int start_x = target_x + border_bitmap_glyph->left;
         int start_y = target_y + baseline + em_adjust_y - border_bitmap_glyph->top;
 
-        FT_Bitmap& border_bitmap = border_bitmap_glyph->bitmap;
+        Bitmap bmp = FTBitmapToColoredBitmap(border_bitmap_glyph->bitmap, stroke_color);
+        Rect rect{start_x, start_y, start_x + bmp.width(), start_y + bmp.height()};
 
-        for (uint32_t y = 0; y < border_bitmap.rows; y++) {
-            bool should_exit = false;
-            for (uint32_t x = 0; x < border_bitmap.width; x++) {
-                uint32_t src_index = y * border_bitmap.pitch + x;
-                uint8_t src = border_bitmap.buffer[src_index];
-                if (src == 0) continue;
-
-                int dst_x = start_x + static_cast<int>(x);
-                int dst_y = start_y + static_cast<int>(y);
-
-                if (dst_x < 0 || dst_y < 0) {
-                    continue;
-                } else if (dst_x >= target_bmp.width()) {
-                    break;
-                } else if (dst_y >= target_bmp.height()) {
-                    should_exit = true;
-                    break;
-                }
-
-                ColorRGBA* dst_addr = target_bmp.GetPixelAt(dst_x, dst_y);
-
-                ColorRGBA bg_color = *dst_addr;
-                ColorRGBA fg_color = stroke_color;
-                fg_color.a = alphablend::Div255(static_cast<uint32_t>(fg_color.a) * src);
-
-                *dst_addr = alphablend::BlendColor(bg_color, fg_color);
-            }
-            if (should_exit) break;
-        }
+        canvas.DrawBitmap(bmp, rect);
     }
 
     // Draw filling bitmap
@@ -254,40 +228,31 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
         int start_x = target_x + bitmap_glyph->left;
         int start_y = target_y + baseline + em_adjust_y - bitmap_glyph->top;
 
-        FT_Bitmap& fill_bitmap = bitmap_glyph->bitmap;
+        Bitmap bmp = FTBitmapToColoredBitmap(bitmap_glyph->bitmap, color);
+        Rect rect{start_x, start_y, start_x + bmp.width(), start_y + bmp.height()};
 
-        for (uint32_t y = 0; y < fill_bitmap.rows; y++) {
-            bool should_exit = false;
-            for (uint32_t x = 0; x < fill_bitmap.width; x++) {
-                uint32_t src_index = y * fill_bitmap.pitch + x;
-                uint8_t src = fill_bitmap.buffer[src_index];
-                if (src == 0) continue;
-
-                int dst_x = start_x + static_cast<int>(x);
-                int dst_y = start_y + static_cast<int>(y);
-
-                if (dst_x < 0 || dst_y < 0) {
-                    continue;
-                } else if (dst_x >= target_bmp.width()) {
-                    break;
-                } else if (dst_y >= target_bmp.height()) {
-                    should_exit = true;
-                    break;
-                }
-
-                ColorRGBA* dst_addr = target_bmp.GetPixelAt(dst_x, dst_y);
-
-                ColorRGBA bg_color = *dst_addr;
-                ColorRGBA fg_color = color;
-                fg_color.a = alphablend::Div255(static_cast<uint32_t>(fg_color.a) * src);
-
-                *dst_addr = alphablend::BlendColor(bg_color, fg_color);
-            }
-            if (should_exit) break;
-        }
+        canvas.DrawBitmap(bmp, rect);
     }
 
     return TextRenderStatus::kOK;
+}
+
+Bitmap TextRendererFreetype::FTBitmapToColoredBitmap(const FT_Bitmap& ft_bmp, ColorRGBA color) {
+    Bitmap bitmap(static_cast<int>(ft_bmp.width), static_cast<int>(ft_bmp.rows), PixelFormat::kRGBA8888);
+
+    for (uint32_t y = 0; y < ft_bmp.rows; y++) {
+        uint32_t src_index = y * ft_bmp.pitch;
+        const uint8_t* src = &ft_bmp.buffer[src_index];
+        ColorRGBA* dest = bitmap.GetPixelAt(0, static_cast<int>(y));
+
+        for (uint32_t x = 0; x < ft_bmp.width; x++) {
+            uint8_t alpha = src[x];
+            ColorRGBA rgb = alpha == 0 ? ColorRGBA() : color;
+            dest[x] = ColorRGBA(rgb, alpha);
+        }
+    }
+
+    return bitmap;
 }
 
 auto TextRendererFreetype::LoadFontFace(std::optional<uint32_t> codepoint, std::optional<size_t> begin_index)

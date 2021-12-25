@@ -34,88 +34,58 @@ void Canvas::SetTextRenderer(TextRenderer& text_renderer) {
 
 void Canvas::ClearColor(ColorRGBA color) {
     for (int y = 0; y < bitmap_.height(); y++) {
-        for (int x = 0; x < bitmap_.width(); x++) {
-            ColorRGBA* pixel = bitmap_.GetPixelAt(x, y);
-            *pixel = color;
-        }
+        ColorRGBA* line_begin = bitmap_.GetPixelAt(0, y);
+        alphablend::FillLine(line_begin, color, bitmap_.width());
     }
 }
 
 void Canvas::ClearRect(ColorRGBA color, const Rect& rect) {
-    Rect clipped = rect;
-
-    if (clipped.left < 0)
-        clipped.left = 0;
-    if (clipped.top < 0)
-        clipped.top = 0;
-    if (clipped.right > bitmap_.width())
-        clipped.right = bitmap_.width();
-    if (clipped.bottom > bitmap_.height())
-        clipped.bottom = bitmap_.height();
+    Rect clipped = Rect::ClipRect(bitmap_.GetRect(), rect);
 
     if (clipped.width() <= 0 || clipped.height() <= 0) {
         return;
     }
 
+    auto line_width = static_cast<size_t>(clipped.width());
+
     for (int y = clipped.top; y < clipped.bottom; y++) {
-        for (int x = clipped.left; x < clipped.right; x++) {
-            ColorRGBA* dest = bitmap_.GetPixelAt(x, y);
-            *dest = color;
-        }
+        ColorRGBA* line_begin = bitmap_.GetPixelAt(clipped.left, y);
+        alphablend::FillLine(line_begin, color, line_width);
     }
 }
 
 void Canvas::DrawRect(ColorRGBA fg_color, const Rect& rect) {
-    Rect clipped = rect;
-
-    if (clipped.left < 0)
-        clipped.left = 0;
-    if (clipped.top < 0)
-        clipped.top = 0;
-    if (clipped.right > bitmap_.width())
-        clipped.right = bitmap_.width();
-    if (clipped.bottom > bitmap_.height())
-        clipped.bottom = bitmap_.height();
+    Rect clipped = Rect::ClipRect(bitmap_.GetRect(), rect);
 
     if (clipped.width() <= 0 || clipped.height() <= 0) {
         return;
     }
 
+    auto line_width = static_cast<size_t>(clipped.width());
+
     for (int y = clipped.top; y < clipped.bottom; y++) {
-        for (int x = clipped.left; x < clipped.right; x++) {
-            ColorRGBA* dest = bitmap_.GetPixelAt(x, y);
-            ColorRGBA bg_color = *dest;
-            *dest = alphablend::BlendColor(bg_color, fg_color);
-        }
+        ColorRGBA* line_begin = bitmap_.GetPixelAt(clipped.left, y);
+        alphablend::BlendColorToLine(line_begin, fg_color, line_width);
     }
 }
 
 void Canvas::DrawBitmap(const Bitmap& bmp, const Rect& rect) {
     assert(bmp.width() == rect.width() && bmp.height() == rect.height());
 
-    Rect clipped = rect;
-
-    if (clipped.left < 0)
-        clipped.left = 0;
-    if (clipped.top < 0)
-        clipped.top = 0;
-    if (clipped.right > bitmap_.width())
-        clipped.right = bitmap_.width();
-    if (clipped.bottom > bitmap_.height())
-        clipped.bottom = bitmap_.height();
+    Rect clipped = Rect::ClipRect(bitmap_.GetRect(), rect);
 
     if (clipped.width() <= 0 || clipped.height() <= 0) {
         return;
     }
 
+    int clip_x_offset = clipped.left - rect.left;
+    int clip_y_offset = clipped.top - rect.top;
+    auto line_width = static_cast<size_t>(clipped.width());
+
     for (int y = clipped.top; y < clipped.bottom; y++) {
-        for (int x = clipped.left; x < clipped.right; x++) {
-            ColorRGBA* dest = bitmap_.GetPixelAt(x, y);
-            const ColorRGBA* src = bmp.GetPixelAt(x - clipped.left, y - clipped.top);
-            ColorRGBA bg_color = *dest;  // background (dest), the canvas
-            ColorRGBA fg_color = *src;   // foreground (src), the input bitmap
-            *dest = alphablend::BlendColor(bg_color, fg_color);
-        }
+        ColorRGBA* dest_begin = bitmap_.GetPixelAt(clipped.left, y);
+        const ColorRGBA* src_begin = bmp.GetPixelAt(clip_x_offset, clip_y_offset + y - clipped.top);
+        alphablend::BlendLine(dest_begin, src_begin, line_width);
     }
 }
 

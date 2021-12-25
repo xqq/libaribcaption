@@ -116,24 +116,34 @@ private:
 
 class StopWatchWin : public StopWatch {
 public:
-    StopWatchWin() = default;
+    StopWatchWin() {
+        QueryPerformanceFrequency(&frequency_);
+    }
+
     ~StopWatchWin() override = default;
 public:
     void Start() override {
-        // TODO
+        QueryPerformanceCounter(&start_time_);
     }
 
     void Stop() override {
-        // TODO
+        LARGE_INTEGER current_time;
+        QueryPerformanceCounter(&current_time);
+        elapsed_time_.QuadPart = current_time.QuadPart - start_time_.QuadPart;
     }
 
     void Reset() override {
-        // TODO
+        start_time_ = LARGE_INTEGER{};
+        elapsed_time_ = LARGE_INTEGER{};
     }
 
     int64_t GetMicroseconds() override {
-        return 0;
+        return elapsed_time_.QuadPart * 1000000 / frequency_.QuadPart;
     }
+private:
+    LARGE_INTEGER frequency_{};
+    LARGE_INTEGER start_time_{};
+    LARGE_INTEGER elapsed_time_{};
 };
 
 #endif

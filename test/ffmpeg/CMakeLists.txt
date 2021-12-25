@@ -26,6 +26,7 @@ find_library(AVFORMAT_LIBRARY avformat)
 
 add_executable(test_ffmpeg
     EXCLUDE_FROM_ALL
+        stopwatch.hpp
         test.cpp
 )
 

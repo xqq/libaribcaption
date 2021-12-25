@@ -25,6 +25,8 @@
 #include "aribcaption/aligned_alloc.hpp"
 #include "aribcaption/color.hpp"
 #include "aribcaption/image.hpp"
+#include "base/always_inline.hpp"
+#include "renderer/rect.hpp"
 
 namespace aribcaption {
 
@@ -45,47 +47,52 @@ public:
     Bitmap& operator=(Bitmap&&) = default;
 public:
     [[nodiscard]]
-    inline uint8_t* data() { return pixels.data(); }
+    ALWAYS_INLINE uint8_t* data() { return pixels.data(); }
 
     [[nodiscard]]
-    inline const uint8_t* data() const { return pixels.data(); }
+    ALWAYS_INLINE const uint8_t* data() const { return pixels.data(); }
 
     [[nodiscard]]
-    inline ColorRGBA* GetPixels() {
+    ALWAYS_INLINE ColorRGBA* GetPixels() {
         return reinterpret_cast<ColorRGBA*>(pixels.data());
     };
 
     [[nodiscard]]
-    inline const ColorRGBA* GetPixels() const {
+    ALWAYS_INLINE const ColorRGBA* GetPixels() const {
         return reinterpret_cast<const ColorRGBA*>(pixels.data());
     };
 
     [[nodiscard]]
-    inline ColorRGBA* GetPixelAt(int x, int y) {
+    ALWAYS_INLINE ColorRGBA* GetPixelAt(int x, int y) {
         uint8_t* ptr = pixels.data() + y * (size_t)stride_ + x * sizeof(ColorRGBA);
         return reinterpret_cast<ColorRGBA*>(ptr);
     };
 
     [[nodiscard]]
-    inline const ColorRGBA* GetPixelAt(int x, int y) const {
+    ALWAYS_INLINE const ColorRGBA* GetPixelAt(int x, int y) const {
         const uint8_t* ptr = pixels.data() + y * (size_t)stride_ + x * sizeof(ColorRGBA);
         return reinterpret_cast<const ColorRGBA*>(ptr);
     };
 
     [[nodiscard]]
-    inline size_t size() const { return pixels.size(); }
+    ALWAYS_INLINE Rect GetRect() const {
+        return {0, 0, width_, height_};
+    }
 
     [[nodiscard]]
-    inline int width() const { return width_; }
+    ALWAYS_INLINE size_t size() const { return pixels.size(); }
 
     [[nodiscard]]
-    inline int height() const { return height_; }
+    ALWAYS_INLINE int width() const { return width_; }
 
     [[nodiscard]]
-    inline int stride() const { return stride_; }
+    ALWAYS_INLINE int height() const { return height_; }
 
     [[nodiscard]]
-    inline PixelFormat pixel_format() const { return pixel_format_; }
+    ALWAYS_INLINE int stride() const { return stride_; }
+
+    [[nodiscard]]
+    ALWAYS_INLINE PixelFormat pixel_format() const { return pixel_format_; }
 private:
     int width_ = 0;
     int height_ = 0;

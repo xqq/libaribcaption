@@ -34,6 +34,7 @@ extern "C" {
 #include "renderer/bitmap.hpp"
 #include "renderer/canvas.hpp"
 #include "png_writer.hpp"
+#include "stopwatch.hpp"
 
 using namespace aribcaption;
 
@@ -123,6 +124,8 @@ public:
     }
 private:
     void InitCaptionDecoderRenderer() {
+        stop_watch_ = StopWatch::Create();
+
         aribcc_context_.SetLogcatCallback([](LogLevel level, const char* message) {
             if (level == LogLevel::kError || level == LogLevel::kWarning) {
                 fprintf(stderr, "%s\n", message);
@@ -171,30 +174,23 @@ private:
 
         RenderResult render_result;
 
+        stop_watch_->Start();
         auto render_status = aribcc_renderer_.Render(packet->pts, render_result);
+        stop_watch_->Stop();
+
+        int64_t render_time = stop_watch_->GetMicroseconds();
 
         if (render_status == RenderStatus::kError) {
             fprintf(stderr, "Renderer::Render() returned error\n");
             return false;
         } else if (render_status == RenderStatus::kNoImage) {
             return true;
-        } else {
-            if (render_result.duration == DURATION_INDEFINITE) {
-                printf("[%.3lfs][INDEFINITE] images = %zu\n",
-                       (double)render_result.pts / 1000.0f,
-                       render_result.images.size());
-            } else {
-                printf("[%.3lfs][%.7lfs] images = %zu\n",
-                       (double)render_result.pts / 1000.0f,
-                       (double)render_result.duration / 1000.0f,
-                       render_result.images.size());
-            }
-            fflush(stdout);
         }
 
         Bitmap screen_bmp(frame_area_width, frame_area_height, PixelFormat::kRGBA8888);
         Canvas screen_canvas(screen_bmp);
 
+        stop_watch_->Start();
         for (Image& img : render_result.images) {
             int dst_x = img.dst_x;
             int dst_y = img.dst_y;
@@ -205,6 +201,24 @@ private:
                              dst_y + bmp.height());
             screen_canvas.DrawBitmap(bmp, region_rect);
         }
+        stop_watch_->Stop();
+        int64_t compose_time = stop_watch_->GetMicroseconds();
+
+        if (render_result.duration == DURATION_INDEFINITE) {
+            printf("[%.3lfs][INDEFINITE] images = %zu, render = %lfms, compose = %lfms\n",
+                   (double)render_result.pts / 1000.0f,
+                   render_result.images.size(),
+                   static_cast<double>(render_time) / 1000.0f,
+                   static_cast<double>(compose_time) / 1000.0f);
+        } else {
+            printf("[%.3lfs][%.7lfs] images = %zu, render = %lfms, compose = %lfms\n",
+                   (double)render_result.pts / 1000.0f,
+                   (double)render_result.duration / 1000.0f,
+                   render_result.images.size(),
+                   static_cast<double>(render_time) / 1000.0f,
+                   static_cast<double>(compose_time) / 1000.0f);
+        }
+        fflush(stdout);
 
         std::string filename("test_ffmpeg_output_");
         filename.append(std::to_string(packet->pts));
@@ -219,6 +233,7 @@ private:
     Context aribcc_context_;
     Decoder aribcc_decoder_;
     Renderer aribcc_renderer_;
+    std::unique_ptr<StopWatch> stop_watch_;
 };
 
 int main(int argc, const char* argv[]) {

@@ -75,6 +75,17 @@ public:
     friend bool operator!=(const Rect& a, const Rect& b) {
         return !(a == b);
     }
+public:
+    static inline constexpr Rect ClipRect(const Rect& a, const Rect& b) {
+        Rect clipped;
+
+        clipped.left = std::max(a.left, b.left);
+        clipped.top = std::max(a.top, b.top);
+        clipped.right = std::min(a.right, b.right);
+        clipped.bottom = std::min(a.bottom, b.bottom);
+
+        return clipped;
+    }
 };
 
 }  // namespace aribcaption

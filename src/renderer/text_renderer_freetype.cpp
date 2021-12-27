@@ -217,9 +217,7 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
         int start_y = target_y + baseline + em_adjust_y - border_bitmap_glyph->top;
 
         Bitmap bmp = FTBitmapToColoredBitmap(border_bitmap_glyph->bitmap, stroke_color);
-        Rect rect{start_x, start_y, start_x + bmp.width(), start_y + bmp.height()};
-
-        canvas.DrawBitmap(bmp, rect);
+        canvas.DrawBitmap(bmp, start_x, start_y);
     }
 
     // Draw filling bitmap
@@ -229,9 +227,7 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
         int start_y = target_y + baseline + em_adjust_y - bitmap_glyph->top;
 
         Bitmap bmp = FTBitmapToColoredBitmap(bitmap_glyph->bitmap, color);
-        Rect rect{start_x, start_y, start_x + bmp.width(), start_y + bmp.height()};
-
-        canvas.DrawBitmap(bmp, rect);
+        canvas.DrawBitmap(bmp, start_x, start_y);
     }
 
     return TextRenderStatus::kOK;

@@ -189,11 +189,7 @@ int main(int argc, const char* argv[]) {
             }
         }
 
-        Rect region_rect(region.x * scale_factor,
-                         region.y * scale_factor,
-                         region.x * scale_factor + region_bmp.width(),
-                         region.y * scale_factor + region_bmp.height());
-        caption_canvas.DrawBitmap(region_bmp, region_rect);
+        caption_canvas.DrawBitmap(region_bmp, region.x * scale_factor, region.y * scale_factor);
     }
 
     std::string filename("test_drcs_output.png");

@@ -19,6 +19,7 @@
 #include <cstdint>
 #include "renderer/alpha_blend.hpp"
 #include "renderer/bitmap.hpp"
+#include "renderer/canvas.hpp"
 #include "renderer/drcs_renderer.hpp"
 
 namespace aribcaption {
@@ -30,64 +31,50 @@ bool DRCSRenderer::DrawDRCS(const DRCS& drcs, CharStyle style, ColorRGBA color, 
         return false;
     }
 
+    Canvas canvas(target_bmp);
+
     // Draw stroke (border) if needed
     if (style & CharStyle::kCharStyleStroke) {
-        RenderDRCS(drcs, stroke_color, target_width, target_height, target_bmp, target_x - stroke_width, target_y);
-        RenderDRCS(drcs, stroke_color, target_width, target_height, target_bmp, target_x + stroke_width, target_y);
-        RenderDRCS(drcs, stroke_color, target_width, target_height, target_bmp, target_x, target_y - stroke_width);
-        RenderDRCS(drcs, stroke_color, target_width, target_height, target_bmp, target_x, target_y + stroke_width);
+        Bitmap stroke_bitmap = DRCSToColoredBitmap(drcs, target_width, target_height, stroke_color);
+
+        canvas.DrawBitmap(stroke_bitmap, target_x - stroke_width, target_y);
+        canvas.DrawBitmap(stroke_bitmap, target_x + stroke_width, target_y);
+        canvas.DrawBitmap(stroke_bitmap, target_x, target_y - stroke_width);
+        canvas.DrawBitmap(stroke_bitmap, target_x, target_y + stroke_width);
     }
 
     // Draw DRCS with text color
-    RenderDRCS(drcs, color, target_width, target_height, target_bmp, target_x, target_y);
+    Bitmap text_bitmap = DRCSToColoredBitmap(drcs, target_width, target_height, color);
+    canvas.DrawBitmap(text_bitmap, target_x, target_y);
 
     return true;
 }
 
-void DRCSRenderer::RenderDRCS(const DRCS& drcs, ColorRGBA color, int target_width, int target_height,
-                              Bitmap& target_bmp, int target_x, int target_y) {
+Bitmap DRCSRenderer::DRCSToColoredBitmap(const DRCS& drcs, int target_width, int target_height, ColorRGBA color) {
+    Bitmap bitmap(target_width, target_height, PixelFormat::kRGBA8888);
+
     float x_fraction = static_cast<float>(drcs.width) / static_cast<float>(target_width);
     float y_fraction = static_cast<float>(drcs.height) / static_cast<float>(target_height);
 
-    // Draw DRCS with specific color
-    // Nearest-neighbor scaling
     for (int y = 0; y < target_height; y++) {
-        bool should_exit = false;
+        ColorRGBA* dest = bitmap.GetPixelAt(0, y);
+        int drcs_y = static_cast<int>(y_fraction * static_cast<float>(y));
         for (int x = 0; x < target_width; x++) {
             int drcs_x = static_cast<int>(x_fraction * static_cast<float>(x));
-            int drcs_y = static_cast<int>(y_fraction * static_cast<float>(y));
 
             intptr_t index = (drcs_y * drcs.width + drcs_x) * drcs.depth_bits / 8;
             intptr_t bit_offset = (drcs_y * drcs.width + drcs_x) * drcs.depth_bits % 8;
             uint8_t byte = drcs.pixels[index];
 
             uint8_t value = (byte >> (8 - (bit_offset + drcs.depth_bits))) & (drcs.depth - 1);
-            uint8_t alpha = alphablend::Clamp255((uint32_t)255 * value / (drcs.depth - 1));
-            if (alpha == 0)
-                continue;
+            uint8_t grey = alphablend::Clamp255((uint32_t)255 * value / (drcs.depth - 1));
 
-            int dst_x = target_x + x;
-            int dst_y = target_y + y;
-
-            if (dst_x < 0 || dst_y < 0) {
-                continue;
-            } else if (dst_x >= target_bmp.width()) {
-                break;
-            } else if (dst_y >= target_bmp.height()) {
-                should_exit = true;
-                break;
-            }
-
-            ColorRGBA* dst_addr = target_bmp.GetPixelAt(dst_x, dst_y);
-            ColorRGBA bg_color = *dst_addr;
-            ColorRGBA fg_color = color;
-            fg_color.a = alphablend::Div255(static_cast<uint32_t>(fg_color.a) * alpha);
-
-            *dst_addr = alphablend::BlendColor(bg_color, fg_color);
+            uint8_t alpha = alphablend::Div255(static_cast<uint32_t>(color.a) * grey);
+            dest[x] = ColorRGBA(color, alpha);
         }
-        if (should_exit)
-            break;
     }
+
+    return bitmap;
 }
 
 }  // namespace aribcaption

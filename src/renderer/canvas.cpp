@@ -89,6 +89,12 @@ void Canvas::DrawBitmap(const Bitmap& bmp, const Rect& rect) {
     }
 }
 
+void Canvas::DrawBitmap(const Bitmap& bmp, int target_x, int target_y) {
+    Rect rect{target_x, target_y, target_x + bmp.width(), target_y + bmp.height()};
+
+    DrawBitmap(bmp, rect);
+}
+
 auto Canvas::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
                       float stroke_width, int char_width, int char_height, int x, int y,
                       std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {

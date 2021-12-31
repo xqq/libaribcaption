@@ -21,7 +21,7 @@
 #include <functional>
 #include "base/utf_helper.hpp"
 #include "base/wchar_helper.hpp"
-#include "renderer/alpha_blend.hpp"
+#include "renderer/alphablend.hpp"
 #include "renderer/canvas.hpp"
 #include "renderer/font_provider_directwrite.hpp"
 #include "renderer/text_renderer_directwrite.hpp"

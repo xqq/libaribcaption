@@ -17,7 +17,7 @@
  */
 
 #include <cassert>
-#include "renderer/alpha_blend.hpp"
+#include "renderer/alphablend.hpp"
 #include "renderer/bitmap.hpp"
 #include "renderer/canvas.hpp"
 #include "renderer/text_renderer.hpp"

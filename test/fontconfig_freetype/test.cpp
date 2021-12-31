@@ -19,7 +19,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstdio>
-#include "renderer/alpha_blend.hpp"
+#include "renderer/alphablend.hpp"
 #include "renderer/bitmap.hpp"
 #include "renderer/canvas.hpp"
 #include "renderer/font_provider.hpp"

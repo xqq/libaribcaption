@@ -21,7 +21,7 @@
 #include <cstdint>
 #include <cmath>
 #include "base/scoped_holder.hpp"
-#include "renderer/alpha_blend.hpp"
+#include "renderer/alphablend.hpp"
 #include "renderer/canvas.hpp"
 #include "renderer/text_renderer_freetype.hpp"
 #include FT_STROKER_H

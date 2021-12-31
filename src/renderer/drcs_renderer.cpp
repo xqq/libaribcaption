@@ -17,7 +17,7 @@
  */
 
 #include <cstdint>
-#include "renderer/alpha_blend.hpp"
+#include "renderer/alphablend.hpp"
 #include "renderer/bitmap.hpp"
 #include "renderer/canvas.hpp"
 #include "renderer/drcs_renderer.hpp"

@@ -154,7 +154,7 @@ add_library(aribcaption
         src/decoder/decoder.cpp
         src/decoder/decoder_impl.cpp
         src/decoder/decoder_impl.hpp
-        src/renderer/alpha_blend.hpp
+        src/renderer/alphablend.hpp
         src/renderer/bitmap.cpp
         src/renderer/bitmap.hpp
         src/renderer/canvas.cpp

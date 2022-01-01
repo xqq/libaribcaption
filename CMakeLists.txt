@@ -208,6 +208,7 @@ target_compile_definitions(aribcaption
             NOMINMAX
             UNICODE
             _UNICODE
+            _CRT_SECURE_NO_WARNINGS
         >
 )
 

@@ -202,6 +202,16 @@ target_compile_options(aribcaption
         $<$<CXX_COMPILER_ID:MSVC>:/utf-8>
 )
 
+# Enable necessary SSE instruction sets for x86/x64 build on gcc/clang
+if(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)" AND CMAKE_SYSTEM_PROCESSOR MATCHES "(x86|X86|x64|X64|amd64|AMD64|i386|i686)")
+    target_compile_options(aribcaption
+        PRIVATE
+            -msse2
+            -msse3
+            -mssse3
+    )
+endif()
+
 target_compile_definitions(aribcaption
     PRIVATE
         $<$<BOOL:${WIN32}>:

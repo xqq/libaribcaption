@@ -23,66 +23,9 @@
 #include <cstdint>
 #include "aribcaption/color.hpp"
 #include "base/always_inline.hpp"
+#include "renderer/alphablend_generic.hpp"
 
 namespace aribcaption::alphablend {
-
-// Fast divide by 255 algorithm
-ALWAYS_INLINE uint32_t Div255(uint32_t x) {
-    return (x + 1 + (x >> 8)) >> 8;
-}
-
-// Fast clamp to 255 algorithm
-ALWAYS_INLINE uint8_t Clamp255(uint32_t x) {
-    x |= -(x > 255);
-    return static_cast<uint8_t>(x);
-}
-
-// Alpha blend
-ALWAYS_INLINE ColorRGBA BlendColor(ColorRGBA bg_color, ColorRGBA fg_color) {
-    ColorRGBA color;
-
-    // Calculate blended alpha channel
-    // alpha is within range [0, 1] in the formula
-    // out_alpha = foreground_alpha + background_alpha * (1 - foreground_alpha)
-    color.a = (uint32_t)fg_color.a + Div255((uint32_t)bg_color.a * (255 - fg_color.a));
-
-    // Calculate blended RGB channel
-    // alpha is within range [0, 1] in the formula
-    // result should be clamped to [0, 255]
-    // out_rgb = (foreground_rgb * foreground_alpha + background_rgb * (1 - foreground_alpha)) / out_alpha
-    if (color.a) {
-        color.r = Clamp255(((uint32_t)fg_color.r * fg_color.a + (uint32_t)bg_color.r * (255 - fg_color.a)) / color.a);
-        color.g = Clamp255(((uint32_t)fg_color.g * fg_color.a + (uint32_t)bg_color.g * (255 - fg_color.a)) / color.a);
-        color.b = Clamp255(((uint32_t)fg_color.b * fg_color.a + (uint32_t)bg_color.b * (255 - fg_color.a)) / color.a);
-    }
-    // else if alpha is 0, then RGB is 0
-
-    return color;
-}
-
-
-namespace internal {
-
-ALWAYS_INLINE void FillLine_Generic(ColorRGBA* __restrict dest, ColorRGBA color, size_t width) {
-    for (size_t i = 0; i < width; i++) {
-        dest[i] = color;
-    }
-}
-
-ALWAYS_INLINE void BlendColorToLine_Generic(ColorRGBA* __restrict dest, ColorRGBA color, size_t width) {
-    for (size_t i = 0; i < width; i++) {
-        dest[i] = BlendColor(dest[i], color);
-    }
-}
-
-ALWAYS_INLINE void BlendLine_Generic(ColorRGBA* __restrict dest, const ColorRGBA* __restrict src, size_t width) {
-    for (size_t i = 0; i < width; i++) {
-        dest[i] = BlendColor(dest[i], src[i]);
-    }
-}
-
-}  // namespace internal
-
 
 ALWAYS_INLINE void FillLine(ColorRGBA* __restrict dest, ColorRGBA color, size_t width) {
     internal::FillLine_Generic(dest, color, width);
@@ -95,7 +38,6 @@ ALWAYS_INLINE void BlendColorToLine(ColorRGBA* __restrict dest, ColorRGBA color,
 ALWAYS_INLINE void BlendLine(ColorRGBA* __restrict dest, const ColorRGBA* __restrict src, size_t width) {
     internal::BlendLine_Generic(dest, src, width);
 }
-
 
 }  // namespace aribcaption::alphablend
 

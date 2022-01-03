@@ -38,23 +38,23 @@ ALWAYS_INLINE uint8_t Clamp255(uint32_t x) {
 }
 
 // Alpha blend
+// alpha is within range [0, 1] in the formula
+// out_alpha = foreground_alpha + background_alpha * (1 - foreground_alpha)
+// out_rgb = foreground_rgb * foreground_alpha + background_rgb * (1 - foreground_alpha)
 ALWAYS_INLINE ColorRGBA BlendColor(ColorRGBA bg_color, ColorRGBA fg_color) {
-    ColorRGBA color;
+    //        memory_order_RGBA   = 0xAABBGGRR
+    constexpr uint32_t mask_b_r   = 0x00FF00FF;
+    constexpr uint32_t mask_g     = 0x0000FF00;
+    constexpr uint32_t mask_a_g   = 0xFF00FF00;
+    constexpr uint32_t alpha_1    = 0x01000000;
 
-    // Calculate blended alpha channel
-    // alpha is within range [0, 1] in the formula
-    // out_alpha = foreground_alpha + background_alpha * (1 - foreground_alpha)
-    color.a = (((uint32_t)fg_color.a << 8) + (uint32_t)bg_color.a * (255 - fg_color.a)) >> 8;
+    uint32_t fg_a = fg_color.a;
+    uint32_t ff_minus_fg_a = 255 - fg_a;
 
-    // Calculate blended RGB channel
-    // alpha is within range [0, 1] in the formula
-    // result should be clamped to [0, 255]
-    // out_rgb = foreground_rgb * foreground_alpha + background_rgb * (1 - foreground_alpha)
-    color.r = ((uint32_t)fg_color.r * fg_color.a + (uint32_t)bg_color.r * (255 - fg_color.a)) >> 8;
-    color.g = ((uint32_t)fg_color.g * fg_color.a + (uint32_t)bg_color.g * (255 - fg_color.a)) >> 8;
-    color.b = ((uint32_t)fg_color.b * fg_color.a + (uint32_t)bg_color.b * (255 - fg_color.a)) >> 8;
+    uint32_t b_r = ((fg_color.u32 & mask_b_r) * fg_a + ((bg_color.u32 & mask_b_r) * ff_minus_fg_a)) >> 8;
+    uint32_t a_g = ((alpha_1 | ((fg_color.u32 & mask_g) >> 8)) * fg_a) + (((bg_color.u32 & mask_a_g) >> 8) * ff_minus_fg_a);
 
-    return color;
+    return ColorRGBA((b_r & mask_b_r) | (a_g & mask_a_g));
 }
 
 

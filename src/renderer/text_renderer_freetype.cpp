@@ -241,11 +241,7 @@ Bitmap TextRendererFreetype::FTBitmapToColoredBitmap(const FT_Bitmap& ft_bmp, Co
         const uint8_t* src = &ft_bmp.buffer[src_index];
         ColorRGBA* dest = bitmap.GetPixelAt(0, static_cast<int>(y));
 
-        for (uint32_t x = 0; x < ft_bmp.width; x++) {
-            uint8_t grey = src[x];
-            uint8_t alpha = alphablend::Div255(static_cast<uint32_t>(color.a) * grey);
-            dest[x] = ColorRGBA(color, alpha);
-        }
+        alphablend::FillLineWithAlphas(dest, src, color, ft_bmp.width);
     }
 
     return bitmap;

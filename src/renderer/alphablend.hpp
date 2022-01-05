@@ -39,6 +39,11 @@ ALWAYS_INLINE void FillLine(ColorRGBA* __restrict dest, ColorRGBA color, size_t 
 #endif
 }
 
+ALWAYS_INLINE void FillLineWithAlphas(ColorRGBA* __restrict dest,
+                                      const uint8_t* __restrict src_alphas, ColorRGBA color, size_t width) {
+    internal::FillLineWithAlphas_Generic(dest, src_alphas, color, width);
+}
+
 ALWAYS_INLINE void BlendColorToLine(ColorRGBA* __restrict dest, ColorRGBA color, size_t width) {
 #if defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
     internal::BlendColorToLine_x86(dest, color, width);

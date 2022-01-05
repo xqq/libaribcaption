@@ -66,6 +66,14 @@ ALWAYS_INLINE void FillLine_Generic(ColorRGBA* __restrict dest, ColorRGBA color,
     }
 }
 
+ALWAYS_INLINE void FillLineWithAlphas_Generic(ColorRGBA* __restrict dest,
+                                              const uint8_t* __restrict src_alphas, ColorRGBA color, size_t width) {
+    for (size_t i = 0; i < width; i++) {
+        uint8_t alpha = (static_cast<uint32_t>(src_alphas[i]) * color.a) >> 8;
+        dest[i] = ColorRGBA(color, alpha);
+    }
+}
+
 ALWAYS_INLINE void BlendColorToLine_Generic(ColorRGBA* __restrict dest, ColorRGBA color, size_t width) {
     for (size_t i = 0; i < width; i++) {
         dest[i] = BlendColor(dest[i], color);

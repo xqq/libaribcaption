@@ -25,18 +25,34 @@
 #include "base/always_inline.hpp"
 #include "renderer/alphablend_generic.hpp"
 
+#if defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
+#include "renderer/alphablend_x86.hpp"
+#endif
+
 namespace aribcaption::alphablend {
 
 ALWAYS_INLINE void FillLine(ColorRGBA* __restrict dest, ColorRGBA color, size_t width) {
+#if defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
+    internal::FillLine_x86(dest, color, width);
+#else
     internal::FillLine_Generic(dest, color, width);
+#endif
 }
 
 ALWAYS_INLINE void BlendColorToLine(ColorRGBA* __restrict dest, ColorRGBA color, size_t width) {
+#if defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
+    internal::BlendColorToLine_x86(dest, color, width);
+#else
     internal::BlendColorToLine_Generic(dest, color, width);
+#endif
 }
 
 ALWAYS_INLINE void BlendLine(ColorRGBA* __restrict dest, const ColorRGBA* __restrict src, size_t width) {
+#if defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
+    internal::BlendLine_x86(dest, src, width);
+#else
     internal::BlendLine_Generic(dest, src, width);
+#endif
 }
 
 }  // namespace aribcaption::alphablend

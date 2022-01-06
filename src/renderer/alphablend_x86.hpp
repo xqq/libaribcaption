@@ -35,9 +35,8 @@ union alignas(16) Vec128i {
 };
 
 ALWAYS_INLINE void FillLine_SSE2(ColorRGBA* __restrict dest, ColorRGBA color, size_t width) {
-    if (uint32_t unaligned_prefix = reinterpret_cast<uintptr_t>(dest) % 16) {
-        uint32_t unaligned_remain = 16 - unaligned_prefix;
-        uint32_t unaligned_pixels = unaligned_remain / 4;
+    if (uint32_t unaligned_prefix_pixels = (reinterpret_cast<uintptr_t>(dest) % 16) / 4) {
+        uint32_t unaligned_pixels = 4 - unaligned_prefix_pixels;
         FillLine_Generic(dest, color, unaligned_pixels);
         dest += unaligned_pixels;
         width -= unaligned_pixels;

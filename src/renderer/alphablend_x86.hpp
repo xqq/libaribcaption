@@ -102,9 +102,7 @@ ALWAYS_INLINE void BlendColorToLine_SSSE3(ColorRGBA* __restrict dest, ColorRGBA 
     const __m128i mask_0xff000000 = _mm_slli_epi32(mask_0xffffffff, 24);
     const __m128i mask_0x00ff00ff = _mm_srli_epi16(mask_0xffffffff, 8);
     const __m128i mask_0xff00ff00 = _mm_slli_epi16(mask_0xffffffff, 8);
-    const __m128i mask_0x0000ff00 = _mm_srli_epi32(mask_0xff000000, 16);
-    const __m128i value_0x01010101 = _mm_xor_si128(_mm_add_epi8(mask_0xffffffff, mask_0xffffffff), mask_0xffffffff);
-    const __m128i value_0x01000000 = _mm_and_si128(value_0x01010101, mask_0xff000000);
+    const __m128i mask_0x00ff0000 = _mm_srli_epi32(mask_0xff000000, 8);
 
     __m128i src = _mm_set1_epi32(static_cast<int>(color.u32));
     __m128i src_alpha = _mm_shuffle_epi8(src, ssse3_mask_extract_alpha.m128i);
@@ -115,10 +113,10 @@ ALWAYS_INLINE void BlendColorToLine_SSSE3(ColorRGBA* __restrict dest, ColorRGBA 
     src_b_r = _mm_mullo_epi16(src_b_r, src_alpha);
     src_b_r = _mm_srli_epi16(src_b_r, 8);
 
-    // 0x010000GG
-    __m128i src_1_g = _mm_or_si128(value_0x01000000, _mm_srli_epi32(_mm_and_si128(src, mask_0x0000ff00), 8));
+    // 0x00FF00GG
+    __m128i src_ff_g = _mm_or_si128(mask_0x00ff0000, _mm_srli_epi16(src, 8));
     // 0xAA00GG00
-    __m128i src_a_g = _mm_and_si128(mask_0xff00ff00, _mm_mullo_epi16(src_1_g, src_alpha));
+    __m128i src_a_g = _mm_and_si128(mask_0xff00ff00, _mm_mullo_epi16(src_ff_g, src_alpha));
 
     __m128i premultiplied_src = _mm_or_si128(src_b_r, src_a_g);
 
@@ -187,9 +185,7 @@ ALWAYS_INLINE void BlendLine_SSSE3(ColorRGBA* __restrict dest, const ColorRGBA* 
     const __m128i mask_0xff000000 = _mm_slli_epi32(mask_0xffffffff, 24);
     const __m128i mask_0x00ff00ff = _mm_srli_epi16(mask_0xffffffff, 8);
     const __m128i mask_0xff00ff00 = _mm_slli_epi16(mask_0xffffffff, 8);
-    const __m128i mask_0x0000ff00 = _mm_srli_epi32(mask_0xff000000, 16);
-    const __m128i value_0x01010101 = _mm_xor_si128(_mm_add_epi8(mask_0xffffffff, mask_0xffffffff), mask_0xffffffff);
-    const __m128i value_0x01000000 = _mm_and_si128(value_0x01010101, mask_0xff000000);
+    const __m128i mask_0x00ff0000 = _mm_srli_epi32(mask_0xff000000, 8);
 
     uint32_t tail_remain_pixels = 0;
     if ((tail_remain_pixels = width % 4) != 0) {
@@ -206,10 +202,10 @@ ALWAYS_INLINE void BlendLine_SSSE3(ColorRGBA* __restrict dest, const ColorRGBA* 
         src_b_r = _mm_mullo_epi16(src_b_r, src_alpha);
         src_b_r = _mm_srli_epi16(src_b_r, 8);
 
-        // 0x010000GG
-        __m128i src_1_g = _mm_or_si128(value_0x01000000, _mm_srli_epi32(_mm_and_si128(src, mask_0x0000ff00), 8));
+        // 0x00FF00GG
+        __m128i src_ff_g = _mm_or_si128(mask_0x00ff0000, _mm_srli_epi16(src, 8));
         // 0xAA00GG00
-        __m128i src_a_g = _mm_and_si128(mask_0xff00ff00, _mm_mullo_epi16(src_1_g, src_alpha));
+        __m128i src_a_g = _mm_and_si128(mask_0xff00ff00, _mm_mullo_epi16(src_ff_g, src_alpha));
 
         __m128i multiplied_src = _mm_or_si128(src_b_r, src_a_g);
 
@@ -238,10 +234,10 @@ ALWAYS_INLINE void BlendLine_SSSE3(ColorRGBA* __restrict dest, const ColorRGBA* 
         src_b_r = _mm_mullo_epi16(src_b_r, src_alpha);
         src_b_r = _mm_srli_epi16(src_b_r, 8);
 
-        // 0x010000GG
-        __m128i src_1_g = _mm_or_si128(value_0x01000000, _mm_srli_epi32(_mm_and_si128(src, mask_0x0000ff00), 8));
+        // 0x00FF00GG
+        __m128i src_ff_g = _mm_or_si128(mask_0x00ff0000, _mm_srli_epi16(src, 8));
         // 0xAA00GG00
-        __m128i src_a_g = _mm_and_si128(mask_0xff00ff00, _mm_mullo_epi16(src_1_g, src_alpha));
+        __m128i src_a_g = _mm_and_si128(mask_0xff00ff00, _mm_mullo_epi16(src_ff_g, src_alpha));
 
         __m128i multiplied_src = _mm_or_si128(src_b_r, src_a_g);
 

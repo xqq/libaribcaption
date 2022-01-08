@@ -27,6 +27,8 @@ namespace aribcaption::alphablend::internal {
 
 namespace x86 {
 
+#if defined(__SSE2__) || defined(_MSC_VER)
+
 union alignas(16) Vec128i {
     uint8_t u8[16];
     __m128i m128i;
@@ -255,11 +257,13 @@ ALWAYS_INLINE void BlendLine_SSE2(ColorRGBA* __restrict dest, const ColorRGBA* _
     }
 }
 
+#endif  // defined(__SSE2__) || defined(_MSC_VER)
+
 }  // namespace x86
 
 
 ALWAYS_INLINE void FillLine_x86(ColorRGBA* __restrict dest, ColorRGBA color, size_t width) {
-#if (defined(__SSE__) && defined(__SSE2__)) || defined(_MSC_VER)
+#if defined(__SSE2__) || defined(_MSC_VER)
     x86::FillLine_SSE2(dest, color, width);
 #else
     FillLine_Generic(dest, color, width);
@@ -268,7 +272,7 @@ ALWAYS_INLINE void FillLine_x86(ColorRGBA* __restrict dest, ColorRGBA color, siz
 
 ALWAYS_INLINE void FillLineWithAlphas_x86(ColorRGBA* __restrict dest,
                                           const uint8_t* __restrict src_alphas, ColorRGBA color, size_t width) {
-#if (defined(__SSE__) && defined(__SSE2__)) || defined(_MSC_VER)
+#if defined(__SSE2__) || defined(_MSC_VER)
     x86::FillLineWithAlphas_SSE2(dest, src_alphas, color, width);
 #else
     FillLineWithAlphas_Generic(dest, src_alphas, color, width);
@@ -276,7 +280,7 @@ ALWAYS_INLINE void FillLineWithAlphas_x86(ColorRGBA* __restrict dest,
 }
 
 ALWAYS_INLINE void BlendColorToLine_x86(ColorRGBA* __restrict dest, ColorRGBA color, size_t width) {
-#if (defined(__SSE__) && defined(__SSE2__)) || defined(_MSC_VER)
+#if defined(__SSE2__) || defined(_MSC_VER)
     x86::BlendColorToLine_SSE2(dest, color, width);
 #else
     BlendColorToLine_Generic(dest, color, width);
@@ -284,7 +288,7 @@ ALWAYS_INLINE void BlendColorToLine_x86(ColorRGBA* __restrict dest, ColorRGBA co
 }
 
 ALWAYS_INLINE void BlendLine_x86(ColorRGBA* __restrict dest, const ColorRGBA* __restrict src, size_t width) {
-#if (defined(__SSE__) && defined(__SSE2__)) || defined(_MSC_VER)
+#if defined(__SSE2__) || defined(_MSC_VER)
     x86::BlendLine_SSE2(dest, src, width);
 #else
     BlendLine_Generic(dest, src, width);

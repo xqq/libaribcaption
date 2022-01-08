@@ -226,10 +226,9 @@ ALWAYS_INLINE void BlendLine_SSE2(ColorRGBA* __restrict dest, const ColorRGBA* _
         __m128i src = _mm_cvtsi32_si128(static_cast<int>(source[i].u32));
         __m128i src_a_g = _mm_srli_epi16(src, 8);                      // 0x00AA00GG
         __m128i src_b_r = _mm_and_si128(src, mask_0x00ff00ff);         // 0x00BB00RR
-        __m128i src_alpha = _mm_shufflelo_epi16(src_a_g, 0b11110101);  // (lo)0x00AA00AA
 
+        __m128i src_alpha = _mm_shufflelo_epi16(src_a_g, 0b11110101);  // (lo)0x00AA00AA
         src_a_g = _mm_or_si128(src_a_g, mask_0x00ff0000);              // 0x00FF00GG
-        src_alpha = _mm_shufflehi_epi16(src_alpha, 0b11110101);        // (hi)0x00AA00AA
 
         src_b_r = _mm_mullo_epi16(src_b_r, src_alpha);
         src_a_g = _mm_mullo_epi16(src_a_g, src_alpha);

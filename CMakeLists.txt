@@ -208,9 +208,8 @@ target_compile_options(aribcaption
 if(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)" AND CMAKE_SYSTEM_PROCESSOR MATCHES "(x86|X86|x64|X64|amd64|AMD64|i386|i686)")
     target_compile_options(aribcaption
         PRIVATE
+            -msse
             -msse2
-            -msse3
-            -mssse3
     )
 endif()
 

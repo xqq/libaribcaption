@@ -16,10 +16,31 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-add_subdirectory(alphablend)
-add_subdirectory(caption2srt)
-add_subdirectory(png_writer)
-add_subdirectory(decode)
-add_subdirectory(drcs)
-add_subdirectory(ffmpeg)
-add_subdirectory(fontconfig_freetype)
+cmake_minimum_required(VERSION 3.1)
+
+add_executable(test_alphablend
+    EXCLUDE_FROM_ALL
+        test.cpp
+)
+
+target_compile_features(test_alphablend
+    PRIVATE
+        cxx_std_17
+)
+
+target_include_directories(test_alphablend
+    PRIVATE
+        ../../include
+        ../../src
+        ../stopwatch/include
+)
+
+target_link_libraries(test_alphablend
+    PRIVATE
+        aribcaption
+)
+
+set_target_properties(test_alphablend
+    PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)

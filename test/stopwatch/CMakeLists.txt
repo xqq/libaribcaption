@@ -18,41 +18,23 @@
 
 cmake_minimum_required(VERSION 3.1)
 
-find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h)
-find_library(AVCODEC_LIBRARY avcodec)
-
-find_path(AVFORMAT_INCLUDE_DIR libavformat/avformat.h)
-find_library(AVFORMAT_LIBRARY avformat)
-
-add_executable(test_ffmpeg
+add_library(stopwatch
+    STATIC
     EXCLUDE_FROM_ALL
-        test.cpp
+        include/stopwatch.hpp
 )
 
-target_compile_features(test_ffmpeg
+target_compile_features(stopwatch
     PRIVATE
         cxx_std_17
 )
 
-target_include_directories(test_ffmpeg
+target_include_directories(stopwatch
     PRIVATE
-        ../../include
-        ../../src
-        ../png_writer/include
-        ../stopwatch/include
-        ${AVCODEC_INCLUDE_DIR}
-        ${AVFORMAT_INCLUDE_DIR}
+        include/
 )
 
-target_link_libraries(test_ffmpeg
-    PRIVATE
-        aribcaption
-        png_writer
-        ${AVCODEC_LIBRARY}
-        ${AVFORMAT_LIBRARY}
-)
-
-set_target_properties(test_ffmpeg
+set_target_properties(stopwatch
     PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )

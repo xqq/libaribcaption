@@ -240,7 +240,7 @@ ALWAYS_INLINE void BlendLine_SSE2(ColorRGBA* __restrict dest, const ColorRGBA* _
         __m128i src_ff_minus_alpha = _mm_xor_si128(src_alpha, mask_0x00ff00ff);
         __m128i multiplied_src = _mm_or_si128(src_b_r, src_a_g);       // (src)0xAABBGGRR
 
-        __m128i dst = _mm_loadu_si128(reinterpret_cast<__m128i*>(dest));
+        __m128i dst = _mm_cvtsi32_si128(static_cast<int>(dest[i].u32));
 
         __m128i dst_b_r = _mm_and_si128(dst, mask_0x00ff00ff);
         __m128i dst_a_g = _mm_srli_epi16(dst, 8);

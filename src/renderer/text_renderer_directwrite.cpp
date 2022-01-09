@@ -317,15 +317,15 @@ auto TextRendererDirectWrite::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA
 
     // If codepoint was not found in main font, load fallback font
     if (!FontfaceHasCharacter(main_faceinfo_.value(), ucs4)) {
-        log_->w("TextRendererDirectWrite: Main font ",
-                main_faceinfo_.value().family_name, " doesn't contain U+", std::hex, ucs4);
+        log_->w("TextRendererDirectWrite: Main font %s doesn't contain U+%04X",
+                main_faceinfo_.value().family_name.c_str(), ucs4);
         bool reset_fallback_text_format = false;
         // Check fallback faceinfo
         if (!fallback_faceinfo_ || !FontfaceHasCharacter(fallback_faceinfo_.value(), ucs4)) {
             // Fallback font not loaded, or doesn't contain required codepoint
             auto result = LoadDWriteFont(ucs4, fallback_face_index_ + 1);
             if (result.is_err()) {
-                log_->e("TextRendererDirectWrite: Cannot find available fallback font for U+", std::hex, ucs4);
+                log_->e("TextRendererDirectWrite: Cannot find available fallback font for U+%04X", ucs4);
                 return FontProviderErrorToStatus(result.error());
             }
             auto& pair = result.value();

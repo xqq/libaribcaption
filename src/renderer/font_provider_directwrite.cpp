@@ -172,7 +172,7 @@ auto FontProviderDirectWrite::GetFontFace(const std::string& font_name,
         BOOL ucs4_exists = FALSE;
         hr = dwrite_font->HasCharacter(ucs4.value(), &ucs4_exists);
         if (FAILED(hr) || !ucs4_exists) {
-            log_->w("FontProviderDirectWrite: Font ", font_name, " doesn't contain U+", std::hex, ucs4.value());
+            log_->w("FontProviderDirectWrite: Font %s doesn't contain U+%04X", font_name.c_str(), ucs4.value());
             return Err(FontProviderError::kCodePointNotFound);
         }
     }

@@ -23,7 +23,6 @@
 #include "aribcaption/caption.hpp"
 #include "aribcaption/color.hpp"
 #include "renderer/rect.hpp"
-#include "renderer/text_renderer.hpp"
 
 namespace aribcaption {
 
@@ -34,22 +33,17 @@ public:
     explicit Canvas(Bitmap& target_bitmap);
     ~Canvas();
 public:
-    void SetTextRenderer(TextRenderer& text_renderer);
     void ClearColor(ColorRGBA color);
     void ClearRect(ColorRGBA color, const Rect& rect);
     void DrawRect(ColorRGBA color, const Rect& rect);
     void DrawBitmap(const Bitmap& bmp, const Rect& rect);
     void DrawBitmap(const Bitmap& bmp, int target_x, int target_y);
-    auto DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
-                  float stroke_width, int char_width, int char_height, int x, int y,
-                  std::optional<UnderlineInfo> underline_info = std::nullopt) -> TextRenderStatus;
 public:
     // Disallow copy and assign
     Canvas(const Canvas&) = delete;
     Canvas& operator=(const Canvas&) = delete;
 private:
     Bitmap& bitmap_;
-    TextRenderer* text_renderer_ = nullptr;
 };
 
 }  // namespace aribcaption

@@ -20,17 +20,12 @@
 #include "renderer/alphablend.hpp"
 #include "renderer/bitmap.hpp"
 #include "renderer/canvas.hpp"
-#include "renderer/text_renderer.hpp"
 
 namespace aribcaption {
 
 Canvas::Canvas(Bitmap& target_bitmap) : bitmap_(target_bitmap) {}
 
 Canvas::~Canvas() = default;
-
-void Canvas::SetTextRenderer(TextRenderer& text_renderer) {
-    text_renderer_ = &text_renderer;
-}
 
 void Canvas::ClearColor(ColorRGBA color) {
     for (int y = 0; y < bitmap_.height(); y++) {
@@ -93,20 +88,6 @@ void Canvas::DrawBitmap(const Bitmap& bmp, int target_x, int target_y) {
     Rect rect{target_x, target_y, target_x + bmp.width(), target_y + bmp.height()};
 
     DrawBitmap(bmp, rect);
-}
-
-auto Canvas::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
-                      float stroke_width, int char_width, int char_height, int x, int y,
-                      std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
-    assert(text_renderer_);
-    return text_renderer_->DrawChar(ucs4, style, color, stroke_color,
-                                    stroke_width,
-                                    char_width,
-                                    char_height,
-                                    bitmap_,
-                                    x,
-                                    y,
-                                    underline_info);
 }
 
 }  // namespace aribcaption

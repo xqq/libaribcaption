@@ -101,7 +101,7 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
     FT_UInt glyph_index = FT_Get_Char_Index(face, ucs4);
 
     if (glyph_index == 0) {
-        log_->w("Freetype: Main font ", face->family_name, " doesn't contain U+", std::hex, ucs4);
+        log_->w("Freetype: Main font %s doesn't contain U+%04X", face->family_name, ucs4);
         // Missing glyph, check fallback face
         if (fallback_face_ && (glyph_index = FT_Get_Char_Index(fallback_face_, ucs4))) {
             face = fallback_face_;
@@ -110,7 +110,7 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
             // Load next fallback font face by specific codepoint
             auto result = LoadFontFace(ucs4, fallback_face_index_ + 1);
             if (result.is_err()) {
-                log_->e("Freetype: Cannot find available fallback font for U+", std::hex, ucs4);
+                log_->e("Freetype: Cannot find available fallback font for U+%04X", ucs4);
                 return FontProviderErrorToStatus(result.error());
             }
             std::pair<FT_Face, size_t>& pair = result.value();
@@ -121,7 +121,7 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
             face = fallback_face_;
             glyph_index = FT_Get_Char_Index(face, ucs4);
             if (glyph_index == 0) {
-                log_->e("Freetype: Got glyph_index == 0 for U+", std::hex, ucs4, " in fallback font");
+                log_->e("Freetype: Got glyph_index == 0 for U+%04X in fallback font", ucs4);
                 return TextRenderStatus::kCodePointNotFound;
             }
         }

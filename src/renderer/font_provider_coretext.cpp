@@ -130,7 +130,7 @@ auto FontProviderCoreText::GetFontFace(const std::string& font_name,
                                                 glyphs,
                                                 static_cast<CFIndex>(count));
         if (!ret) {
-            log_->w("CoreText: Font ", converted_font, " doesn't contain U+", std::hex, ucs4.value());
+            log_->w("CoreText: Font %s doesn't contain U+%04X", converted_font.c_str(), ucs4.value());
             return Err(FontProviderError::kCodePointNotFound);
         }
     }

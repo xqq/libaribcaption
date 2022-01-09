@@ -180,7 +180,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
             if (status == TextRenderStatus::kOK) {
                 succeed++;
             } else {
-                log_->e("RegionRenderer: canvas.DrawChar() returned error: ", static_cast<int>(status));
+                log_->e("RegionRenderer: canvas.DrawChar() returned error: %d", static_cast<int>(status));
                 if (status == TextRenderStatus::kFontNotFound) {
                     has_font_not_found_error = true;
                 } else if (status == TextRenderStatus::kCodePointNotFound) {
@@ -198,11 +198,11 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
                 succeed++;
             } else {
                 if (status == TextRenderStatus::kCodePointNotFound) {
-                    log_->w("RegionRenderer: Cannot find alternative codepoint U+", std::hex, ch.ucs4,
-                            ", fallback to DRCS rendering");
+                    log_->w("RegionRenderer: Cannot find alternative codepoint U+%04X, fallback to DRCS rendering",
+                            ch.ucs4);
                     has_codepoint_not_found_error = true;
                 } else {
-                    log_->e("RegionRenderer: canvas.DrawChar() returned error: ", static_cast<int>(status));
+                    log_->e("RegionRenderer: canvas.DrawChar() returned error: %d", static_cast<int>(status));
                     if (status == TextRenderStatus::kFontNotFound) {
                         has_font_not_found_error = true;
                     } else if (status == TextRenderStatus::kOtherError) {
@@ -232,7 +232,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
                 }
             } else {
                 // DRCS not found in drcs_map
-                log_->e("RegionRenderer: Missing DRCS for drcs_id ", ch.drcs_id);
+                log_->e("RegionRenderer: Missing DRCS for drcs_id %u", ch.drcs_id);
             }
         }
     }

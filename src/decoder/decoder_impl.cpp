@@ -90,16 +90,17 @@ DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t
     size_t PES_data_packet_header_length = data[2] & 0x0F;
 
     if (data_identifier != 0x80 && data_identifier != 0x81) {
-        log_->e("DecoderImpl: Invalid data_identifier: 0x", std::hex, data_identifier);
+        log_->e("DecoderImpl: Invalid data_identifier: 0x%02X", data_identifier);
         return DecodeStatus::kError;
     } else if (data_identifier != static_cast<uint8_t>(type_)) {
-        log_->e("DecoderImpl: data_identifier mismatch, found: 0x", std::hex, data_identifier,
-                ", expected: 0x", static_cast<uint8_t>(type_));
+        log_->e("DecoderImpl: data_identifier mismatch, found: 0x%02X, expected: 0x%02X",
+                data_identifier,
+                static_cast<uint8_t>(type_));
         return DecodeStatus::kError;
     }
 
     if (private_stream_id != 0xFF) {
-        log_->e("DecoderImpl: Invalid private_stream_id: 0x", std::hex, private_stream_id);
+        log_->e("DecoderImpl: Invalid private_stream_id: 0x%02X", private_stream_id);
         return DecodeStatus::kError;
     }
 
@@ -316,7 +317,7 @@ bool DecoderImpl::ParseCaptionManagementData(const uint8_t* data, size_t length)
     offset += 1;
 
     if (num_languages == 0 || num_languages > 2) {
-        log_->e("DecoderImpl: Invalid num_languages: ", num_languages, ", maximum: 2");
+        log_->e("DecoderImpl: Invalid num_languages: %u, maximum: 2", num_languages);
         return false;
     }
     language_infos_.resize(num_languages);
@@ -426,7 +427,7 @@ bool DecoderImpl::ParseDataUnit(const uint8_t* data, size_t length) {
                                 ((size_t)data[offset + 4] <<  0);
 
         if (unit_separator != 0x1F) {
-            log_->e("DecoderImpl: Invalid unit_separator: 0x", std::hex, unit_separator);
+            log_->e("DecoderImpl: Invalid unit_separator: 0x%02X", unit_separator);
             return false;
         }
 
@@ -461,19 +462,19 @@ bool DecoderImpl::ParseStatementBody(const uint8_t* data, size_t length) {
         if (ch <= 0x20) {
             ret = HandleC0(data + offset, length - offset, &bytes_processed);
             if (!ret)
-                log_->e("DecoderImpl: Handle C0 control character 0x", std::hex, data[offset], " failed near 0x", offset);
+                log_->e("DecoderImpl: Handle C0 control character 0x%02X failed near 0x%04zX", data[offset], offset);
         } else if (ch < 0x7F) {
             ret = HandleGLGR(data + offset, length - offset, &bytes_processed, GL_);
             if (!ret)
-                log_->e("DecoderImpl: Handle GL character 0x", std::hex, data[offset], " failed near 0x", offset);
+                log_->e("DecoderImpl: Handle GL character 0x%02X failed near 0x%04zX", data[offset], offset);
         } else if (ch <= 0xA0) {
             ret = HandleC1(data + offset, length - offset, &bytes_processed);
             if (!ret)
-                log_->e("DecoderImpl: Handle C1 control character 0x", std::hex, data[offset], " failed near 0x", offset);
+                log_->e("DecoderImpl: Handle C1 control character 0x%02X failed near 0x%04zX", data[offset], offset);
         } else if (ch < 0xFF) {
             ret = HandleGLGR(data + offset, length - offset, &bytes_processed, GR_);
             if (!ret)
-                log_->e("DecoderImpl: Handle GR character 0x", std::hex, data[offset], " failed near 0x", offset);
+                log_->e("DecoderImpl: Handle GR character 0x%02X failed near 0x%04zX", data[offset], offset);
         }
 
         if (!ret) {
@@ -549,7 +550,7 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
                     drcs.alternative_ucs4 = iter->second;
                     utf::UTF8AppendCodePoint(drcs.alternative_text, iter->second);
                 } else {
-                    log_->w("DecoderImpl: Cannot convert unrecognized DRCS pattern with MD5 ", drcs.md5, " to Unicode");
+                    log_->w("DecoderImpl: Cannot convert unrecognized DRCS pattern with MD5 %s to Unicode", drcs.md5.c_str());
                 }
 
                 if (byte_count == 1) {

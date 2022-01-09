@@ -258,7 +258,7 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
         if (result.is_ok()) {
             images.push_back(std::move(result.value()));
         } else {
-            log_->e("RendererImpl: Render caption region failed: ", static_cast<int>(result.error()));
+            log_->e("RendererImpl: RenderCaptionRegion() failed with error: %d", static_cast<int>(result.error()));
             return RenderStatus::kError;
         }
     }

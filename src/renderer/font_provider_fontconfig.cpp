@@ -79,7 +79,7 @@ auto FontProviderFontconfig::GetFontFace(const std::string& font_name,
     FcResult result = FcResultMatch;
     FcPattern* matched = FcFontMatch(config_, pattern, &result);
     if (!matched || result != FcResultMatch) {
-        log_->w("Fontconfig: Cannot find a suitable font for ", font_name);
+        log_->w("Fontconfig: Cannot find a suitable font for %s", font_name.c_str());
         return Err(FontProviderError::kFontNotFound);
     }
 
@@ -87,13 +87,13 @@ auto FontProviderFontconfig::GetFontFace(const std::string& font_name,
 
     FcChar8* filename = nullptr;
     if (FcResultMatch != FcPatternGetString(best, FC_FILE, 0, &filename)) {
-        log_->e("Fontconfig: Retrieve font filename failed for ", font_name);
+        log_->e("Fontconfig: Retrieve font filename failed for %s", font_name.c_str());
         return Err(FontProviderError::kOtherError);
     }
 
     int fc_index = 0;
     if (FcResultMatch != FcPatternGetInteger(best, FC_INDEX, 0, &fc_index)) {
-        log_->e("Fontconfig: Retrieve font FC_INDEX failed for ", font_name);
+        log_->e("Fontconfig: Retrieve font FC_INDEX failed for %s", font_name.c_str());
         return Err(FontProviderError::kOtherError);
     }
 
@@ -101,25 +101,25 @@ auto FontProviderFontconfig::GetFontFace(const std::string& font_name,
         FcCharSet* charset = nullptr;
 
         if (FcResultMatch != FcPatternGetCharSet(best, FC_CHARSET, 0, &charset)) {
-            log_->e("Fontconfig: Retrieve font charset failed for ", font_name);
+            log_->e("Fontconfig: Retrieve font charset failed for %s", font_name.c_str());
             return Err(FontProviderError::kOtherError);
         }
 
         if (FcTrue != FcCharSetHasChar(charset, ucs4.value())) {
-            log_->w("Fontconfig: Font ", font_name, " doesn't contain U+", std::hex, ucs4.value());
+            log_->w("Fontconfig: Font %s doesn't contain U+%04X", font_name.c_str(), ucs4.value());
             return Err(FontProviderError::kCodePointNotFound);
         }
     }
 
     FcChar8* fc_family_name = nullptr;
     if (FcResultMatch != FcPatternGetString(best, FC_FAMILY, 0, &fc_family_name)) {
-        log_->e("Fontconfig: Retrieve font FC_FAMILY failed for ", font_name);
+        log_->e("Fontconfig: Retrieve font FC_FAMILY failed for %s", font_name.c_str());
         return Err(FontProviderError::kOtherError);
     }
 
     FcChar8* fc_postscript_name = nullptr;
     if (FcResultMatch != FcPatternGetString(best, FC_POSTSCRIPT_NAME, 0, &fc_postscript_name)) {
-        log_->e("Fontconfig: Retrieve font FC_POSTSCRIPT_NAME failed for ", font_name);
+        log_->e("Fontconfig: Retrieve font FC_POSTSCRIPT_NAME failed for %s", font_name.c_str());
         return Err(FontProviderError::kOtherError);
     }
 

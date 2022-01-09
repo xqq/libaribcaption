@@ -113,7 +113,7 @@ auto TextRendererCoreText::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
     if (!has_glyph) {
         ScopedCFRef<CFStringRef> cf_main_family_name(CTFontCopyFamilyName(ctfont));
         std::string main_family_name = cfstr::CFStringToStdString(cf_main_family_name.get());
-        log_->w("TextRendererCoreText: Main font ", main_family_name, " doesn't contain U+", std::hex, ucs4);
+        log_->w("TextRendererCoreText: Main font %s doesn't contain U+%04X", main_family_name.c_str(), ucs4);
 
         bool reset_sized_fallback = false;
         // Missing glyph, check fallback CTFont
@@ -125,7 +125,7 @@ auto TextRendererCoreText::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
             // Load next fallback CTFont by specific codepoint
             auto result = LoadCTFont(ucs4, fallback_face_index_ + 1);
             if (result.is_err()) {
-                log_->e("TextRendererCoreText: Cannot find available fallback font for U+", std::hex, ucs4);
+                log_->e("TextRendererCoreText: Cannot find available fallback font for U+%04X", ucs4);
                 return FontProviderErrorToStatus(result.error());
             }
             std::pair<ScopedCFRef<CTFontRef>, size_t>& pair = result.value();

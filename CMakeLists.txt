@@ -133,6 +133,7 @@ add_library(aribcaption
         src/base/always_inline.hpp
         src/base/cfstr_helper.hpp
         src/base/language_code.hpp
+        src/base/logger.cpp
         src/base/logger.hpp
         src/base/md5.c
         src/base/md5.h

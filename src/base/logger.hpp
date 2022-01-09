@@ -19,8 +19,19 @@
 #ifndef ARIBCAPTION_LOGGER_HPP
 #define ARIBCAPTION_LOGGER_HPP
 
-#include <sstream>
 #include "aribcaption/context.hpp"
+
+#if defined(__clang__) || defined(__GNUC__)
+    #define ATTRIBUTE_FORMAT_PRINTF(a,b) __attribute__((__format__ (__printf__, a, b)))
+    #define MSVC_FORMAT_CHECK(p) p
+#elif defined(_MSC_VER)
+    #include <sal.h>
+    #define ATTRIBUTE_FORMAT_PRINTF(a,b)
+    #define MSVC_FORMAT_CHECK(p) _Printf_format_string_ p
+#else
+    #define ATTRIBUTE_FORMAT_PRINTF(a,b)
+    #define MSVC_FORMAT_CHECK(p) p
+#endif
 
 namespace aribcaption {
 
@@ -32,40 +43,14 @@ public:
         logcat_cb_ = logcat_cb;
     }
 
-    template <typename... Args>
-    void e(const Args&... items) {
-        std::ostringstream oss;
-        WriteStream(oss, items...);
-        logcat_cb_(LogLevel::kError, oss.str().c_str());
-    }
+    void e(MSVC_FORMAT_CHECK(const char* format), ...) ATTRIBUTE_FORMAT_PRINTF(2, 3);
 
-    template <typename... Args>
-    void w(const Args&... items) {
-        std::ostringstream oss;
-        WriteStream(oss, items...);
-        logcat_cb_(LogLevel::kWarning, oss.str().c_str());
-    }
+    void w(MSVC_FORMAT_CHECK(const char* format), ...) ATTRIBUTE_FORMAT_PRINTF(2, 3);
 
-    template <typename... Args>
-    void v(const Args&... items) {
-        std::ostringstream oss;
-        WriteStream(oss, items...);
-        logcat_cb_(LogLevel::kVerbose, oss.str().c_str());
-    }
+    void v(MSVC_FORMAT_CHECK(const char* format), ...) ATTRIBUTE_FORMAT_PRINTF(2, 3);
 public:
     Logger(const Logger&) = delete;
     Logger& operator=(const Logger&) = delete;
-private:
-    template <typename T>
-    void WriteStream(std::ostringstream& oss, const T& t) {
-        oss << t;
-    }
-
-    template <typename T, typename... Args>
-    void WriteStream(std::ostringstream& oss, const T& t, const Args&... items) {
-        oss << t;
-        WriteStream(oss, items...);
-    }
 private:
     LogcatCB logcat_cb_;
 };

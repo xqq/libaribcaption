@@ -79,9 +79,7 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
     // Handle space characters
     if (ucs4 == 0x0009 || ucs4 == 0x0020 || ucs4 == 0x00A0 || ucs4 == 0x1680 ||
         ucs4 == 0x3000 || ucs4 == 0x202F || ucs4 == 0x205F || (ucs4 >= 0x2000 && ucs4 <= 0x200A)) {
-        if (!(style & CharStyle::kCharStyleUnderline)) {
-            return TextRenderStatus::kOK;
-        }
+        return TextRenderStatus::kOK;
     }
 
     if (!main_face_) {

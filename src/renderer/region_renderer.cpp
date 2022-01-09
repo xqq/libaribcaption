@@ -108,7 +108,6 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
                   ScaleHeight(region.height),
                   PixelFormat::kRGBA8888);
     Canvas canvas(bitmap);
-    canvas.SetTextRenderer(*text_renderer_);
 
     for (const CaptionChar& ch : region.chars) {
         int section_x = ScaleX(ch.x - region.x);
@@ -175,12 +174,13 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
 
         // Draw char
         if (type == CaptionCharType::kText || type == CaptionCharType::kGaiji) {
-            TextRenderStatus status = canvas.DrawChar(ch.ucs4, style, ch.text_color, stroke_color, stroke_width,
-                                                      char_width, char_height, char_x, char_y, underline_info);
+            TextRenderStatus status = text_renderer_->DrawChar(ch.ucs4, style, ch.text_color, stroke_color,
+                                                               stroke_width, char_width, char_height,
+                                                               bitmap, char_x, char_y, underline_info);
             if (status == TextRenderStatus::kOK) {
                 succeed++;
             } else {
-                log_->e("RegionRenderer: canvas.DrawChar() returned error: %d", static_cast<int>(status));
+                log_->e("RegionRenderer: TextRenderer::DrawChar() returned error: %d", static_cast<int>(status));
                 if (status == TextRenderStatus::kFontNotFound) {
                     has_font_not_found_error = true;
                 } else if (status == TextRenderStatus::kCodePointNotFound) {
@@ -192,8 +192,9 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
         } else if ((replace_drcs_ && type == CaptionCharType::kDRCSReplaced) ||
                    (replace_drcs_ && type == CaptionCharType::kDRCSReplacedGaiji)) {
             // Draw replaced DRCS (alternative ucs4)
-            TextRenderStatus status = canvas.DrawChar(ch.ucs4, style, ch.text_color, stroke_color, stroke_width,
-                                                      char_width, char_height, char_x, char_y, underline_info);
+            TextRenderStatus status = text_renderer_->DrawChar(ch.ucs4, style, ch.text_color, stroke_color,
+                                                               stroke_width, char_width, char_height,
+                                                               bitmap, char_x, char_y, underline_info);
             if (status == TextRenderStatus::kOK) {
                 succeed++;
             } else {
@@ -202,7 +203,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
                             ch.ucs4);
                     has_codepoint_not_found_error = true;
                 } else {
-                    log_->e("RegionRenderer: canvas.DrawChar() returned error: %d", static_cast<int>(status));
+                    log_->e("RegionRenderer: TextRenderer::DrawChar() returned error: %d", static_cast<int>(status));
                     if (status == TextRenderStatus::kFontNotFound) {
                         has_font_not_found_error = true;
                     } else if (status == TextRenderStatus::kOtherError) {

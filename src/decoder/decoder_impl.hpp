@@ -46,6 +46,7 @@ public:
     void SetProfile(B24Profile profile);
     void SetLanguageId(B24LanguageId language_id) { language_id_ = language_id; }
     void SetDefaultLanguage(uint32_t iso6392_language_code);
+    void SetReplaceMSZFullWidthAlphanumeric(bool replace);
     [[nodiscard]]
     uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;
     DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result);
@@ -101,6 +102,8 @@ private:
     B24Type type_ = B24Type::kDefault;
     B24Profile profile_ = B24Profile::kDefault;
     B24LanguageId language_id_ = B24LanguageId::kDefault;
+
+    bool replace_msz_fullwidth_ascii_ = false;
 
     std::vector<LanguageInfo> language_infos_;
     uint32_t current_iso6392_language_code_ = 0;

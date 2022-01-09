@@ -58,6 +58,10 @@ void DecoderImpl::SetDefaultLanguage(uint32_t iso6392_language_code) {
     ResetInternalState();
 }
 
+void DecoderImpl::SetReplaceMSZFullWidthAlphanumeric(bool replace) {
+    replace_msz_fullwidth_ascii_ = replace;
+}
+
 uint32_t DecoderImpl::QueryISO6392LanguageCode(B24LanguageId language_id) const {
     if (language_infos_.empty()) {
         return current_iso6392_language_code_;
@@ -1076,6 +1080,12 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         size_t idx2 = ((size_t)data[1] & 0x7F) - 0x21;
         size_t index = idx1 * 94 + idx2;
         uint32_t ucs4 = kKanjiTable[index];
+        // If [ucs4 is Fullwidth alphanumeric] && [request replace] && [under MSZ mode]
+        if ((ucs4 >= 0xFF01 && ucs4 <= 0xFF5E) && replace_msz_fullwidth_ascii_ &&
+                char_horizontal_scale_ * 2 == char_vertical_scale_) {
+            // Replace Fullwidth alphanumerics with Halfwidth alphanumerics
+            ucs4 = (ucs4 & 0xFF) + 0x20;
+        }
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kAlphanumeric ||
@@ -1084,7 +1094,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         uint32_t ucs4 = 0;
         if (IsLatinLanguage()) {
             ucs4 = kAlphanumericTable_Latin[index];
-        } else if (char_horizontal_scale_ * 2 == char_vertical_scale_) {
+        } else if (replace_msz_fullwidth_ascii_ && char_horizontal_scale_ * 2 == char_vertical_scale_) {
             ucs4 = kAlphanumericTable_Halfwidth[index];
         } else {
             ucs4 = kAlphanumericTable_Fullwidth[index];

@@ -45,6 +45,10 @@ void Decoder::SetDefaultLanguage(uint32_t iso6392_language_code) {
     pimpl_->SetDefaultLanguage(iso6392_language_code);
 }
 
+void Decoder::SetReplaceMSZFullWidthAlphanumeric(bool replace) {
+    pimpl_->SetReplaceMSZFullWidthAlphanumeric(replace);
+}
+
 uint32_t Decoder::QueryISO6392LanguageCode(B24LanguageId language_id) const {
     return pimpl_->QueryISO6392LanguageCode(language_id);
 }

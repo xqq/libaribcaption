@@ -52,6 +52,7 @@ public:
     void SetProfile(B24Profile profile);
     void SetLanguageId(B24LanguageId language_id);
     void SetDefaultLanguage(uint32_t iso6392_language_code);
+    void SetReplaceMSZFullWidthAlphanumeric(bool replace);
     [[nodiscard]]
     uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;
     DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result);

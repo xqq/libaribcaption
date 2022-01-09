@@ -128,14 +128,14 @@ bool FontProviderAndroid::ParseAndroidSystemFonts() {
     // First, try parse the fonts.xml with new format (Lollipop+)
     // /system/etc/fonts.xml
     if (!ParseFontsXML(kAndroidFontsXML_LMP)) {
-        log_->w("FontProviderAndroid: Load Lollipop+ config ", kAndroidFontsXML_LMP, " failed");
+        log_->w("FontProviderAndroid: Load Lollipop+ config %s failed", kAndroidFontsXML_LMP);
 
         bool legacy_config_load_succeed = false;
 
         // If failed, fallback to parse the old system_fonts.xml & fallback_fonts.xml
         // /system/etc/system_fonts.xml
         if (!ParseFontsXML(kAndroidFontsXML_OLD_System)) {
-            log_->w("FontProviderAndroid: Load legacy config ", kAndroidFontsXML_OLD_System, " failed");
+            log_->w("FontProviderAndroid: Load legacy config %s failed", kAndroidFontsXML_OLD_System);
         } else {
             legacy_config_load_succeed = true;
         }
@@ -144,7 +144,7 @@ bool FontProviderAndroid::ParseAndroidSystemFonts() {
         if (!ParseFontsXML(kAndroidFontsXML_OLD_Fallback_JA)) {
             // /system/etc/fallback_fonts.xml
             if (!ParseFontsXML(kAndroidFontsXML_OLD_Fallback)) {
-                log_->w("FontProviderAndroid: Load legacy fallback config ", kAndroidFontsXML_OLD_Fallback, " failed");
+                log_->w("FontProviderAndroid: Load legacy fallback config %s failed", kAndroidFontsXML_OLD_Fallback);
             }
         }
 
@@ -152,7 +152,7 @@ bool FontProviderAndroid::ParseAndroidSystemFonts() {
         if (!ParseFontsXML(kAndroidFontsXML_OLD_Vendor_JA)) {
             // /vendor/etc/fallback_fonts.xml
             if (!ParseFontsXML(kAndroidFontsXML_OLD_Vendor)) {
-                log_->v("FontProviderAndroid: Cannot load legacy vendor config ", kAndroidFontsXML_OLD_Vendor);
+                log_->v("FontProviderAndroid: Cannot load legacy vendor config %s", kAndroidFontsXML_OLD_Vendor);
             }
         }
 
@@ -261,13 +261,13 @@ bool FontProviderAndroid::ParseFontsXML(const char *xml_path) {
     XMLDocument doc(true, Whitespace::COLLAPSE_WHITESPACE);
     XMLError err = doc.LoadFile(xml_path);
     if (err != XMLError::XML_SUCCESS) {
-        log_->v("FontProviderAndroid: Open ", xml_path, " failed");
+        log_->v("FontProviderAndroid: Open %s failed", xml_path);
         return false;
     }
 
     XMLElement* root = doc.RootElement();
     if (strcmp(root->Name(), "familyset") != 0) {
-        log_->e("FontProviderAndroid: Root element must be familyset, found ", root->Name());
+        log_->e("FontProviderAndroid: Root element must be familyset, found %s", root->Name());
         return false;
     }
 
@@ -396,7 +396,7 @@ bool FontProviderAndroid::LMPHandleAlias(tinyxml2::XMLElement* element) {
         FontFamily& new_family = font_families_.emplace_back();
         FontFamily* target_family = FindFamilyByName(element->Attribute("to"));
         if (!target_family) {
-            log_->e("FontProviderAndroid: Alias target not found: ", element->Attribute("to"));
+            log_->e("FontProviderAndroid: Alias target not found: %s", element->Attribute("to"));
             return false;
         }
 
@@ -416,7 +416,7 @@ bool FontProviderAndroid::LMPHandleAlias(tinyxml2::XMLElement* element) {
     } else {
         FontFamily* target_family = FindFamilyByName(element->Attribute("to"));
         if (!target_family) {
-            log_->e("FontProviderAndroid: Alias target not found: ", element->Attribute("to"));
+            log_->e("FontProviderAndroid: Alias target not found: %s", element->Attribute("to"));
             return false;
         }
         target_family->names.emplace_back(element->Attribute("name"));

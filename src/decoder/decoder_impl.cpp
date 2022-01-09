@@ -1066,10 +1066,14 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kKatakana ||
-               entry->graphics_set == GraphicSet::kProportionalKatakana ||
-               entry->graphics_set == GraphicSet::kJIS_X0201_Katakana) {
+               entry->graphics_set == GraphicSet::kProportionalKatakana) {
         size_t index = ((size_t)data[0] & 0x7F) - 0x21;
         uint32_t ucs4 = kKatakanaTable[index];
+        PushCharacter(ucs4);
+        MoveRelativeActivePos(1, 0);
+    } else if (entry->graphics_set == GraphicSet::kJIS_X0201_Katakana) {
+        size_t index = ((size_t)data[0] & 0x7F) - 0x21;
+        uint32_t ucs4 = kJISX0201KatakanaTable[index];
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kKanji ||

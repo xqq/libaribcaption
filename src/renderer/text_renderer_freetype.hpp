@@ -45,9 +45,11 @@ public:
     bool Initialize() override;
     void SetLanguage(uint32_t iso6392_language_code) override;
     bool SetFontFamily(const std::vector<std::string>& font_family) override;
-    auto DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
+    auto BeginDraw(Bitmap& target_bmp) -> TextRenderContext override;
+    void EndDraw(TextRenderContext& context) override;
+    auto DrawChar(TextRenderContext& render_ctx, int x, int y,
+                  uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
                   float stroke_width, int char_width, int char_height,
-                  Bitmap& target_bmp, int x, int y,
                   std::optional<UnderlineInfo> underline_info) -> TextRenderStatus override;
 private:
     static Bitmap FTBitmapToColoredBitmap(const FT_Bitmap& ft_bmp, ColorRGBA color);

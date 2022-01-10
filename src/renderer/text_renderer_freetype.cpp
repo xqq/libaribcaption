@@ -67,9 +67,17 @@ bool TextRendererFreetype::SetFontFamily(const std::vector<std::string>& font_fa
     return true;
 }
 
-auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
+auto TextRendererFreetype::BeginDraw(Bitmap& target_bmp) -> TextRenderContext {
+    return TextRenderContext(target_bmp);
+}
+
+void TextRendererFreetype::EndDraw(TextRenderContext& context) {
+    // No-op
+}
+
+auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x, int target_y,
+                                    uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
                                     float stroke_width, int char_width, int char_height,
-                                    Bitmap& target_bmp, int target_x, int target_y,
                                     std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
     assert(char_height > 0);
     if (stroke_width < 0.0f) {
@@ -185,7 +193,7 @@ auto TextRendererFreetype::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
         border_glyph_image = std::move(stroke_glyph);
     }
 
-    Canvas canvas(target_bmp);
+    Canvas canvas(render_ctx.GetBitmap());
 
     // Draw Underline if required
     if ((style & kCharStyleUnderline) && underline_info && underline_thickness > 0) {

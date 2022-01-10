@@ -42,6 +42,39 @@ enum class TextRenderStatus {
     kOtherError
 };
 
+class TextRenderContext {
+public:
+    struct ContextPrivate {
+    public:
+        ContextPrivate() = default;
+        virtual ~ContextPrivate() = default;
+    };
+public:
+    explicit TextRenderContext(Bitmap& bmp) : bitmap_(&bmp) {}
+    TextRenderContext(Bitmap& bmp, std::unique_ptr<ContextPrivate> priv) : bitmap_(&bmp), priv_(std::move(priv)) {}
+    ~TextRenderContext() = default;
+
+    [[nodiscard]]
+    Bitmap& GetBitmap() const {
+        return *bitmap_;
+    }
+
+    [[nodiscard]]
+    ContextPrivate* GetPrivate() const {
+        return priv_.get();
+    }
+public:
+    // Disallow copy and assign
+    TextRenderContext(const TextRenderContext&) = delete;
+    TextRenderContext& operator=(const TextRenderContext&) = delete;
+    // Allow move construct / move assignment
+    TextRenderContext(TextRenderContext&&) = default;
+    TextRenderContext& operator=(TextRenderContext&&) = default;
+private:
+    Bitmap* bitmap_ = nullptr;  // Should be non-null
+    std::unique_ptr<ContextPrivate> priv_;
+};
+
 class TextRenderer {
 public:
     static std::unique_ptr<TextRenderer> Create(TextRendererType type, Context& context, FontProvider& font_provider);
@@ -54,9 +87,11 @@ public:
     virtual bool Initialize() = 0;
     virtual void SetLanguage(uint32_t iso6392_language_code) = 0;
     virtual bool SetFontFamily(const std::vector<std::string>& font_family) = 0;
-    virtual auto DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
+    virtual auto BeginDraw(Bitmap& target_bmp) -> TextRenderContext = 0;
+    virtual void EndDraw(TextRenderContext& context) = 0;
+    virtual auto DrawChar(TextRenderContext& render_ctx, int x, int y,
+                          uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
                           float stroke_width, int char_width, int char_height,
-                          Bitmap& target_bmp, int x, int y,
                           std::optional<UnderlineInfo> underline_info) -> TextRenderStatus = 0;
 public:
     // Disallow copy and assign

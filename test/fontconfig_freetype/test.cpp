@@ -81,7 +81,7 @@ int main(int argc, const char* argv[]) {
     printf("bitmap size: width %d, height %d\n", bitmap.width(), bitmap.height());
 
     Canvas canvas(bitmap);
-    canvas.SetTextRenderer(text_renderer);
+    TextRenderContext text_render_ctx = text_renderer.BeginDraw(bitmap);
     canvas.ClearColor(ColorRGBA(0, 0, 0, 60));
 
     for (size_t i = 0; i < chars.size(); i++) {
@@ -95,16 +95,17 @@ int main(int argc, const char* argv[]) {
         if (i == 2 || i == 3 || i == 5)
             style = static_cast<CharStyle>(style | CharStyle::kCharStyleUnderline);
 
-        auto status = canvas.DrawChar(ch,
-                                      style,
-                                      ColorRGBA(  0, 255,   0, 255),
-                                      ColorRGBA(  0,   0,   0, 180),
-                                      3,
-                                      0,  // char_width * scale_factor,
-                                      char_height * scale_factor,
-                                      x,
-                                      y,
-                                      UnderlineInfo{section_x, section_width * scale_factor});
+        auto status = text_renderer.DrawChar(text_render_ctx,
+                                             x,
+                                             y,
+                                             ch,
+                                             style,
+                                             ColorRGBA(  0, 255,   0, 255),
+                                             ColorRGBA(  0,   0,   0, 180),
+                                             3,
+                                             0,  // char_width * scale_factor,
+                                             char_height * scale_factor,
+                                             UnderlineInfo{section_x, section_width * scale_factor});
         if (status != TextRenderStatus::kOK) {
             fprintf(stderr, "text_renderer.DrawChar returned error %d\n", static_cast<int>(status));
             return -1;
@@ -120,23 +121,27 @@ int main(int argc, const char* argv[]) {
         }
     }
 
+    text_renderer.EndDraw(text_render_ctx);
+
     if (!png_writer_write_bitmap("test_fontconfig_freetype_output.png", bitmap)) {
         fprintf(stderr, "write_png_file() failed\n");
         return -1;
     }
 
     Bitmap bmp(char_width * scale_factor, char_height * scale_factor, PixelFormat::kRGBA8888);
-    text_renderer.DrawChar(U'獣',
+    text_render_ctx = text_renderer.BeginDraw(bmp);
+    text_renderer.DrawChar(text_render_ctx,
+                           0,
+                           0,
+                           U'獣',
                            CharStyle::kCharStyleStroke,
                            ColorRGBA(255, 255, 0, 255),
                            ColorRGBA(0, 0, 0, 220),
                            3,
                            char_width * scale_factor,
                            char_height * scale_factor,
-                           bmp,
-                           0,
-                           0,
                            std::nullopt);
+    text_renderer.EndDraw(text_render_ctx);
 
     if (!png_writer_write_bitmap("7363.png", bmp)) {
         fprintf(stderr, "write_png_file() failed\n");

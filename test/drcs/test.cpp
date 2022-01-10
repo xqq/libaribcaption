@@ -134,7 +134,7 @@ int main(int argc, const char* argv[]) {
                           region.height * scale_factor,
                           PixelFormat::kRGBA8888);
         Canvas canvas(region_bmp);
-        canvas.SetTextRenderer(text_renderer);
+        TextRenderContext text_render_ctx = text_renderer.BeginDraw(region_bmp);
 
         for (CaptionChar& ch : region.chars) {
             // background
@@ -172,8 +172,9 @@ int main(int argc, const char* argv[]) {
                     fprintf(stderr, "drcs_renderer.DrawDRCS() returned error\n");
                 }
             } else {
-                auto render_status = canvas.DrawChar(ch.ucs4, style, ch.text_color, stroke_color, stroke_width,
-                                                     char_width, char_height, x, y);
+                auto render_status = text_renderer.DrawChar(text_render_ctx, x, y,
+                                                            ch.ucs4, style, ch.text_color, stroke_color,
+                                                            stroke_width, char_width, char_height, std::nullopt);
                 if (render_status != TextRenderStatus::kOK) {
                     fprintf(stderr, "canvas.DrawChar() returned error %d\n", static_cast<int>(render_status));
                 }
@@ -189,6 +190,7 @@ int main(int argc, const char* argv[]) {
             }
         }
 
+        text_renderer.EndDraw(text_render_ctx);
         caption_canvas.DrawBitmap(region_bmp, region.x * scale_factor, region.y * scale_factor);
     }
 

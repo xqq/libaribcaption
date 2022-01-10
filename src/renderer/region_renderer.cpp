@@ -108,6 +108,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
                   ScaleHeight(region.height),
                   PixelFormat::kRGBA8888);
     Canvas canvas(bitmap);
+    TextRenderContext text_render_ctx = text_renderer_->BeginDraw(bitmap);
 
     for (const CaptionChar& ch : region.chars) {
         int section_x = ScaleX(ch.x - region.x);
@@ -174,9 +175,10 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
 
         // Draw char
         if (type == CaptionCharType::kText || type == CaptionCharType::kGaiji) {
-            TextRenderStatus status = text_renderer_->DrawChar(ch.ucs4, style, ch.text_color, stroke_color,
+            TextRenderStatus status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
+                                                               ch.ucs4, style, ch.text_color, stroke_color,
                                                                stroke_width, char_width, char_height,
-                                                               bitmap, char_x, char_y, underline_info);
+                                                               underline_info);
             if (status == TextRenderStatus::kOK) {
                 succeed++;
             } else {
@@ -192,9 +194,10 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
         } else if ((replace_drcs_ && type == CaptionCharType::kDRCSReplaced) ||
                    (replace_drcs_ && type == CaptionCharType::kDRCSReplacedGaiji)) {
             // Draw replaced DRCS (alternative ucs4)
-            TextRenderStatus status = text_renderer_->DrawChar(ch.ucs4, style, ch.text_color, stroke_color,
+            TextRenderStatus status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
+                                                               ch.ucs4, style, ch.text_color, stroke_color,
                                                                stroke_width, char_width, char_height,
-                                                               bitmap, char_x, char_y, underline_info);
+                                                               underline_info);
             if (status == TextRenderStatus::kOK) {
                 succeed++;
             } else {
@@ -237,6 +240,8 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
             }
         }
     }
+
+    text_renderer_->EndDraw(text_render_ctx);
 
     // If there's no successfully rendered char, return RegionRenderError
     if (char_count > 0 && succeed == 0) {

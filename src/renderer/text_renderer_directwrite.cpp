@@ -466,9 +466,9 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
     int y_adjust = (char_height - charbox_height) / 2;
     target_y += y_adjust;
 
-    auto priv = static_cast<TextRenderContextPrivateDirectWrite*>(render_ctx.GetPrivate());
+    auto render_ctx_priv = static_cast<TextRenderContextPrivateDirectWrite*>(render_ctx.GetPrivate());
     Bitmap& target_bmp = render_ctx.GetBitmap();
-    ID2D1RenderTarget* render_target = priv->d2d_render_target.Get();
+    ID2D1RenderTarget* render_target = render_ctx_priv->d2d_render_target.Get();
 
     auto underline_callback = [&](const DWRITE_UNDERLINE* underline) -> void {
         if (!underline_info)

@@ -273,10 +273,68 @@ bool TextRendererDirectWrite::SetFontFamily(const std::vector<std::string>& font
     return false;
 }
 
-auto TextRendererDirectWrite::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
+struct TextRenderContextPrivateDirectWrite : public TextRenderContext::ContextPrivate {
+public:
+    TextRenderContextPrivateDirectWrite() = default;
+    ~TextRenderContextPrivateDirectWrite() override = default;
+public:
+    ComPtr<IWICBitmap> wic_bitmap;
+    ComPtr<ID2D1RenderTarget> d2d_render_target;
+};
+
+auto TextRendererDirectWrite::BeginDraw(Bitmap& target_bmp) -> TextRenderContext {
+    auto priv = std::make_unique<TextRenderContextPrivateDirectWrite>();
+    // Create WIC bitmap
+    HRESULT hr = wic_factory_->CreateBitmap(static_cast<UINT>(target_bmp.width()),
+                                            static_cast<UINT>(target_bmp.height()),
+                                            GUID_WICPixelFormat32bppPRGBA,
+                                            WICBitmapCreateCacheOption::WICBitmapCacheOnLoad,
+                                            &priv->wic_bitmap);
+    if (FAILED(hr)) {
+        log_->e("TextRendererDirectWrite: Allocate IWICBitmap failed");
+        return TextRenderContext(target_bmp);
+    }
+
+    // Create WIC-target Direct2D render target
+    priv->d2d_render_target = CreateWICRenderTarget(priv->wic_bitmap.Get());
+    if (!priv->d2d_render_target) {
+        log_->e("TextRendererDirectWrite: Create WIC ID2D1RenderTarget failed");
+        return TextRenderContext(target_bmp);
+    }
+
+    priv->d2d_render_target->BeginDraw();
+    priv->d2d_render_target->Clear();
+    priv->d2d_render_target->SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+    priv->d2d_render_target->SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE);
+
+    return TextRenderContext{target_bmp, std::move(priv)};
+}
+
+void TextRendererDirectWrite::EndDraw(TextRenderContext& context) {
+    auto priv = static_cast<TextRenderContextPrivateDirectWrite*>(context.GetPrivate());
+
+    HRESULT hr = priv->d2d_render_target->EndDraw();
+    if (FAILED(hr)) {
+        log_->e("TextRendererDirectWrite: ID2D1RenderTarget::EndDraw() returned error");
+    }
+    priv->d2d_render_target.Reset();
+
+    bool result = BlendWICBitmapToBitmap(priv->wic_bitmap.Get(), context.GetBitmap(), 0, 0);
+    if (!result) {
+        log_->e("TextRendererDirectWrite: BlendWICBitmapToBitmap() failed");
+    }
+    priv->wic_bitmap.Reset();
+}
+
+auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target_x, int target_y,
+                                       uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
                                        float stroke_width, int char_width, int char_height,
-                                       Bitmap& target_bmp, int target_x, int target_y,
                                        std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
+    if (!render_ctx.GetPrivate()) {
+        log_->e("TextRendererDirectWrite: Invalid TextRenderContext, BeginDraw() failed or not called");
+        return TextRenderStatus::kOtherError;
+    }
+
     assert(char_height > 0);
     if (stroke_width < 0.0f) {
         stroke_width = 0.0f;
@@ -395,34 +453,22 @@ auto TextRendererDirectWrite::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA
     }
 
     // Calculate WIC bitmap size
-    int bmp_width = static_cast<int>(ceilf((metrics.width + (float)margin_x * 2) * horizontal_scale));
-    int bmp_height = static_cast<int>(ceilf(metrics.height)) + margin_y * 2;
-    if (bmp_width == 0) {
-        bmp_width = static_cast<int>(static_cast<float>(bmp_height) * horizontal_scale);
+    int charbox_width = static_cast<int>(ceilf((metrics.width + (float)margin_x * 2) * horizontal_scale));
+    int charbox_height = static_cast<int>(ceilf(metrics.height)) + margin_y * 2;
+    if (charbox_width == 0) {
+        charbox_width = static_cast<int>(static_cast<float>(charbox_height) * horizontal_scale);
     }
 
     // Adjust x coordinate for reserve spaces
     target_x -= margin_x;
 
     // Adjust target_y based on actual text bitmap height
-    int y_adjust = (char_height - bmp_height) / 2;
+    int y_adjust = (char_height - charbox_height) / 2;
     target_y += y_adjust;
 
-    // Create WIC bitmap
-    ComPtr<IWICBitmap> wic_bitmap;
-    hr = wic_factory_->CreateBitmap(static_cast<UINT>(bmp_width), static_cast<UINT>(bmp_height),
-                                    GUID_WICPixelFormat32bppPRGBA, WICBitmapCreateCacheOption::WICBitmapCacheOnLoad,
-                                    &wic_bitmap);
-    if (FAILED(hr)) {
-        log_->e("TextRendererDirectWrite: Allocate IWICBitmap failed");
-        return TextRenderStatus::kOtherError;
-    }
-
-    // Create WIC-target Direct2D render target
-    ComPtr<ID2D1RenderTarget> render_target = CreateWICRenderTarget(wic_bitmap.Get());
-    if (!render_target) {
-        return TextRenderStatus::kOtherError;
-    }
+    auto priv = static_cast<TextRenderContextPrivateDirectWrite*>(render_ctx.GetPrivate());
+    Bitmap& target_bmp = render_ctx.GetBitmap();
+    ID2D1RenderTarget* render_target = priv->d2d_render_target.Get();
 
     auto underline_callback = [&](const DWRITE_UNDERLINE* underline) -> void {
         if (!underline_info)
@@ -443,11 +489,6 @@ auto TextRendererDirectWrite::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA
         canvas.DrawRect(color, underline_rect);
     };
 
-    render_target->BeginDraw();
-    render_target->Clear();
-    render_target->SetAntialiasMode(D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
-    render_target->SetTextAntialiasMode(D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE);
-
     ComPtr<ID2D1SolidColorBrush> fill_brush;
     render_target->CreateSolidColorBrush(RGBAToD2DColor(color), &fill_brush);
 
@@ -460,18 +501,8 @@ auto TextRendererDirectWrite::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA
 
     text_layout->Draw(nullptr,
                       outline_text_renderer.Get(),
-                      static_cast<float>(margin_x),
-                      static_cast<float>(margin_y));
-
-    hr = render_target->EndDraw();
-    if (FAILED(hr)) {
-        log_->e("TextRendererDirectWrite: ID2D1RenderTarget::EndDraw() returns error");
-    }
-
-    bool result = BlendWICBitmapToBitmap(wic_bitmap.Get(), target_bmp, target_x, target_y);
-    if (!result) {
-        return TextRenderStatus::kOtherError;
-    }
+                      static_cast<float>(target_x + margin_x),
+                      static_cast<float>(target_y + margin_y));
 
     return TextRenderStatus::kOK;
 }

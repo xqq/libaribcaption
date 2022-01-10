@@ -60,9 +60,41 @@ bool TextRendererCoreText::SetFontFamily(const std::vector<std::string>& font_fa
     return true;
 }
 
-auto TextRendererCoreText::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
+struct TextRenderContextPrivateCoreText : public TextRenderContext::ContextPrivate {
+public:
+    TextRenderContextPrivateCoreText() = default;
+    ~TextRenderContextPrivateCoreText() override = default;
+public:
+    ScopedCFRef<CGContextRef> cg_context;
+};
+
+auto TextRendererCoreText::BeginDraw(Bitmap& target_bmp) -> TextRenderContext {
+    ScopedCFRef<CGContextRef> ctx = CreateBitmapTargetCGContext(target_bmp);
+
+    CGContextSetShouldAntialias(ctx.get(), true);
+    CGContextSetShouldSmoothFonts(ctx.get(), true);
+
+    CGContextSetAllowsFontSubpixelPositioning(ctx.get(), true);
+    CGContextSetShouldSubpixelPositionFonts(ctx.get(), true);
+
+    CGContextSetAllowsFontSubpixelQuantization(ctx.get(), true);
+    CGContextSetShouldSubpixelQuantizeFonts(ctx.get(), true);
+
+    auto priv = std::make_unique<TextRenderContextPrivateCoreText>();
+    priv->cg_context = std::move(ctx);
+
+    return TextRenderContext{target_bmp, std::move(priv)};
+}
+
+void TextRendererCoreText::EndDraw(TextRenderContext& context) {
+    auto priv = static_cast<TextRenderContextPrivateCoreText*>(context.GetPrivate());
+    // Release CGContext
+    priv->cg_context.reset();
+}
+
+auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x, int target_y,
+                                    uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
                                     float stroke_width, int char_width, int char_height,
-                                    Bitmap& target_bmp, int target_x, int target_y,
                                     std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
     assert(char_height > 0);
     if (stroke_width < 0.0f) {
@@ -156,22 +188,16 @@ auto TextRendererCoreText::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
     CGFloat em_height = ascent + descent;
 
     CGFloat em_adjust_y = (static_cast<CGFloat>(char_height) - em_height) / 2.0f;
-    CGFloat charbox_bottom = target_bmp.height() - (target_y + char_height);
+    CGFloat charbox_bottom = render_ctx.GetBitmap().height() - (target_y + char_height);
     CGFloat baseline_y = std::round(charbox_bottom + descent + em_adjust_y);
-
-    ScopedCFRef<CGContextRef> ctx = CreateBitmapTargetCGContext(target_bmp);
-
-    CGContextSetShouldAntialias(ctx.get(), true);
-    CGContextSetShouldSmoothFonts(ctx.get(), true);
-
-    CGContextSetAllowsFontSubpixelPositioning(ctx.get(), true);
-    CGContextSetShouldSubpixelPositionFonts(ctx.get(), true);
-
-    CGContextSetAllowsFontSubpixelQuantization(ctx.get(), true);
-    CGContextSetShouldSubpixelQuantizeFonts(ctx.get(), true);
 
     CGFloat underline_pos = CTFontGetUnderlinePosition(ctfont);
     CGFloat underline_thickness = CTFontGetUnderlineThickness(ctfont);
+
+    auto render_ctx_priv = static_cast<TextRenderContextPrivateCoreText*>(render_ctx.GetPrivate());
+    const ScopedCFRef<CGContextRef>& ctx = render_ctx_priv->cg_context;
+
+    CGContextSaveGState(ctx.get());
 
     // Draw Underline if required
     if ((style & kCharStyleUnderline) && underline_info && underline_thickness > 0.0f) {
@@ -213,6 +239,8 @@ auto TextRendererCoreText::DrawChar(uint32_t ucs4, CharStyle style, ColorRGBA co
     ScopedCFRef<CGColorRef> cg_fill_color = RGBAToCGColor(color);
     CGContextSetFillColorWithColor(ctx.get(), cg_fill_color.get());
     CTFontDrawGlyphs(ctfont, &glyphs[0], &origin, 1, ctx.get());
+
+    CGContextRestoreGState(ctx.get());
 
     return TextRenderStatus::kOK;
 }

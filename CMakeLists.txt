@@ -32,7 +32,13 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Default to Release build" FORCE)
 endif()
 
-if(WIN32)
+# Indicate -DARIBCC_NO_RENDERER:BOOL=ON to disable renderer
+option(ARIBCC_NO_RENDERER "Disable Renderer" OFF)
+
+if(ARIBCC_NO_RENDERER)
+    # Renderer is disabled
+    message(STATUS "Renderer has been disabled by ARIBCC_NO_RENDERER")
+elseif(WIN32)
     # Windows, use DirectWrite
     option(ARIBCC_USE_DIRECTWRITE "Enable DirectWrite text rendering backend" ON)
 elseif(APPLE)
@@ -126,8 +132,6 @@ add_library(aribcaption
         include/aribcaption/color.hpp
         include/aribcaption/context.hpp
         include/aribcaption/decoder.hpp
-        include/aribcaption/image.hpp
-        include/aribcaption/renderer.hpp
         src/base/aligned_alloc.cpp
         src/base/always_inline.hpp
         src/base/cfstr_helper.hpp
@@ -141,8 +145,6 @@ add_library(aribcaption
         src/base/scoped_cfref.hpp
         src/base/scoped_com_initializer.hpp
         src/base/scoped_holder.hpp
-        $<$<BOOL:${ARIBCC_IS_ANDROID}>:src/base/tinyxml2.cpp>
-        $<$<BOOL:${ARIBCC_IS_ANDROID}>:src/base/tinyxml2.h>
         src/base/utf_helper.hpp
         src/base/wchar_helper.hpp
         src/decoder/b24_codesets.hpp
@@ -154,6 +156,17 @@ add_library(aribcaption
         src/decoder/decoder.cpp
         src/decoder/decoder_impl.cpp
         src/decoder/decoder_impl.hpp
+        src/c_api.cpp
+        src/context.cpp
+)
+
+# Append renderer-related sources if renderer not disabled
+if(NOT ARIBCC_NO_RENDERER)
+    target_sources(aribcaption PRIVATE
+        include/aribcaption/image.hpp
+        include/aribcaption/renderer.hpp
+        $<$<BOOL:${ARIBCC_IS_ANDROID}>:src/base/tinyxml2.cpp>
+        $<$<BOOL:${ARIBCC_IS_ANDROID}>:src/base/tinyxml2.h>
         src/renderer/alphablend.hpp
         src/renderer/alphablend_generic.hpp
         src/renderer/alphablend_x86.hpp
@@ -187,9 +200,8 @@ add_library(aribcaption
         $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:src/renderer/text_renderer_directwrite.hpp>
         $<$<BOOL:${ARIBCC_USE_FREETYPE}>:src/renderer/text_renderer_freetype.cpp>
         $<$<BOOL:${ARIBCC_USE_FREETYPE}>:src/renderer/text_renderer_freetype.hpp>
-        src/c_api.cpp
-        src/context.cpp
-)
+    )
+endif()
 
 add_library(aribcaption::aribcaption ALIAS aribcaption)
 
@@ -266,16 +278,6 @@ endif()
 ### Installing
 include(GNUInstallDirs)
 
-# Install public headers
-install(
-    DIRECTORY
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/
-    DESTINATION
-        ${CMAKE_INSTALL_INCLUDEDIR}/aribcaption
-    PATTERN "aribcc_config.h.in" EXCLUDE
-    PATTERN ".DS_Store" EXCLUDE
-)
-
 # Install generated config header
 install(
     FILES
@@ -283,6 +285,32 @@ install(
     DESTINATION
         ${CMAKE_INSTALL_INCLUDEDIR}/aribcaption
 )
+
+# Install decoder-related public headers
+install(
+    FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aribcaption.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aribcaption.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/b24.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/caption.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/color.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/context.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/decoder.hpp
+    DESTINATION
+        ${CMAKE_INSTALL_INCLUDEDIR}/aribcaption
+)
+
+# Install renderer-related public headers, if not disabled
+if(NOT ARIBCC_NO_RENDERER)
+    install(
+        FILES
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aligned_alloc.hpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/image.hpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/renderer.hpp
+        DESTINATION
+            ${CMAKE_INSTALL_INCLUDEDIR}/aribcaption
+    )
+endif()
 
 # Install
 install(

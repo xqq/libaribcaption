@@ -20,7 +20,6 @@
 #define ARIBCAPTION_B24_DECODER_HPP
 
 #include <cstdint>
-#include <functional>
 #include <memory>
 #include "b24.hpp"
 #include "caption.hpp"

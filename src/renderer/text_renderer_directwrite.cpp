@@ -452,7 +452,7 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
         return TextRenderStatus::kOtherError;
     }
 
-    // Calculate WIC bitmap size
+    // Calculate charbox size
     int charbox_width = static_cast<int>(ceilf((metrics.width + (float)margin_x * 2) * horizontal_scale));
     int charbox_height = static_cast<int>(ceilf(metrics.height)) + margin_y * 2;
     if (charbox_width == 0) {

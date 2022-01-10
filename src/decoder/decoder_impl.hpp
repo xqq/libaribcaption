@@ -28,7 +28,6 @@
 #include "aribcaption/caption.hpp"
 #include "aribcaption/context.hpp"
 #include "aribcaption/decoder.hpp"
-#include "aribcaption/drcs.hpp"
 #include "base/logger.hpp"
 #include "decoder/b24_codesets.hpp"
 

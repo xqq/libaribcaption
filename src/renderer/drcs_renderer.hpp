@@ -21,7 +21,6 @@
 
 #include "aribcaption/caption.hpp"
 #include "aribcaption/color.hpp"
-#include "aribcaption/drcs.hpp"
 
 namespace aribcaption {
 

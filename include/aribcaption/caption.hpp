@@ -26,7 +26,6 @@
 #include <vector>
 #include <unordered_map>
 #include "color.hpp"
-#include "drcs.hpp"
 
 namespace aribcaption {
 
@@ -115,6 +114,23 @@ public:
     int section_height() const {
         return (int)std::floor((float)(char_height + char_vertical_spacing) * char_vertical_scale);
     }
+};
+
+struct DRCS {
+    int width = 0;
+    int height = 0;
+    int depth = 0;
+    int depth_bits = 0;
+    std::vector<uint8_t> pixels;
+    std::string md5;
+    std::string alternative_text;
+    uint32_t alternative_ucs4 = 0;
+public:
+    DRCS() = default;
+    DRCS(const DRCS&) = default;
+    DRCS(DRCS&&) = default;
+    DRCS& operator=(const DRCS&) = default;
+    DRCS& operator=(DRCS&&) = default;
 };
 
 struct CaptionRegion {

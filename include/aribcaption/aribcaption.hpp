@@ -21,7 +21,6 @@
 
 #include "b24.hpp"
 #include "context.hpp"
-#include "drcs.hpp"
 #include "color.hpp"
 #include "caption.hpp"
 #include "image.hpp"

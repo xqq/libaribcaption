@@ -126,7 +126,6 @@ add_library(aribcaption
         include/aribcaption/color.hpp
         include/aribcaption/context.hpp
         include/aribcaption/decoder.hpp
-        include/aribcaption/drcs.hpp
         include/aribcaption/image.hpp
         include/aribcaption/renderer.hpp
         src/base/aligned_alloc.cpp

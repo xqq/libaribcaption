@@ -291,7 +291,7 @@ install(
     FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aribcaption.h
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aribcaption.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/b24.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/b24.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/caption.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/color.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/context.hpp

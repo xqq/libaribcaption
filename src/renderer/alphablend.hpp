@@ -66,7 +66,11 @@ ALWAYS_INLINE void BlendLine(ColorRGBA* __restrict dest, const ColorRGBA* __rest
 
 ALWAYS_INLINE void BlendLine_PremultipliedSrc(ColorRGBA* __restrict dest,
                                               const ColorRGBA* __restrict src, size_t width) {
+#if defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
+    internal::BlendLine_PremultipliedSrc_x86(dest, src, width);
+#else
     internal::BlendLine_PremultipliedSrc_Generic(dest, src, width);
+#endif
 }
 
 }  // namespace aribcaption::alphablend

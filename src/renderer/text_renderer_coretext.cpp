@@ -96,6 +96,11 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
                                     uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
                                     float stroke_width, int char_width, int char_height,
                                     std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
+    if (!render_ctx.GetPrivate()) {
+        log_->e("TextRendererCoreText: Invalid TextRenderContext, BeginDraw() failed or not called");
+        return TextRenderStatus::kOtherError;
+    }
+
     assert(char_height > 0);
     if (stroke_width < 0.0f) {
         stroke_width = 0.0f;

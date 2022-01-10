@@ -57,6 +57,23 @@ ALWAYS_INLINE ColorRGBA BlendColor(ColorRGBA bg_color, ColorRGBA fg_color) {
     return ColorRGBA((b_r & mask_b_r) | (a_g & mask_a_g));
 }
 
+// Alpha blend for premultiplied src(foreground)
+// alpha is within range [0, 1] in the formula
+// out_alpha = foreground_alpha + background_alpha * (1 - foreground_alpha)
+// out_rgb = foreground_rgb + background_rgb * (1 - foreground_alpha)
+ALWAYS_INLINE ColorRGBA BlendColor_PremultipliedSrc(ColorRGBA bg_color, ColorRGBA fg_color) {
+    //        memory_order_RGBA   = 0xAABBGGRR
+    constexpr uint32_t mask_b_r   = 0x00FF00FF;
+    constexpr uint32_t mask_a_g   = 0xFF00FF00;
+
+    uint32_t ff_minus_fg_a = 255 - fg_color.a;
+
+    uint32_t b_r = (fg_color.u32 & mask_b_r) + (((bg_color.u32 & mask_b_r) * ff_minus_fg_a) >> 8);
+    uint32_t a_g = (fg_color.u32 & mask_a_g) + (((bg_color.u32 & mask_a_g) >> 8) * ff_minus_fg_a);
+
+    return ColorRGBA((b_r & mask_b_r) | (a_g & mask_a_g));
+}
+
 
 namespace internal {
 
@@ -83,6 +100,13 @@ ALWAYS_INLINE void BlendColorToLine_Generic(ColorRGBA* __restrict dest, ColorRGB
 ALWAYS_INLINE void BlendLine_Generic(ColorRGBA* __restrict dest, const ColorRGBA* __restrict src, size_t width) {
     for (size_t i = 0; i < width; i++) {
         dest[i] = BlendColor(dest[i], src[i]);
+    }
+}
+
+ALWAYS_INLINE void BlendLine_PremultipliedSrc_Generic(ColorRGBA* __restrict dest,
+                                                      const ColorRGBA* __restrict src, size_t width) {
+    for (size_t i = 0; i < width; i++) {
+        dest[i] = BlendColor_PremultipliedSrc(dest[i], src[i]);
     }
 }
 

@@ -631,7 +631,7 @@ bool TextRendererDirectWrite::BlendWICBitmapToBitmap(IWICBitmap* wic_bitmap,
         ColorRGBA* dest_begin = target_bmp.GetPixelAt(clipped.left, y);
         int src_begin_offset = (clip_y_offset + y - clipped.top) * (int)stride + clip_x_offset * 4;
         auto src_begin = reinterpret_cast<const ColorRGBA*>(buffer + src_begin_offset);
-        alphablend::BlendLine(dest_begin, src_begin, line_width);
+        alphablend::BlendLine_PremultipliedSrc(dest_begin, src_begin, line_width);
     }
 
     return true;

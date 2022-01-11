@@ -116,6 +116,10 @@ if(ARIBCC_USE_EMBEDDED_FREETYPE)
     import_embedded_freetype()
 endif()
 
+if(BUILD_SHARED_LIBS)
+    set(ARIBCC_SHARED_LIBRARY ON CACHE BOOL "Indicate built as shared library" FORCE)
+endif()
+
 # Generate config header
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aribcc_config.h.in"
@@ -208,6 +212,13 @@ add_library(aribcaption::aribcaption ALIAS aribcaption)
 target_compile_features(aribcaption
     PRIVATE
         cxx_std_17
+)
+
+# Indicate `-fvisibility=hidden` to hide non-export symbols
+set_target_properties(aribcaption
+    PROPERTIES
+        C_VISIBILITY_PRESET hidden
+        CXX_VISIBILITY_PRESET hidden
 )
 
 # Enable /utf-8 for MSVC

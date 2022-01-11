@@ -25,6 +25,10 @@ Context::Context() : logger_(std::make_shared<Logger>()) {}
 
 Context::~Context() = default;
 
+Context::Context(Context&&) noexcept = default;
+
+Context& Context::operator=(Context&&) noexcept = default;
+
 void Context::SetLogcatCallback(const LogcatCB& logcat_cb) {
     logger_->SetCallback(logcat_cb);
 }

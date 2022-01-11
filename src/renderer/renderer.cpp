@@ -25,6 +25,10 @@ Renderer::Renderer(Context& context) : pimpl_(std::make_unique<internal::Rendere
 
 Renderer::~Renderer() = default;
 
+Renderer::Renderer(Renderer&&) noexcept = default;
+
+Renderer& Renderer::operator=(Renderer&&) noexcept = default;
+
 bool Renderer::Initialize(CaptionType caption_type,
                           FontProviderType font_provider_type,
                           TextRendererType text_renderer_type) {

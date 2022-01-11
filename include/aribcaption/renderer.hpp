@@ -77,31 +77,33 @@ struct RenderResult {
     std::vector<Image> images;
 };
 
-class ARIBCC_API Renderer {
+class Renderer {
 public:
-    explicit Renderer(Context& context);
-    ~Renderer();
+    ARIBCC_API explicit Renderer(Context& context);
+    ARIBCC_API ~Renderer();
+    ARIBCC_API Renderer(Renderer&&) noexcept;
+    ARIBCC_API Renderer& operator=(Renderer&&) noexcept;
 public:
-    bool Initialize(CaptionType caption_type = CaptionType::kCaption,
-                    FontProviderType font_provider_type = FontProviderType::kAuto,
-                    TextRendererType text_renderer_type = TextRendererType::kAuto);
+    ARIBCC_API bool Initialize(CaptionType caption_type = CaptionType::kCaption,
+                               FontProviderType font_provider_type = FontProviderType::kAuto,
+                               TextRendererType text_renderer_type = TextRendererType::kAuto);
 
-    void SetStrokeWidth(float dots);
-    void SetReplaceDRCS(bool replace);
-    void SetForceStrokeText(bool force_stroke);
-    void SetForceNoRuby(bool force_no_ruby);
-    void SetForceNoBackground(bool force_no_background);
+    ARIBCC_API void SetStrokeWidth(float dots);
+    ARIBCC_API void SetReplaceDRCS(bool replace);
+    ARIBCC_API void SetForceStrokeText(bool force_stroke);
+    ARIBCC_API void SetForceNoRuby(bool force_no_ruby);
+    ARIBCC_API void SetForceNoBackground(bool force_no_background);
 
-    bool SetDefaultFontFamily(const std::vector<std::string>& font_family, bool force_default);
-    bool SetLanguageSpecificFontFamily(uint32_t language_code, const std::vector<std::string>& font_family);
-    bool SetFrameSize(int frame_width, int frame_height);
-    bool SetMargins(int top, int bottom, int left, int right);
+    ARIBCC_API bool SetDefaultFontFamily(const std::vector<std::string>& font_family, bool force_default);
+    ARIBCC_API bool SetLanguageSpecificFontFamily(uint32_t language_code, const std::vector<std::string>& font_family);
+    ARIBCC_API bool SetFrameSize(int frame_width, int frame_height);
+    ARIBCC_API bool SetMargins(int top, int bottom, int left, int right);
 
-    bool AppendCaption(const Caption& caption);
-    bool AppendCaption(Caption&& caption);
+    ARIBCC_API bool AppendCaption(const Caption& caption);
+    ARIBCC_API bool AppendCaption(Caption&& caption);
 
-    RenderStatus Render(int64_t pts, RenderResult& out_result);
-    bool Flush();
+    ARIBCC_API RenderStatus Render(int64_t pts, RenderResult& out_result);
+    ARIBCC_API bool Flush();
 public:
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;

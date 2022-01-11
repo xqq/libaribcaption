@@ -35,11 +35,14 @@ using LogcatCB = std::function<void(LogLevel, const char*)>;
 
 class Logger;
 
-class ARIBCC_API Context {
+class Context {
 public:
-    Context();
-    ~Context();
-    void SetLogcatCallback(const LogcatCB& logcat_cb);
+    ARIBCC_API Context();
+    ARIBCC_API ~Context();
+    ARIBCC_API Context(Context&&) noexcept;
+    ARIBCC_API Context& operator=(Context&&) noexcept;
+public:
+    ARIBCC_API void SetLogcatCallback(const LogcatCB& logcat_cb);
 public:
     Context(const Context&) = delete;
     Context& operator=(const Context&) = delete;

@@ -40,23 +40,25 @@ struct DecodeResult {
     std::unique_ptr<Caption> caption;
 };
 
-class ARIBCC_API Decoder {
+class Decoder {
 public:
-    explicit Decoder(Context& context);
-    ~Decoder();
+    ARIBCC_API explicit Decoder(Context& context);
+    ARIBCC_API ~Decoder();
+    ARIBCC_API Decoder(Decoder&&) noexcept;
+    ARIBCC_API Decoder& operator=(Decoder&&) noexcept;
 public:
-    bool Initialize(B24Type type = B24Type::kDefault,
-                    B24Profile profile = B24Profile::kDefault,
-                    B24LanguageId language_id = B24LanguageId::kDefault);
-    void SetType(B24Type type);
-    void SetProfile(B24Profile profile);
-    void SetLanguageId(B24LanguageId language_id);
-    void SetDefaultLanguage(uint32_t iso6392_language_code);
-    void SetReplaceMSZFullWidthAlphanumeric(bool replace);
+    ARIBCC_API bool Initialize(B24Type type = B24Type::kDefault,
+                               B24Profile profile = B24Profile::kDefault,
+                               B24LanguageId language_id = B24LanguageId::kDefault);
+    ARIBCC_API void SetType(B24Type type);
+    ARIBCC_API void SetProfile(B24Profile profile);
+    ARIBCC_API void SetLanguageId(B24LanguageId language_id);
+    ARIBCC_API void SetDefaultLanguage(uint32_t iso6392_language_code);
+    ARIBCC_API void SetReplaceMSZFullWidthAlphanumeric(bool replace);
     [[nodiscard]]
-    uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;
-    DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result);
-    bool Flush();
+    ARIBCC_API uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;
+    ARIBCC_API DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result);
+    ARIBCC_API bool Flush();
 public:
     Decoder(const Decoder&) = delete;
     Decoder& operator=(const Decoder&) = delete;

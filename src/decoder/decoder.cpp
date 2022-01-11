@@ -25,6 +25,10 @@ Decoder::Decoder(Context& context) : pimpl_(std::make_unique<internal::DecoderIm
 
 Decoder::~Decoder() = default;
 
+Decoder::Decoder(Decoder&&) noexcept = default;
+
+Decoder& Decoder::operator=(Decoder&&) noexcept = default;
+
 bool Decoder::Initialize(B24Type type, B24Profile profile, B24LanguageId language_id) {
     return pimpl_->Initialize(type, profile, language_id);
 }

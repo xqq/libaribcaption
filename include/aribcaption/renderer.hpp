@@ -21,6 +21,7 @@
 
 #include <memory>
 #include "aribcc_config.h"
+#include "aribcc_export.h"
 #include "context.hpp"
 #include "caption.hpp"
 #include "image.hpp"
@@ -76,7 +77,7 @@ struct RenderResult {
     std::vector<Image> images;
 };
 
-class Renderer {
+class ARIBCC_API Renderer {
 public:
     explicit Renderer(Context& context);
     ~Renderer();

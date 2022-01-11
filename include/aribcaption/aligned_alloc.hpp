@@ -22,12 +22,13 @@
 #include <cstddef>
 #include <new>
 #include <type_traits>
+#include "aribcc_export.h"
 
 namespace aribcaption {
 
-void* AlignedAlloc(size_t size, size_t alignment);
+ARIBCC_API void* AlignedAlloc(size_t size, size_t alignment);
 
-void AlignedFree(void* ptr);
+ARIBCC_API void AlignedFree(void* ptr);
 
 template <class T, std::size_t N>
 class AlignedAllocator {

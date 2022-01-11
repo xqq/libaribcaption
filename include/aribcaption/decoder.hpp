@@ -21,6 +21,7 @@
 
 #include <cstdint>
 #include <memory>
+#include "aribcc_export.h"
 #include "b24.hpp"
 #include "caption.hpp"
 #include "context.hpp"
@@ -39,7 +40,7 @@ struct DecodeResult {
     std::unique_ptr<Caption> caption;
 };
 
-class Decoder {
+class ARIBCC_API Decoder {
 public:
     explicit Decoder(Context& context);
     ~Decoder();

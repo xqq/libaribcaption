@@ -20,6 +20,7 @@
 #define ARIBCAPTION_ARIBCAPTION_HPP
 
 #include "aribcc_config.h"
+#include "aribcc_export.h"
 #include "b24.hpp"
 #include "context.hpp"
 #include "color.hpp"

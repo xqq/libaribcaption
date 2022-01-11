@@ -21,6 +21,7 @@
 
 #include <memory>
 #include <functional>
+#include "aribcc_export.h"
 
 namespace aribcaption {
 
@@ -34,7 +35,7 @@ using LogcatCB = std::function<void(LogLevel, const char*)>;
 
 class Logger;
 
-class Context {
+class ARIBCC_API Context {
 public:
     Context();
     ~Context();

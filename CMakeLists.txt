@@ -131,6 +131,7 @@ add_library(aribcaption
         include/aribcaption/aligned_alloc.hpp
         include/aribcaption/aribcaption.h
         include/aribcaption/aribcaption.hpp
+        include/aribcaption/aribcc_export.h
         include/aribcaption/b24.hpp
         include/aribcaption/caption.hpp
         include/aribcaption/color.hpp
@@ -238,6 +239,7 @@ endif()
 
 target_compile_definitions(aribcaption
     PRIVATE
+        ARIBCC_IMPLEMENTATION
         $<$<BOOL:${WIN32}>:
             NOMINMAX
             UNICODE
@@ -300,6 +302,7 @@ install(
 # Install decoder-related public headers
 install(
     FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aribcc_export.h
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aribcaption.h
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aribcaption.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/b24.hpp

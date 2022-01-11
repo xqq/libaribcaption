@@ -83,8 +83,10 @@ function(import_embedded_freetype)
         FetchContent_Populate(freetype)
         # Set variables for FreeType
         set(FT_DISABLE_ZLIB ON CACHE BOOL "Disable zlib for embedded Freetype" FORCE)
+        set(FT_DISABLE_BZIP2 ON CACHE BOOL "Disable bzip2 for embedded Freetype" FORCE)
         set(FT_DISABLE_PNG ON CACHE BOOL "Disable libpng for embedded Freetype" FORCE)
         set(FT_DISABLE_HARFBUZZ ON CACHE BOOL "Disable harfbuzz for embedded Freetype" FORCE)
+        set(FT_DISABLE_BROTLI ON CACHE BOOL "Disable brotli for embedded Freetype" FORCE)
         set(BUILD_SHARED_LIBS OFF)       # Force static link
 
         # Suppress CMake Policy CMP0048 warning

@@ -42,6 +42,11 @@ enum class TextRenderStatus {
     kOtherError
 };
 
+enum class TextRenderFallbackPolicy {
+    kAutoFallback,
+    kFailOnCodePointNotFound
+};
+
 class TextRenderContext {
 public:
     struct ContextPrivate {
@@ -92,7 +97,8 @@ public:
     virtual auto DrawChar(TextRenderContext& render_ctx, int x, int y,
                           uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
                           float stroke_width, int char_width, int char_height,
-                          std::optional<UnderlineInfo> underline_info) -> TextRenderStatus = 0;
+                          std::optional<UnderlineInfo> underline_info,
+                          TextRenderFallbackPolicy fallback_policy) -> TextRenderStatus = 0;
 public:
     // Disallow copy and assign
     TextRenderer(const TextRenderer&) = delete;

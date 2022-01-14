@@ -175,10 +175,11 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
 
         // Draw char
         if (type == CaptionCharType::kText || type == CaptionCharType::kGaiji) {
+            TextRenderFallbackPolicy fallback_policy = TextRenderFallbackPolicy::kAutoFallback;
             TextRenderStatus status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
                                                                ch.codepoint, style, ch.text_color, stroke_color,
                                                                stroke_width, char_width, char_height,
-                                                               underline_info);
+                                                               underline_info, fallback_policy);
             if (status == TextRenderStatus::kOK) {
                 succeed++;
             } else {
@@ -197,7 +198,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
             TextRenderStatus status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
                                                                ch.codepoint, style, ch.text_color, stroke_color,
                                                                stroke_width, char_width, char_height,
-                                                               underline_info);
+                                                               underline_info, TextRenderFallbackPolicy::kAutoFallback);
             if (status == TextRenderStatus::kOK) {
                 succeed++;
             } else {

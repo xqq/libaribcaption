@@ -77,7 +77,8 @@ void TextRendererFreetype::EndDraw(TextRenderContext& context) {
 auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x, int target_y,
                                     uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
                                     float stroke_width, int char_width, int char_height,
-                                    std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
+                                    std::optional<UnderlineInfo> underline_info,
+                                    TextRenderFallbackPolicy fallback_policy) -> TextRenderStatus {
     assert(char_height > 0);
     if (stroke_width < 0.0f) {
         stroke_width = 0.0f;
@@ -107,6 +108,11 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
 
     if (glyph_index == 0) {
         log_->w("Freetype: Main font %s doesn't contain U+%04X", face->family_name, ucs4);
+
+        if (fallback_policy == TextRenderFallbackPolicy::kFailOnCodePointNotFound) {
+            return TextRenderStatus::kCodePointNotFound;
+        }
+
         // Missing glyph, check fallback face
         if (fallback_face_ && (glyph_index = FT_Get_Char_Index(fallback_face_, ucs4))) {
             face = fallback_face_;

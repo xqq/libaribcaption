@@ -94,7 +94,8 @@ void TextRendererCoreText::EndDraw(TextRenderContext& context) {
 auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x, int target_y,
                                     uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
                                     float stroke_width, int char_width, int char_height,
-                                    std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
+                                    std::optional<UnderlineInfo> underline_info,
+                                    TextRenderFallbackPolicy fallback_policy) -> TextRenderStatus {
     if (!render_ctx.GetPrivate()) {
         log_->e("TextRendererCoreText: Invalid TextRenderContext, BeginDraw() failed or not called");
         return TextRenderStatus::kOtherError;
@@ -148,6 +149,10 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
         ScopedCFRef<CFStringRef> cf_main_family_name(CTFontCopyFamilyName(ctfont));
         std::string main_family_name = cfstr::CFStringToStdString(cf_main_family_name.get());
         log_->w("TextRendererCoreText: Main font %s doesn't contain U+%04X", main_family_name.c_str(), ucs4);
+
+        if (fallback_policy == TextRenderFallbackPolicy::kFailOnCodePointNotFound) {
+            return TextRenderStatus::kCodePointNotFound;
+        }
 
         if (main_face_index_ + 1 >= font_family_.size()) {
             // Fallback fonts not available

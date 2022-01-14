@@ -105,7 +105,8 @@ int main(int argc, const char* argv[]) {
                                              3,
                                              0,  // char_width * scale_factor,
                                              char_height * scale_factor,
-                                             UnderlineInfo{section_x, section_width * scale_factor});
+                                             UnderlineInfo{section_x, section_width * scale_factor},
+                                             TextRenderFallbackPolicy::kAutoFallback);
         if (status != TextRenderStatus::kOK) {
             fprintf(stderr, "text_renderer.DrawChar returned error %d\n", static_cast<int>(status));
             return -1;
@@ -140,7 +141,8 @@ int main(int argc, const char* argv[]) {
                            3,
                            char_width * scale_factor,
                            char_height * scale_factor,
-                           std::nullopt);
+                           std::nullopt,
+                           TextRenderFallbackPolicy::kAutoFallback);
     text_renderer.EndDraw(text_render_ctx);
 
     if (!png_writer_write_bitmap("7363.png", bmp)) {

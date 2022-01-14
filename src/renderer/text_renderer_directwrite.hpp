@@ -46,7 +46,8 @@ public:
     auto DrawChar(TextRenderContext& render_ctx, int x, int y,
                   uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
                   float stroke_width, int char_width, int char_height,
-                  std::optional<UnderlineInfo> underline_info) -> TextRenderStatus override;
+                  std::optional<UnderlineInfo> underline_info,
+                  TextRenderFallbackPolicy fallback_policy) -> TextRenderStatus override;
 private:
     auto LoadDWriteFont(std::optional<uint32_t> codepoint = std::nullopt,
                         std::optional<size_t> begin_index = std::nullopt)

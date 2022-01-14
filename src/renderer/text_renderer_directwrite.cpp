@@ -329,7 +329,8 @@ void TextRendererDirectWrite::EndDraw(TextRenderContext& context) {
 auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target_x, int target_y,
                                        uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
                                        float stroke_width, int char_width, int char_height,
-                                       std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
+                                       std::optional<UnderlineInfo> underline_info,
+                                       TextRenderFallbackPolicy fallback_policy) -> TextRenderStatus {
     if (!render_ctx.GetPrivate()) {
         log_->e("TextRendererDirectWrite: Invalid TextRenderContext, BeginDraw() failed or not called");
         return TextRenderStatus::kOtherError;
@@ -375,6 +376,10 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
     if (!FontfaceHasCharacter(main_faceinfo_.value(), ucs4)) {
         log_->w("TextRendererDirectWrite: Main font %s doesn't contain U+%04X",
                 main_faceinfo_.value().family_name.c_str(), ucs4);
+
+        if (fallback_policy == TextRenderFallbackPolicy::kFailOnCodePointNotFound) {
+            return TextRenderStatus::kCodePointNotFound;
+        }
 
         if (main_face_index_ + 1 >= font_family_.size()) {
             // Fallback fonts not available

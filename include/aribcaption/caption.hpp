@@ -79,7 +79,7 @@ struct CaptionChar {
     // Character encoded in UTF-8
     std::string ch;
     // Character's Unicode codepoint (UCS4)
-    uint32_t ucs4 = 0;
+    uint32_t codepoint = 0;
 
     uint32_t drcs_id = 0;
 

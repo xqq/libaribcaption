@@ -173,7 +173,7 @@ int main(int argc, const char* argv[]) {
                 }
             } else {
                 auto render_status = text_renderer.DrawChar(text_render_ctx, x, y,
-                                                            ch.ucs4, style, ch.text_color, stroke_color,
+                                                            ch.codepoint, style, ch.text_color, stroke_color,
                                                             stroke_width, char_width, char_height, std::nullopt);
                 if (render_status != TextRenderStatus::kOK) {
                     fprintf(stderr, "canvas.DrawChar() returned error %d\n", static_cast<int>(render_status));

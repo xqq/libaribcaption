@@ -176,7 +176,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
         // Draw char
         if (type == CaptionCharType::kText || type == CaptionCharType::kGaiji) {
             TextRenderStatus status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
-                                                               ch.ucs4, style, ch.text_color, stroke_color,
+                                                               ch.codepoint, style, ch.text_color, stroke_color,
                                                                stroke_width, char_width, char_height,
                                                                underline_info);
             if (status == TextRenderStatus::kOK) {
@@ -195,7 +195,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
                    (replace_drcs_ && type == CaptionCharType::kDRCSReplacedGaiji)) {
             // Draw replaced DRCS (alternative ucs4)
             TextRenderStatus status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
-                                                               ch.ucs4, style, ch.text_color, stroke_color,
+                                                               ch.codepoint, style, ch.text_color, stroke_color,
                                                                stroke_width, char_width, char_height,
                                                                underline_info);
             if (status == TextRenderStatus::kOK) {
@@ -203,7 +203,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
             } else {
                 if (status == TextRenderStatus::kCodePointNotFound) {
                     log_->w("RegionRenderer: Cannot find alternative codepoint U+%04X, fallback to DRCS rendering",
-                            ch.ucs4);
+                            ch.codepoint);
                     has_codepoint_not_found_error = true;
                 } else {
                     log_->e("RegionRenderer: TextRenderer::DrawChar() returned error: %d", static_cast<int>(status));

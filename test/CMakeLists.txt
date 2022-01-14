@@ -16,6 +16,10 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
+if(BUILD_SHARED_LIBS)
+    set(BUILD_SHARED_LIBS OFF)
+endif()
+
 add_subdirectory(alphablend)
 add_subdirectory(caption2srt)
 add_subdirectory(png_writer)

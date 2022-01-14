@@ -175,14 +175,36 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
 
         // Draw char
         if (type == CaptionCharType::kText || type == CaptionCharType::kGaiji) {
+            // Do automatic fallback rendering by default.
             TextRenderFallbackPolicy fallback_policy = TextRenderFallbackPolicy::kAutoFallback;
+            if (ch.pua_codepoint) {
+                // If ch contains an alternative PUA codepoint, it should be an additional symbol (gaiji)
+                // Manually fallback to PUA(Private Use Area) codepoint on failure
+                fallback_policy = TextRenderFallbackPolicy::kFailOnCodePointNotFound;
+            }
             TextRenderStatus status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
                                                                ch.codepoint, style, ch.text_color, stroke_color,
                                                                stroke_width, char_width, char_height,
                                                                underline_info, fallback_policy);
             if (status == TextRenderStatus::kOK) {
                 succeed++;
-            } else {
+            } else if (status == TextRenderStatus::kCodePointNotFound && ch.pua_codepoint) {
+                // Additional symbol (gaiji)'s Unicode codepoint not found in font
+                // Try fallback rendering with pua_codepoint
+                status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
+                                                  ch.pua_codepoint, style, ch.text_color, stroke_color,
+                                                  stroke_width, char_width, char_height,
+                                                  underline_info, TextRenderFallbackPolicy::kAutoFallback);
+                if (status == TextRenderStatus::kCodePointNotFound) {
+                    // If failed, try fallback rendering with Unicode codepoint again
+                    status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
+                                                      ch.codepoint, style, ch.text_color, stroke_color,
+                                                      stroke_width, char_width, char_height,
+                                                      underline_info, TextRenderFallbackPolicy::kAutoFallback);
+                }
+            }
+
+            if (status != TextRenderStatus::kOK){
                 log_->e("RegionRenderer: TextRenderer::DrawChar() returned error: %d", static_cast<int>(status));
                 if (status == TextRenderStatus::kFontNotFound) {
                     has_font_not_found_error = true;

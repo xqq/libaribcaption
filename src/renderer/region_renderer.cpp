@@ -174,7 +174,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
         }
 
         // Draw char
-        if (type == CaptionCharType::kText || type == CaptionCharType::kGaiji) {
+        if (type == CaptionCharType::kText) {
             // Do automatic fallback rendering by default.
             TextRenderFallbackPolicy fallback_policy = TextRenderFallbackPolicy::kAutoFallback;
             if (ch.pua_codepoint) {
@@ -214,8 +214,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
                     has_other_error = true;
                 }
             }
-        } else if ((replace_drcs_ && type == CaptionCharType::kDRCSReplaced) ||
-                   (replace_drcs_ && type == CaptionCharType::kDRCSReplacedGaiji)) {
+        } else if (replace_drcs_ && type == CaptionCharType::kDRCSReplaced) {
             // Draw replaced DRCS (alternative ucs4)
             TextRenderStatus status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
                                                                ch.codepoint, style, ch.text_color, stroke_color,

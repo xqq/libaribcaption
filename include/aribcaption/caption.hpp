@@ -66,10 +66,8 @@ enum class CaptionType : uint8_t {
 
 enum class CaptionCharType : uint8_t {
     kText = 0,
-    kGaiji,
     kDRCS,
     kDRCSReplaced,
-    kDRCSReplacedGaiji,
     kDefault = kText
 };
 

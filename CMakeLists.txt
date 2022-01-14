@@ -159,6 +159,7 @@ add_library(aribcaption
         src/decoder/b24_controlsets.hpp
         src/decoder/b24_conv_tables.hpp
         src/decoder/b24_drcs_conv.hpp
+        src/decoder/b24_gaiji_table.hpp
         src/decoder/b24_macros.hpp
         src/decoder/decoder.cpp
         src/decoder/decoder_impl.cpp

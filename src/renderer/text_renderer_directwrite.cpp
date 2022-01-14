@@ -375,18 +375,23 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
     if (!FontfaceHasCharacter(main_faceinfo_.value(), ucs4)) {
         log_->w("TextRendererDirectWrite: Main font %s doesn't contain U+%04X",
                 main_faceinfo_.value().family_name.c_str(), ucs4);
+
+        if (main_face_index_ + 1 >= font_family_.size()) {
+            // Fallback fonts not available
+            return TextRenderStatus::kCodePointNotFound;
+        }
+
         bool reset_fallback_text_format = false;
         // Check fallback faceinfo
         if (!fallback_faceinfo_ || !FontfaceHasCharacter(fallback_faceinfo_.value(), ucs4)) {
             // Fallback font not loaded, or doesn't contain required codepoint
-            auto result = LoadDWriteFont(ucs4, fallback_face_index_ + 1);
+            auto result = LoadDWriteFont(ucs4, main_face_index_ + 1);
             if (result.is_err()) {
                 log_->e("TextRendererDirectWrite: Cannot find available fallback font for U+%04X", ucs4);
                 return FontProviderErrorToStatus(result.error());
             }
             auto& pair = result.value();
             fallback_faceinfo_ = std::move(pair.first);
-            fallback_face_index_ = pair.second;
             reset_fallback_text_format = true;
         }
 

@@ -72,7 +72,6 @@ private:
     ComPtr<ID2D1StrokeStyle> stroke_style_;
 
     size_t main_face_index_ = 0;
-    size_t fallback_face_index_ = 0;
 
     std::optional<FontfaceInfo> main_faceinfo_;
     std::optional<FontfaceInfo> fallback_faceinfo_;

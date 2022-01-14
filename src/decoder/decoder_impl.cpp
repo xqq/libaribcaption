@@ -27,6 +27,7 @@
 #include "decoder/b24_controlsets.hpp"
 #include "decoder/b24_conv_tables.hpp"
 #include "decoder/b24_drcs_conv.hpp"
+#include "decoder/b24_gaiji_table.hpp"
 #include "decoder/b24_macros.hpp"
 #include "decoder/decoder_impl.hpp"
 
@@ -1080,17 +1081,34 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
                entry->graphics_set == GraphicSet::kJIS_X0213_2004_Kanji_1 ||
                entry->graphics_set == GraphicSet::kJIS_X0213_2004_Kanji_2 ||
                entry->graphics_set == GraphicSet::kAdditionalSymbols) {
-        size_t idx1 = ((size_t)data[0] & 0x7F) - 0x21;
-        size_t idx2 = ((size_t)data[1] & 0x7F) - 0x21;
-        size_t index = idx1 * 94 + idx2;
-        uint32_t ucs4 = kKanjiTable[index];
-        // If [ucs4 is Fullwidth alphanumeric] && [request replace] && [under MSZ mode]
-        if ((ucs4 >= 0xFF01 && ucs4 <= 0xFF5E) && replace_msz_fullwidth_ascii_ &&
+        constexpr size_t gaiji_begin_ku = 84;
+        size_t ku = ((size_t)data[0] & 0x7F) - 0x21;
+        size_t ten = ((size_t)data[1] & 0x7F) - 0x21;
+
+        uint32_t ucs4 = 0;
+        uint32_t pua = 0;
+
+        if (ku < gaiji_begin_ku) {
+            size_t index = ku * 94 + ten;
+            ucs4 = kKanjiTable[index];
+            // If [ucs4 is Fullwidth alphanumeric] && [request replace] && [under MSZ mode]
+            if ((ucs4 >= 0xFF01 && ucs4 <= 0xFF5E) && replace_msz_fullwidth_ascii_ &&
                 char_horizontal_scale_ * 2 == char_vertical_scale_) {
-            // Replace Fullwidth alphanumerics with Halfwidth alphanumerics
-            ucs4 = (ucs4 & 0xFF) + 0x20;
+                // Replace Fullwidth alphanumerics with Halfwidth alphanumerics
+                ucs4 = (ucs4 & 0xFF) + 0x20;
+            }
+        } else {  // ku >= 84
+            // Additional Kanji + Additional Symbols
+            size_t index = (ku - gaiji_begin_ku) * 94 + ten;
+            ucs4 = kAdditionalSymbolsTable_Unicode[index];
+            pua = kAdditionalSymbolsTable_PUA[index];
+            if (pua == ucs4 || pua < 0xE000 || pua > 0xF8FF) {
+                // Same as ucs4, or invalid PUA
+                pua = 0;  // mark as non-existent
+            }
         }
-        PushCharacter(ucs4);
+
+        PushCharacter(ucs4, pua);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kAlphanumeric ||
                entry->graphics_set == GraphicSet::kProportionalAlphanumeric) {
@@ -1148,10 +1166,11 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
     return true;
 }
 
-void DecoderImpl::PushCharacter(uint32_t ucs4) {
+void DecoderImpl::PushCharacter(uint32_t ucs4, uint32_t pua) {
     CaptionChar caption_char;
     caption_char.type = CaptionCharType::kText;
     caption_char.codepoint = ucs4;
+    caption_char.pua_codepoint = pua;
 
     utf::UTF8AppendCodePoint(caption_char.ch, ucs4);
     if (!IsRubyMode()) {

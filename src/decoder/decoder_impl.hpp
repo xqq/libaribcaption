@@ -64,7 +64,7 @@ private:
     bool HandleC1(const uint8_t* data, size_t remain_bytes, size_t* bytes_processed);
     bool HandleCSI(const uint8_t* data, size_t remain_bytes, size_t* bytes_processed);
     bool HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* bytes_processed, CodesetEntry* entry);
-    void PushCharacter(uint32_t ucs4);
+    void PushCharacter(uint32_t ucs4, uint32_t pua = 0);
     void PushDRCSCharacter(uint32_t id, DRCS& drcs);
     void PushCaptionChar(CaptionChar&& caption_char);
     void ApplyCaptionCharCommonProperties(CaptionChar& caption_char);

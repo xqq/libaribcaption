@@ -80,6 +80,8 @@ struct CaptionChar {
     std::string ch;
     // Character's Unicode codepoint (UCS4)
     uint32_t codepoint = 0;
+    // Character's PUA(Private Use Area) codepoint, if exists
+    uint32_t pua_codepoint = 0;
 
     uint32_t drcs_id = 0;
 

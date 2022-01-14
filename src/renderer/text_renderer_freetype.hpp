@@ -66,7 +66,6 @@ private:
     ScopedHolder<FT_Face> main_face_;
     ScopedHolder<FT_Face> fallback_face_;
     size_t main_face_index_ = 0;
-    size_t fallback_face_index_ = 0;
 };
 
 }  // namespace aribcaption

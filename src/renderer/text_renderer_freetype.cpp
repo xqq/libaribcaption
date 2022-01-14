@@ -60,7 +60,6 @@ bool TextRendererFreetype::SetFontFamily(const std::vector<std::string>& font_fa
         main_face_.Reset();
         fallback_face_.Reset();
         main_face_index_ = 0;
-        fallback_face_index_ = 0;
     }
 
     font_family_ = font_family;
@@ -111,17 +110,19 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
         // Missing glyph, check fallback face
         if (fallback_face_ && (glyph_index = FT_Get_Char_Index(fallback_face_, ucs4))) {
             face = fallback_face_;
+        } else if (main_face_index_ + 1 >= font_family_.size()) {
+            // Fallback fonts not available
+            return TextRenderStatus::kCodePointNotFound;
         } else {
             // Fallback fontface not loaded, or fallback fontface doesn't contain required codepoint
             // Load next fallback font face by specific codepoint
-            auto result = LoadFontFace(ucs4, fallback_face_index_ + 1);
+            auto result = LoadFontFace(ucs4, main_face_index_ + 1);
             if (result.is_err()) {
                 log_->e("Freetype: Cannot find available fallback font for U+%04X", ucs4);
                 return FontProviderErrorToStatus(result.error());
             }
             std::pair<FT_Face, size_t>& pair = result.value();
             fallback_face_ = ScopedHolder<FT_Face>(pair.first, FT_Done_Face);
-            fallback_face_index_ = pair.second;
 
             // Use this fallback fontface for rendering this time
             face = fallback_face_;

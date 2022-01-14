@@ -68,7 +68,6 @@ private:
     std::vector<std::string> font_family_;
 
     size_t main_face_index_ = 0;
-    size_t fallback_face_index_ = 0;
 
     ScopedCFRef<CTFontRef> main_ctfont_;
     ScopedCFRef<CTFontRef> fallback_ctfont_;

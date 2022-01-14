@@ -49,7 +49,6 @@ bool TextRendererCoreText::SetFontFamily(const std::vector<std::string>& font_fa
         main_ctfont_pixel_height_ = 0;
         fallback_ctfont_pixel_height_ = 0;
         main_face_index_ = 0;
-        fallback_face_index_ = 0;
         main_ctfont_sized_.reset();
         main_ctfont_.reset();
         fallback_ctfont_sized_.reset();
@@ -150,6 +149,11 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
         std::string main_family_name = cfstr::CFStringToStdString(cf_main_family_name.get());
         log_->w("TextRendererCoreText: Main font %s doesn't contain U+%04X", main_family_name.c_str(), ucs4);
 
+        if (main_face_index_ + 1 >= font_family_.size()) {
+            // Fallback fonts not available
+            return TextRenderStatus::kCodePointNotFound;
+        }
+
         bool reset_sized_fallback = false;
         // Missing glyph, check fallback CTFont
         if (!fallback_ctfont_ || !CTFontGetGlyphsForCharacters(fallback_ctfont_.get(),
@@ -158,14 +162,13 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
                                                                static_cast<CFIndex>(codeunit_count))) {
             // Fallback CTFont not loaded, or fallback CTFont doesn't contain required codepoint
             // Load next fallback CTFont by specific codepoint
-            auto result = LoadCTFont(ucs4, fallback_face_index_ + 1);
+            auto result = LoadCTFont(ucs4, main_face_index_ + 1);
             if (result.is_err()) {
                 log_->e("TextRendererCoreText: Cannot find available fallback font for U+%04X", ucs4);
                 return FontProviderErrorToStatus(result.error());
             }
             std::pair<ScopedCFRef<CTFontRef>, size_t>& pair = result.value();
             fallback_ctfont_ = std::move(pair.first);
-            fallback_face_index_ = pair.second;
             reset_sized_fallback = true;
         }
 

@@ -23,7 +23,7 @@
 
 namespace aribcaption {
 
-enum JIS8 : uint8_t {
+enum C0 : uint8_t {
     NUL = 0x00,
     BEL = 0x07,
     APB = 0x08,
@@ -42,7 +42,10 @@ enum JIS8 : uint8_t {
     SS3 = 0x1D,
     RS = 0x1E,
     US = 0x1F,
-    SP = 0x20,
+    SP = 0x20
+};
+
+enum C1 : uint8_t {
     DEL = 0x7F,
     BKF = 0x80,
     RDF = 0x81,

@@ -587,46 +587,46 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
     size_t bytes = 0;
 
     switch (data[0]) {
-        case JIS8::NUL:  // Null
-        case JIS8::BEL:  // Bell
+        case C0::NUL:  // Null
+        case C0::BEL:  // Bell
             bytes = 1;
             break;
-        case JIS8::APB:  // Active position backward
+        case C0::APB:  // Active position backward
             MoveRelativeActivePos(-1, 0);
             bytes = 1;
             break;
-        case JIS8::APF:  // Active position forward
+        case C0::APF:  // Active position forward
             MoveRelativeActivePos(1, 0);
             bytes = 1;
             break;
-        case JIS8::APD:  // Active position down
+        case C0::APD:  // Active position down
             MoveRelativeActivePos(0, 1);
             bytes = 1;
             break;
-        case JIS8::APU:  // Active position up
+        case C0::APU:  // Active position up
             MoveRelativeActivePos(0, -1);
             bytes = 1;
             break;
-        case JIS8::CS: { // Clear screen
+        case C0::CS: { // Clear screen
             ResetInternalState();
             caption_->flags = static_cast<CaptionFlags>(caption_->flags | CaptionFlags::kCaptionFlagsClearScreen);
             bytes = 1;
             break;
         }
-        case JIS8::APR:  // Active position return
+        case C0::APR:  // Active position return
             utf::UTF8AppendCodePoint(caption_->text, 0x000A);  // \n
             MoveActivePosToNewline();
             bytes = 1;
             break;
-        case JIS8::LS1:  // Locking shift 1
+        case C0::LS1:  // Locking shift 1
             GL_ = &GX_[1];
             bytes = 1;
             break;
-        case JIS8::LS0:  // Locking shift 0
+        case C0::LS0:  // Locking shift 0
             GL_ = &GX_[0];
             bytes = 1;
             break;
-        case JIS8::PAPF: { // Parameterized active position forward
+        case C0::PAPF: { // Parameterized active position forward
             if (remain_bytes < 2)
                 return false;
             uint8_t step = data[1] & 0b00111111;
@@ -634,10 +634,10 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             bytes = 2;
             break;
         }
-        case JIS8::CAN:  // Cancel
+        case C0::CAN:  // Cancel
             bytes = 1;
             break;
-        case JIS8::SS2: { // Single shift 2
+        case C0::SS2: { // Single shift 2
             if (remain_bytes < 2)
                 return false;
             size_t glgr_bytes = 0;
@@ -646,7 +646,7 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             bytes = 1 + glgr_bytes;
             break;
         }
-        case JIS8::ESC: { // Escape
+        case C0::ESC: { // Escape
             if (remain_bytes < 2)
                 return false;
             size_t esc_bytes = 0;
@@ -655,7 +655,7 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             bytes = 1 + esc_bytes;
             break;
         }
-        case JIS8::APS: { // Active position set
+        case C0::APS: { // Active position set
             if (remain_bytes < 3)
                 return false;
             uint8_t y = data[1] & 0b00111111;
@@ -664,7 +664,7 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             bytes = 3;
             break;
         }
-        case JIS8::SS3: { // Single shift 3
+        case C0::SS3: { // Single shift 3
             if (remain_bytes < 2)
                 return false;
             size_t glgr_bytes = 0;
@@ -673,11 +673,11 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             bytes = 1 + glgr_bytes;
             break;
         }
-        case JIS8::RS:   // Record separator
-        case JIS8::US:   // Unit separator
+        case C0::RS:   // Record separator
+        case C0::US:   // Unit separator
             bytes = 1;
             break;
-        case JIS8::SP:   // Space character
+        case C0::SP:   // Space character
             if (IsLatinLanguage()) {
                 PushCharacter(0x0020);  // Space (Basic Latin)
             } else {
@@ -765,41 +765,41 @@ bool DecoderImpl::HandleC1(const uint8_t* data, size_t remain_bytes, size_t* byt
     size_t bytes = 0;
 
     switch (data[0]) {
-        case JIS8::DEL:  // Delete character
+        case C1::DEL:  // Delete character
             break;
-        case JIS8::BKF:  // Black Foreground
+        case C1::BKF:  // Black Foreground
             text_color_ = kB24ColorCLUT[palette_][0];
             bytes = 1;
             break;
-        case JIS8::RDF:  // Red Foreground
+        case C1::RDF:  // Red Foreground
             text_color_ = kB24ColorCLUT[palette_][1];
             bytes = 1;
             break;
-        case JIS8::GRF:  // Green Foreground
+        case C1::GRF:  // Green Foreground
             text_color_ = kB24ColorCLUT[palette_][2];
             bytes = 1;
             break;
-        case JIS8::YLF:  // Yellow Foreground
+        case C1::YLF:  // Yellow Foreground
             text_color_ = kB24ColorCLUT[palette_][3];
             bytes = 1;
             break;
-        case JIS8::BLF:  // Blue Foreground
+        case C1::BLF:  // Blue Foreground
             text_color_ = kB24ColorCLUT[palette_][4];
             bytes = 1;
             break;
-        case JIS8::MGF:  // Magenta Foreground
+        case C1::MGF:  // Magenta Foreground
             text_color_ = kB24ColorCLUT[palette_][5];
             bytes = 1;
             break;
-        case JIS8::CNF:  // Cyan Foreground
+        case C1::CNF:  // Cyan Foreground
             text_color_ = kB24ColorCLUT[palette_][6];
             bytes = 1;
             break;
-        case JIS8::WHF:  // White Foreground
+        case C1::WHF:  // White Foreground
             text_color_ = kB24ColorCLUT[palette_][7];
             bytes = 1;
             break;
-        case JIS8::COL:  // Colour Controls
+        case C1::COL:  // Colour Controls
             if (remain_bytes < 2)
                 return false;
             if (data[1] == 0x20) {
@@ -823,25 +823,25 @@ bool DecoderImpl::HandleC1(const uint8_t* data, size_t remain_bytes, size_t* byt
                 return false;
             }
             break;
-        case JIS8::POL:  // Pattern Polarity Controls
+        case C1::POL:  // Pattern Polarity Controls
             bytes = 2;
             break;
-        case JIS8::SSZ:  // Small Size
+        case C1::SSZ:  // Small Size
             char_horizontal_scale_ = 0.5f;
             char_vertical_scale_ = 0.5f;
             bytes = 1;
             break;
-        case JIS8::MSZ:  // Middle Size
+        case C1::MSZ:  // Middle Size
             char_horizontal_scale_ = 0.5f;
             char_vertical_scale_ = 1.0f;
             bytes = 1;
             break;
-        case JIS8::NSZ:  // Normal Size
+        case C1::NSZ:  // Normal Size
             char_horizontal_scale_ = 1.0f;
             char_vertical_scale_ = 1.0f;
             bytes = 1;
             break;
-        case JIS8::SZX:  // Character Size Controls
+        case C1::SZX:  // Character Size Controls
             if (remain_bytes < 2)
                 return false;
             switch (data[1]) {
@@ -860,10 +860,10 @@ bool DecoderImpl::HandleC1(const uint8_t* data, size_t remain_bytes, size_t* byt
             }
             bytes = 2;
             break;
-        case JIS8::FLC:  // Flashing control
+        case C1::FLC:  // Flashing control
             bytes = 2;
             break;
-        case JIS8::CDC:  // Conceal Display Controls
+        case C1::CDC:  // Conceal Display Controls
             if (remain_bytes < 2)
                 return false;
             if (data[1] == 0x20) {
@@ -874,10 +874,10 @@ bool DecoderImpl::HandleC1(const uint8_t* data, size_t remain_bytes, size_t* byt
                 bytes = 2;
             }
             break;
-        case JIS8::WMM:  // Writing Mode Modification
+        case C1::WMM:  // Writing Mode Modification
             bytes = 2;
             break;
-        case JIS8::TIME:  // Time Controls
+        case C1::TIME:  // Time Controls
             if (remain_bytes < 2)
                 return false;
             if (data[1] == 0x20) {
@@ -893,26 +893,26 @@ bool DecoderImpl::HandleC1(const uint8_t* data, size_t remain_bytes, size_t* byt
                 return false;
             }
             break;
-        case JIS8::MACRO:  // Macro Command
+        case C1::MACRO:  // Macro Command
             // Not used according to ARIB TR-B14
             return false;
-        case JIS8::RPC:  // Repeat Character
+        case C1::RPC:  // Repeat Character
             // TODO
             break;
-        case JIS8::STL:  // Start Lining
+        case C1::STL:  // Start Lining
             has_underline_ = true;
             bytes = 1;
             break;
-        case JIS8::SPL:  // Stop Lining
+        case C1::SPL:  // Stop Lining
             has_underline_ = false;
             bytes = 1;
             break;
-        case JIS8::HLC:  // Highlighting Character Block
+        case C1::HLC:  // Highlighting Character Block
             if (remain_bytes < 2)
                 return false;
             enclosure_style_ = static_cast<EnclosureStyle>(data[1] & 0x0F);
             break;
-        case JIS8::CSI: {  // Control Sequence Introducer
+        case C1::CSI: {  // Control Sequence Introducer
             size_t csi_bytes = 0;
             if (!HandleCSI(data + 1, remain_bytes - 1, &csi_bytes))
                 return false;

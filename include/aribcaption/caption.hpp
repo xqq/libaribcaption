@@ -81,7 +81,7 @@ struct CaptionChar {
     // Character's PUA(Private Use Area) codepoint, if exists
     uint32_t pua_codepoint = 0;
 
-    uint32_t drcs_id = 0;
+    uint32_t drcs_code = 0;
 
     int x = 0;
     int y = 0;

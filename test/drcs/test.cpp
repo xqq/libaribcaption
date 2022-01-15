@@ -164,7 +164,7 @@ int main(int argc, const char* argv[]) {
             if (ch.type == CaptionCharType::kDRCS
                 || ch.type == CaptionCharType::kDRCSReplaced) {
 
-                DRCS& drcs = caption->drcs_map[ch.drcs_id];
+                DRCS& drcs = caption->drcs_map[ch.drcs_code];
                 bool ret = drcs_renderer.DrawDRCS(drcs, style, ch.text_color, stroke_color, stroke_width,
                                        char_width, char_height, region_bmp, x, y);
                 if (!ret) {

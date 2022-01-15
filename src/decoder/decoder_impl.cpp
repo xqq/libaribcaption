@@ -1155,8 +1155,8 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
             PushCharacter(0x3013);
         } else {
             DRCS& drcs = iter->second;
-            uint32_t id = (map_index << 16) | key;
-            PushDRCSCharacter(id, drcs);
+            uint32_t code = (map_index << 16) | key;
+            PushDRCSCharacter(code, drcs);
         }
 
         MoveRelativeActivePos(1, 0);
@@ -1181,7 +1181,7 @@ void DecoderImpl::PushCharacter(uint32_t ucs4, uint32_t pua) {
     PushCaptionChar(std::move(caption_char));
 }
 
-void DecoderImpl::PushDRCSCharacter(uint32_t id, DRCS& drcs) {
+void DecoderImpl::PushDRCSCharacter(uint32_t code, DRCS& drcs) {
     CaptionChar caption_char;
 
     if (drcs.alternative_text.empty()) {
@@ -1195,12 +1195,12 @@ void DecoderImpl::PushDRCSCharacter(uint32_t id, DRCS& drcs) {
             caption_->text.append(drcs.alternative_text);
     }
 
-    auto iter = caption_->drcs_map.find(id);
+    auto iter = caption_->drcs_map.find(code);
     if (iter == caption_->drcs_map.end()) {
-        caption_->drcs_map.insert({id, drcs});
+        caption_->drcs_map.insert({code, drcs});
     }
 
-    caption_char.drcs_id = id;
+    caption_char.drcs_code = code;
 
     ApplyCaptionCharCommonProperties(caption_char);
     PushCaptionChar(std::move(caption_char));

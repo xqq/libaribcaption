@@ -245,7 +245,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
 
         // Draw DRCS
         if (type == CaptionCharType::kDRCS) {
-            auto iter = drcs_map.find(ch.drcs_id);
+            auto iter = drcs_map.find(ch.drcs_code);
             if (iter != drcs_map.end()) {
                 const DRCS& drcs = iter->second;
                 bool ret = drcs_renderer_.DrawDRCS(drcs, style, ch.text_color, stroke_color,
@@ -258,7 +258,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
                 }
             } else {
                 // DRCS not found in drcs_map
-                log_->e("RegionRenderer: Missing DRCS for drcs_id %u", ch.drcs_id);
+                log_->e("RegionRenderer: Missing DRCS for drcs_code %u", ch.drcs_code);
             }
         }
     }

@@ -118,6 +118,10 @@ if(ARIBCC_USE_EMBEDDED_FREETYPE)
     import_embedded_freetype()
 endif()
 
+if(ARIBCC_SHARED_LIBRARY AND (NOT BUILD_SHARED_LIBS))
+    set(BUILD_SHARED_LIBS ON)
+endif()
+
 if(BUILD_SHARED_LIBS)
     set(ARIBCC_SHARED_LIBRARY ON CACHE BOOL "Indicate built as shared library" FORCE)
 endif()

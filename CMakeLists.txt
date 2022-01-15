@@ -32,6 +32,9 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Default to Release build" FORCE)
 endif()
 
+# Indicate -DARIBCC_SHARED_LIBRARY:BOOL=ON to build as shared library
+option(ARIBCC_SHARED_LIBRARY "Build libaribcaption as shared library" OFF)
+
 # Indicate -DARIBCC_NO_RENDERER:BOOL=ON to disable renderer
 option(ARIBCC_NO_RENDERER "Disable Renderer" OFF)
 
@@ -122,7 +125,7 @@ if(ARIBCC_SHARED_LIBRARY AND (NOT BUILD_SHARED_LIBS))
     set(BUILD_SHARED_LIBS ON)
 endif()
 
-if(BUILD_SHARED_LIBS)
+if(BUILD_SHARED_LIBS AND (NOT ARIBCC_SHARED_LIBRARY))
     set(ARIBCC_SHARED_LIBRARY ON CACHE BOOL "Indicate built as shared library" FORCE)
 endif()
 

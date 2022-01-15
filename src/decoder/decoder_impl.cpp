@@ -1060,20 +1060,31 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         return false;
     }
 
+    uint8_t ch2 = 0;
+    if (entry->bytes == 2) {
+        if (remain_bytes < 2) {
+            return false;
+        }
+        ch2 = data[1] & 0x7F;
+        if (ch2 < 0x21 || ch2 >= 0x7F) {
+            return false;
+        }
+    }
+
     if (entry->graphics_set == GraphicSet::kHiragana ||
                entry->graphics_set == GraphicSet::kProportionalHiragana) {
-        size_t index = ((size_t)data[0] & 0x7F) - 0x21;
+        uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = kHiraganaTable[index];
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kKatakana ||
                entry->graphics_set == GraphicSet::kProportionalKatakana) {
-        size_t index = ((size_t)data[0] & 0x7F) - 0x21;
+        uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = kKatakanaTable[index];
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kJIS_X0201_Katakana) {
-        size_t index = ((size_t)data[0] & 0x7F) - 0x21;
+        uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = kJISX0201KatakanaTable[index];
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
@@ -1081,15 +1092,15 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
                entry->graphics_set == GraphicSet::kJIS_X0213_2004_Kanji_1 ||
                entry->graphics_set == GraphicSet::kJIS_X0213_2004_Kanji_2 ||
                entry->graphics_set == GraphicSet::kAdditionalSymbols) {
-        constexpr size_t gaiji_begin_ku = 84;
-        size_t ku = ((size_t)data[0] & 0x7F) - 0x21;
-        size_t ten = ((size_t)data[1] & 0x7F) - 0x21;
+        constexpr uint32_t gaiji_begin_ku = 84;
+        uint32_t ku = (uint32_t)ch - 0x21;
+        uint32_t ten = (uint32_t)ch2 - 0x21;
 
         uint32_t ucs4 = 0;
         uint32_t pua = 0;
 
         if (ku < gaiji_begin_ku) {
-            size_t index = ku * 94 + ten;
+            uint32_t index = ku * 94 + ten;
             ucs4 = kKanjiTable[index];
             // If [ucs4 is Fullwidth alphanumeric] && [request replace] && [under MSZ mode]
             if ((ucs4 >= 0xFF01 && ucs4 <= 0xFF5E) && replace_msz_fullwidth_ascii_ &&
@@ -1099,7 +1110,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
             }
         } else {  // ku >= 84
             // Additional Kanji + Additional Symbols
-            size_t index = (ku - gaiji_begin_ku) * 94 + ten;
+            uint32_t index = (ku - gaiji_begin_ku) * 94 + ten;
             ucs4 = kAdditionalSymbolsTable_Unicode[index];
             pua = kAdditionalSymbolsTable_PUA[index];
             if (pua == ucs4 || pua < 0xE000 || pua > 0xF8FF) {
@@ -1112,7 +1123,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kAlphanumeric ||
                entry->graphics_set == GraphicSet::kProportionalAlphanumeric) {
-        size_t index = ((size_t)data[0] & 0x7F) - 0x21;
+        uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = 0;
         if (IsLatinLanguage()) {
             ucs4 = kAlphanumericTable_Latin[index];
@@ -1124,17 +1135,17 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kLatinExtension) {
-        size_t index = ((size_t)data[0] & 0x7F) - 0x21;
+        uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = kLatinExtensionTable[index];
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kLatinSpecial) {
-        size_t index = ((size_t)data[0] & 0x7F) - 0x21;
+        uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = kLatinSpecialTable[index];
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kMacro) {
-        uint8_t key = data[0] & 0x7F;
+        uint8_t key = ch;
         if (key >= 0x60 && key <= 0x6F) {
             if (!ParseStatementBody(kDefaultMacros[key & 0x0F], sizeof(kDefaultMacros[0]))) {
                 return false;
@@ -1144,9 +1155,9 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
                entry->graphics_set <= GraphicSet::kDRCS_15) {
         uint32_t map_index = static_cast<uint32_t>(entry->graphics_set) - static_cast<uint32_t>(GraphicSet::kDRCS_0);
         auto& drcs_map = drcs_maps_[map_index];
-        uint16_t key = data[0] & 0x7F;
+        uint16_t key = ch;
         if (entry->bytes == 2) {
-            key = (key << 8) | (data[1] & 0x7F);
+            key = (key << 8) | ch2;
         }
 
         auto iter = drcs_map.find(key);

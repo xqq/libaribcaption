@@ -758,6 +758,7 @@ bool DecoderImpl::HandleC1(const uint8_t* data, size_t remain_bytes, size_t* byt
 
     switch (data[0]) {
         case C1::DEL:  // Delete character
+            bytes = 1;
             break;
         case C1::BKF:  // Black Foreground
             text_color_ = kB24ColorCLUT[palette_][0];

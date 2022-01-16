@@ -466,24 +466,16 @@ bool DecoderImpl::ParseStatementBody(const uint8_t* data, size_t length) {
 
         if (ch <= 0x20) {
             ret = HandleC0(data + offset, length - offset, &bytes_processed);
-            if (!ret)
-                log_->e("DecoderImpl: Handle C0 control character 0x%02X failed near 0x%04zX", data[offset], offset);
         } else if (ch < 0x7F) {
             ret = HandleGLGR(data + offset, length - offset, &bytes_processed, GL_);
-            if (!ret)
-                log_->e("DecoderImpl: Handle GL character 0x%02X failed near 0x%04zX", data[offset], offset);
         } else if (ch <= 0xA0) {
             ret = HandleC1(data + offset, length - offset, &bytes_processed);
-            if (!ret)
-                log_->e("DecoderImpl: Handle C1 control character 0x%02X failed near 0x%04zX", data[offset], offset);
         } else if (ch < 0xFF) {
             ret = HandleGLGR(data + offset, length - offset, &bytes_processed, GR_);
-            if (!ret)
-                log_->e("DecoderImpl: Handle GR character 0x%02X failed near 0x%04zX", data[offset], offset);
         }
 
         if (!ret) {
-            log_->e("DecoderImpl: Parse StatementBody failed");
+            log_->e("DecoderImpl: Parse character 0x%02X failed near 0x%04zX", data[offset], offset);
             return false;
         }
         offset += bytes_processed;

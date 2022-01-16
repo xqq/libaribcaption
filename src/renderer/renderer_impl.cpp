@@ -240,7 +240,7 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
 
     // Set up Font Family
     uint32_t language_code = caption.iso6392_language_code;
-    if (force_default_font_family_) {
+    if (force_default_font_family_ || language_font_family_.find(language_code) == language_font_family_.end()) {
         language_code = 0;
     }
     region_renderer_.SetFontFamily(language_font_family_[language_code]);

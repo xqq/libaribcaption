@@ -37,7 +37,12 @@ DecoderImpl::DecoderImpl(Context& context) : log_(GetContextLogger(context)), dr
 
 DecoderImpl::~DecoderImpl() = default;
 
-bool DecoderImpl::Initialize(B24Type type, B24Profile profile, B24LanguageId language_id) {
+bool DecoderImpl::Initialize(EncodingScheme encoding_scheme,
+                             B24Type type, B24Profile profile, B24LanguageId language_id) {
+    request_encoding_ = encoding_scheme;
+    if (request_encoding_ != EncodingScheme::kAuto) {
+        active_encoding_ = encoding_scheme;
+    }
     type_ = type;
     profile_ = profile;
     language_id_ = language_id;
@@ -45,9 +50,33 @@ bool DecoderImpl::Initialize(B24Type type, B24Profile profile, B24LanguageId lan
     return true;
 }
 
+void DecoderImpl::SetEncodingScheme(EncodingScheme encoding_scheme) {
+    request_encoding_ = encoding_scheme;
+
+    if (encoding_scheme == EncodingScheme::kAuto) {
+        EncodingScheme detected_encoding = DetectEncodingScheme();
+        if (active_encoding_ != detected_encoding) {
+            active_encoding_ = detected_encoding;
+            ResetInternalState();
+        }
+    } else {  // encoding_scheme != kAuto
+        if (active_encoding_ != encoding_scheme) {
+            active_encoding_ = encoding_scheme;
+            ResetInternalState();
+        }
+    }
+};
+
 void DecoderImpl::SetProfile(B24Profile profile) {
     profile_ = profile;
     ResetWritingFormat();
+}
+
+void DecoderImpl::SetLanguageId(B24LanguageId language_id) {
+    if (language_id_ != language_id) {
+        language_id_ = language_id;
+        current_iso6392_language_code_ = QueryISO6392LanguageCode(language_id);
+    }
 }
 
 void DecoderImpl::SetReplaceMSZFullWidthAlphanumeric(bool replace) {
@@ -61,7 +90,8 @@ uint32_t DecoderImpl::QueryISO6392LanguageCode(B24LanguageId language_id) const 
 
     size_t index = static_cast<size_t>(language_id) - 1;
     if (index >= language_infos_.size()) {
-        return current_iso6392_language_code_;
+        // Language not exist
+        return 0;
     }
 
     const LanguageInfo& info = language_infos_[index];
@@ -176,9 +206,36 @@ bool DecoderImpl::Flush() {
     return true;
 }
 
+auto DecoderImpl::DetectEncodingScheme() -> EncodingScheme {
+    EncodingScheme encoding_scheme = EncodingScheme::kARIB_STD_B24_JIS;
+    bool has_jpn = false, has_latin = false, has_eng = false, has_tgl = false;
+
+    for (const auto& info : language_infos_) {
+        if (info.iso6392_language_code == ThreeCC("jpn")) {
+            has_jpn = true;
+        } else if (info.iso6392_language_code == ThreeCC("por") || info.iso6392_language_code == ThreeCC("spa")) {
+            has_latin = true;
+        } else if (info.iso6392_language_code == ThreeCC("eng")) {
+            has_eng = true;
+        } else if (info.iso6392_language_code == ThreeCC("tgl")) {
+            has_tgl = true;
+        }
+    }
+
+    if (has_jpn) {
+        encoding_scheme = EncodingScheme::kARIB_STD_B24_JIS;
+    } else if (has_latin) {
+        encoding_scheme = EncodingScheme::kABNT_NBR_15606_1_Latin;
+    } else if (has_eng || has_tgl) {
+        encoding_scheme = EncodingScheme::kARIB_STD_B24_UTF8;  // Same as kISDB_T_Philippines_UTF8
+    }
+
+    return encoding_scheme;
+}
+
 void DecoderImpl::ResetGraphicSets() {
     // Set default G1~G4 codesets
-    if (IsLatinLanguage()) {
+    if (active_encoding_ == EncodingScheme::kABNT_NBR_15606_1_Latin) {
         // Latin language, defined in ABNT NBR 15606-1
         GX_[0] = kAlphanumericEntry;
         GX_[1] = kAlphanumericEntry;
@@ -255,7 +312,7 @@ void DecoderImpl::ResetWritingFormat() {
         char_vertical_spacing_ = 6;
     }
 
-    if (IsLatinLanguage()) {
+    if (active_encoding_ == EncodingScheme::kABNT_NBR_15606_1_Latin) {
         char_horizontal_spacing_ = 2;
         char_vertical_spacing_ = 16;
     }
@@ -271,7 +328,7 @@ void DecoderImpl::ResetInternalState() {
     active_pos_x_ = 0;
     active_pos_y_ = 0;
 
-    if (IsLatinLanguage()) {
+    if (active_encoding_ == EncodingScheme::kABNT_NBR_15606_1_Latin) {
         // Latin language: Use 1/2 x 1 middle size (MSZ) as default
         char_horizontal_scale_ = 0.5f;
         char_vertical_scale_ = 1.0f;
@@ -350,6 +407,15 @@ bool DecoderImpl::ParseCaptionManagementData(const uint8_t* data, size_t length)
         }
 
         language_infos_[language_tag] = language_info;
+    }
+
+    if (request_encoding_ == EncodingScheme::kAuto) {
+        // Determine encoding scheme by languages exist in caption management data
+        EncodingScheme detected_encoding = DetectEncodingScheme();
+        if (active_encoding_ != detected_encoding) {
+            active_encoding_ = detected_encoding;
+            ResetInternalState();
+        }
     }
 
     if (offset + 3 > length) {
@@ -661,7 +727,8 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             bytes = 1;
             break;
         case C0::SP:   // Space character
-            if (IsLatinLanguage()) {
+            if (active_encoding_ == EncodingScheme::kABNT_NBR_15606_1_Latin ||
+                    active_encoding_ == EncodingScheme::kARIB_STD_B24_UTF8) {
                 PushCharacter(0x0020);  // Space (Basic Latin)
             } else {
                 PushCharacter(0x3000);  // Ideographic Space (CJK)
@@ -1109,7 +1176,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
                entry->graphics_set == GraphicSet::kProportionalAlphanumeric) {
         uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = 0;
-        if (IsLatinLanguage()) {
+        if (active_encoding_ == EncodingScheme::kABNT_NBR_15606_1_Latin) {
             ucs4 = kAlphanumericTable_Latin[index];
         } else if (replace_msz_fullwidth_ascii_ && char_horizontal_scale_ * 2 == char_vertical_scale_) {
             ucs4 = kAlphanumericTable_Halfwidth[index];
@@ -1280,13 +1347,8 @@ void DecoderImpl::MakeNewCaptionRegion() {
     }
 }
 
-bool DecoderImpl::IsLatinLanguage() const {
-    // Portuguese or Spanish
-    return current_iso6392_language_code_ == ThreeCC("por") || current_iso6392_language_code_ == ThreeCC("spa");
-}
-
 bool DecoderImpl::IsRubyMode() const {
-    if (IsLatinLanguage()) {
+    if (active_encoding_ != EncodingScheme::kARIB_STD_B24_JIS) {
         return false;
     }
     if ((char_horizontal_scale_ == 0.5f && char_vertical_scale_ == 0.5f) ||

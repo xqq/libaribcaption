@@ -38,18 +38,21 @@ public:
     explicit DecoderImpl(Context& context);
     ~DecoderImpl();
 public:
-    bool Initialize(B24Type type = B24Type::kDefault,
+    bool Initialize(EncodingScheme encoding_scheme = EncodingScheme::kAuto,
+                    B24Type type = B24Type::kDefault,
                     B24Profile profile = B24Profile::kDefault,
                     B24LanguageId language_id = B24LanguageId::kDefault);
+    void SetEncodingScheme(EncodingScheme encoding_scheme);
     void SetType(B24Type type) { type_ = type; }
     void SetProfile(B24Profile profile);
-    void SetLanguageId(B24LanguageId language_id) { language_id_ = language_id; }
+    void SetLanguageId(B24LanguageId language_id);
     void SetReplaceMSZFullWidthAlphanumeric(bool replace);
     [[nodiscard]]
     uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;
     DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result);
     bool Flush();
 private:
+    auto DetectEncodingScheme() -> EncodingScheme;
     void ResetGraphicSets();
     void ResetWritingFormat();
     void ResetInternalState();
@@ -69,8 +72,6 @@ private:
     void ApplyCaptionCharCommonProperties(CaptionChar& caption_char);
     bool NeedNewCaptionRegion();
     void MakeNewCaptionRegion();
-    [[nodiscard]]
-    bool IsLatinLanguage() const;
     [[nodiscard]]
     bool IsRubyMode() const;
     [[nodiscard]]
@@ -96,6 +97,9 @@ private:
     };
 private:
     std::shared_ptr<Logger> log_;
+
+    EncodingScheme request_encoding_ = EncodingScheme::kAuto;
+    EncodingScheme active_encoding_ = EncodingScheme::kARIB_STD_B24_JIS;
 
     B24Type type_ = B24Type::kDefault;
     B24Profile profile_ = B24Profile::kDefault;

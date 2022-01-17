@@ -30,6 +30,14 @@ namespace aribcaption {
 
 namespace internal { class DecoderImpl; }
 
+enum class EncodingScheme {
+    kAuto = 0,
+    kARIB_STD_B24_JIS = 1,
+    kARIB_STD_B24_UTF8 = 2,
+    kABNT_NBR_15606_1_Latin = 3,
+    kISDB_T_Philippines_UTF8 = kARIB_STD_B24_UTF8,  // alias
+};
+
 enum class DecodeStatus {
     kError = 0,
     kNoCaption = 1,
@@ -47,9 +55,11 @@ public:
     ARIBCC_API Decoder(Decoder&&) noexcept;
     ARIBCC_API Decoder& operator=(Decoder&&) noexcept;
 public:
-    ARIBCC_API bool Initialize(B24Type type = B24Type::kDefault,
+    ARIBCC_API bool Initialize(EncodingScheme encoding_scheme = EncodingScheme::kAuto,
+                               B24Type type = B24Type::kDefault,
                                B24Profile profile = B24Profile::kDefault,
                                B24LanguageId language_id = B24LanguageId::kDefault);
+    ARIBCC_API void SetEncodingScheme(EncodingScheme encoding_scheme);
     ARIBCC_API void SetType(B24Type type);
     ARIBCC_API void SetProfile(B24Profile profile);
     ARIBCC_API void SetLanguageId(B24LanguageId language_id);

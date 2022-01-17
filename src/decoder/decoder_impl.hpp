@@ -44,7 +44,6 @@ public:
     void SetType(B24Type type) { type_ = type; }
     void SetProfile(B24Profile profile);
     void SetLanguageId(B24LanguageId language_id) { language_id_ = language_id; }
-    void SetDefaultLanguage(uint32_t iso6392_language_code);
     void SetReplaceMSZFullWidthAlphanumeric(bool replace);
     [[nodiscard]]
     uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;

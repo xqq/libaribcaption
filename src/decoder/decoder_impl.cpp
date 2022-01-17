@@ -50,15 +50,6 @@ void DecoderImpl::SetProfile(B24Profile profile) {
     ResetWritingFormat();
 }
 
-void DecoderImpl::SetDefaultLanguage(uint32_t iso6392_language_code) {
-    if (!language_infos_.empty()) {
-        return;
-    }
-
-    current_iso6392_language_code_ = iso6392_language_code;
-    ResetInternalState();
-}
-
 void DecoderImpl::SetReplaceMSZFullWidthAlphanumeric(bool replace) {
     replace_msz_fullwidth_ascii_ = replace;
 }

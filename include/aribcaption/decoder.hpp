@@ -53,7 +53,6 @@ public:
     ARIBCC_API void SetType(B24Type type);
     ARIBCC_API void SetProfile(B24Profile profile);
     ARIBCC_API void SetLanguageId(B24LanguageId language_id);
-    ARIBCC_API void SetDefaultLanguage(uint32_t iso6392_language_code);
     ARIBCC_API void SetReplaceMSZFullWidthAlphanumeric(bool replace);
     [[nodiscard]]
     ARIBCC_API uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;

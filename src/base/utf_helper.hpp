@@ -19,6 +19,7 @@
 #ifndef ARIBCAPTION_UTF_HELPER_HPP
 #define ARIBCAPTION_UTF_HELPER_HPP
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 
@@ -69,6 +70,56 @@ inline size_t UTF16AppendCodePoint(std::u16string& u16str, uint32_t ucs4) {
 
     // Invalid ucs4
     return 0;
+}
+
+inline bool IsUTF8Continuation(uint8_t u8) {
+    return (u8 & 0xC0) == 0x80;
+}
+
+inline uint32_t DecodeUTF8ToCodePoint(const uint8_t* str, size_t bytes_available, size_t* bytes_processed) {
+    if (!bytes_available) {
+        *bytes_processed = 0;
+        return 0;
+    }
+
+    uint32_t ucs4 = 0xFFFD;
+
+    if (str[0] < 0x80) {  // 1-byte UTF-8 character (ASCII)
+        ucs4 = str[0];
+        *bytes_processed = 1;
+    } else if (str[0] < 0xC2) {  // Invalid UTF-8 character
+        *bytes_processed = 1;
+        // Invalid UTF-8, fallthrough
+    } else if (str[0] < 0xE0) {  // 2-byte UTF-8 character
+        if (bytes_available >= 2 && IsUTF8Continuation(str[1])) {
+            ucs4 = (uint32_t)(str[0] & 0b11111) << 6 | (uint32_t)(str[1] & 0b111111);
+            *bytes_processed = 2;
+        } else {
+            *bytes_processed = 1;
+        }
+    } else if (str[0] < 0xF0) {  // 3-byte UTF-8 character
+        if (bytes_available >= 3 && IsUTF8Continuation(str[1]) && IsUTF8Continuation(str[2])) {
+            ucs4 = (uint32_t)(str[0] & 0b001111) << 12 |
+                   (uint32_t)(str[1] & 0b111111) <<  6 |
+                   (uint32_t)(str[2] & 0b111111) <<  0;
+            *bytes_processed = 3;
+        } else {
+            *bytes_processed = 1;
+        }
+    } else if (str[0] < 0xF8) {  // 4-byte UTF-8 character
+        if (bytes_available >= 4 &&
+                IsUTF8Continuation(str[1]) && IsUTF8Continuation(str[2]) && IsUTF8Continuation((str[3]))) {
+            ucs4 = (uint32_t)(str[0] & 0b000111) << 18 |
+                   (uint32_t)(str[1] & 0b111111) << 12 |
+                   (uint32_t)(str[2] & 0b111111) <<  6 |
+                   (uint32_t)(str[3] & 0b111111) <<  0;
+            *bytes_processed = 4;
+        } else {
+            *bytes_processed = 1;
+        }
+    }
+
+    return ucs4;
 }
 
 }  // namespace aribcaption::utf

@@ -521,14 +521,31 @@ bool DecoderImpl::ParseStatementBody(const uint8_t* data, size_t length) {
         bool ret = false;
         size_t bytes_processed = 0;
 
-        if (ch <= 0x20) {
-            ret = HandleC0(data + offset, length - offset, &bytes_processed);
-        } else if (ch < 0x7F) {
-            ret = HandleGLGR(data + offset, length - offset, &bytes_processed, GL_);
-        } else if (ch <= 0xA0) {
-            ret = HandleC1(data + offset, length - offset, &bytes_processed);
-        } else if (ch < 0xFF) {
-            ret = HandleGLGR(data + offset, length - offset, &bytes_processed, GR_);
+        if (active_encoding_ == EncodingScheme::kARIB_STD_B24_UTF8) {
+            if (ch <= 0x1F) {
+                ret = HandleC0(data + offset, length - offset, &bytes_processed);
+            } else if (ch == 0x7F) {
+                ret = HandleC1(data + offset, length - offset, &bytes_processed);
+            } else if (ch == 0xC2) {
+                if (offset + 1 < length && data[offset + 1] >= 0x80 && data[offset + 1] <= 0x9F) {
+                    ret = HandleC1(data + offset + 1, length - offset - 1, &bytes_processed);
+                    bytes_processed += 1;
+                } else {
+                    ret = HandleUTF8(data + offset, length - offset, &bytes_processed);
+                }
+            } else {
+                ret = HandleUTF8(data + offset, length - offset, &bytes_processed);
+            }
+        } else {
+            if (ch <= 0x20) {
+                ret = HandleC0(data + offset, length - offset, &bytes_processed);
+            } else if (ch < 0x7F) {
+                ret = HandleGLGR(data + offset, length - offset, &bytes_processed, GL_);
+            } else if (ch <= 0xA0) {
+                ret = HandleC1(data + offset, length - offset, &bytes_processed);
+            } else if (ch < 0xFF) {
+                ret = HandleGLGR(data + offset, length - offset, &bytes_processed, GR_);
+            }
         }
 
         if (!ret) {
@@ -1225,6 +1242,18 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
     } // else: not supported, ignore
 
     *bytes_processed = entry->bytes;
+    return true;
+}
+
+bool DecoderImpl::HandleUTF8(const uint8_t* data, size_t remain_bytes, size_t* bytes_processed) {
+    if (!remain_bytes) {
+        return false;
+    }
+
+    uint32_t ucs4 = utf::DecodeUTF8ToCodePoint(data, remain_bytes, bytes_processed);
+    PushCharacter(ucs4);
+    MoveRelativeActivePos(1, 0);
+
     return true;
 }
 

@@ -121,7 +121,7 @@ private:
         kHiraganaEntry,      // G2
         kMacroEntry          // G3
     };
-    std::vector<std::unordered_map<uint16_t, DRCS>> drcs_maps_;
+    std::vector<std::unordered_map<uint16_t, DRCS>> drcs_maps_{16};
 
     int64_t pts_ = PTS_NOPTS;  // in milliseconds
 

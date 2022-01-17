@@ -33,7 +33,7 @@
 
 namespace aribcaption::internal {
 
-DecoderImpl::DecoderImpl(Context& context) : log_(GetContextLogger(context)), drcs_maps_(16) { }
+DecoderImpl::DecoderImpl(Context& context) : log_(GetContextLogger(context)) {}
 
 DecoderImpl::~DecoderImpl() = default;
 

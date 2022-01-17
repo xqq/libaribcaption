@@ -45,7 +45,7 @@ public:
     void SetEncodingScheme(EncodingScheme encoding_scheme);
     void SetType(B24Type type) { type_ = type; }
     void SetProfile(B24Profile profile);
-    void SetLanguageId(B24LanguageId language_id);
+    void SwitchLanguage(B24LanguageId language_id);
     void SetReplaceMSZFullWidthAlphanumeric(bool replace);
     [[nodiscard]]
     uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;

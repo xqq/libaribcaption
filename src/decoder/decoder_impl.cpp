@@ -72,7 +72,7 @@ void DecoderImpl::SetProfile(B24Profile profile) {
     ResetWritingFormat();
 }
 
-void DecoderImpl::SetLanguageId(B24LanguageId language_id) {
+void DecoderImpl::SwitchLanguage(B24LanguageId language_id) {
     if (language_id_ != language_id) {
         language_id_ = language_id;
         current_iso6392_language_code_ = QueryISO6392LanguageCode(language_id);

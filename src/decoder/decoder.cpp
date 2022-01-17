@@ -45,8 +45,8 @@ void Decoder::SetProfile(B24Profile profile) {
     pimpl_->SetProfile(profile);
 }
 
-void Decoder::SetLanguageId(B24LanguageId language_id) {
-    pimpl_->SetLanguageId(language_id);
+void Decoder::SwitchLanguage(B24LanguageId language_id) {
+    pimpl_->SwitchLanguage(language_id);
 }
 
 void Decoder::SetReplaceMSZFullWidthAlphanumeric(bool replace) {

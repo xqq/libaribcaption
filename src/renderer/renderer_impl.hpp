@@ -50,6 +50,8 @@ public:
     bool SetFrameSize(int frame_width, int frame_height);
     bool SetMargins(int top, int bottom, int left, int right);
 
+    void SetStoragePolicy(CaptionStoragePolicy policy, std::optional<size_t> upper_limit = std::nullopt);
+
     bool AppendCaption(const Caption& caption);
     bool AppendCaption(Caption&& caption);
 
@@ -57,6 +59,7 @@ public:
     bool Flush();
 private:
     void LoadDefaultFontFamilies();
+    void CleanupCaptionsIfNecessary();
     void AdjustCaptionArea(int origin_plane_width, int origin_plane_height);
     void InvalidatePrevRenderedImages();
 public:
@@ -90,6 +93,10 @@ private:
     int margin_bottom_ = 0;
     int margin_left_ = 0;
     int margin_right_ = 0;
+
+    CaptionStoragePolicy storage_policy_ = CaptionStoragePolicy::kMinimum;
+    size_t upper_limit_count_ = 0;
+    size_t upper_limit_duration_ = 0;
 
     // PTS => Caption
     // Sorted by PTS incrementally

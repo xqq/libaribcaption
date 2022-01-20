@@ -20,6 +20,7 @@
 #define ARIBCAPTION_RENDERER_HPP
 
 #include <memory>
+#include <optional>
 #include "aribcc_config.h"
 #include "aribcc_export.h"
 #include "context.hpp"
@@ -64,6 +65,13 @@ enum class TextRendererType {
 
 namespace internal { class RendererImpl; }
 
+enum class CaptionStoragePolicy {
+    kMinimum = 0,
+    kUnlimited = 1,
+    kUpperLimitCount = 2,
+    kUpperLimitDuration = 3,
+};
+
 enum class RenderStatus {
     kError = 0,
     kNoImage = 1,
@@ -98,6 +106,8 @@ public:
     ARIBCC_API bool SetLanguageSpecificFontFamily(uint32_t language_code, const std::vector<std::string>& font_family);
     ARIBCC_API bool SetFrameSize(int frame_width, int frame_height);
     ARIBCC_API bool SetMargins(int top, int bottom, int left, int right);
+
+    ARIBCC_API void SetStoragePolicy(CaptionStoragePolicy policy, std::optional<size_t> upper_limit = std::nullopt);
 
     ARIBCC_API bool AppendCaption(const Caption& caption);
     ARIBCC_API bool AppendCaption(Caption&& caption);

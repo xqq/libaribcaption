@@ -18,6 +18,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <iterator>
 #include "aribcaption/context.hpp"
 #include "renderer/renderer_impl.hpp"
 
@@ -156,6 +157,18 @@ bool RendererImpl::SetMargins(int top, int bottom, int left, int right) {
     return true;
 }
 
+void RendererImpl::SetStoragePolicy(CaptionStoragePolicy policy, std::optional<size_t> upper_limit) {
+    storage_policy_ = policy;
+
+    if (policy == CaptionStoragePolicy::kUpperLimitCount) {
+        assert(upper_limit.has_value());
+        upper_limit_count_ = upper_limit.value();
+    } else if (policy == CaptionStoragePolicy::kUpperLimitDuration) {
+        assert(upper_limit.has_value());
+        upper_limit_duration_ = upper_limit.value();
+    }
+}
+
 bool RendererImpl::AppendCaption(const Caption& caption) {
     assert(caption.pts != PTS_NOPTS && "Caption without PTS is not supported");
     assert(caption.plane_width > 0 && caption.plane_height > 0);
@@ -171,6 +184,7 @@ bool RendererImpl::AppendCaption(const Caption& caption) {
     }
 
     captions_.insert_or_assign(captions_.end(), caption.pts, caption);
+    CleanupCaptionsIfNecessary();
     return true;
 }
 
@@ -189,7 +203,40 @@ bool RendererImpl::AppendCaption(Caption&& caption) {
     }
 
     captions_.insert_or_assign(captions_.end(), caption.pts, std::move(caption));
+    CleanupCaptionsIfNecessary();
     return true;
+}
+
+void RendererImpl::CleanupCaptionsIfNecessary() {
+    if (storage_policy_ == CaptionStoragePolicy::kUnlimited) {
+        return;
+    } else if (storage_policy_ == CaptionStoragePolicy::kMinimum) {
+        if (prev_rendered_caption_pts_ == PTS_NOPTS) {
+            return;
+        }
+        auto prev_rendered_caption_iter = captions_.find(prev_rendered_caption_pts_);
+        if (prev_rendered_caption_iter != captions_.end()) {
+            captions_.erase(captions_.begin(), prev_rendered_caption_iter);
+        }
+    } else if (storage_policy_ == CaptionStoragePolicy::kUpperLimitCount) {
+        if (captions_.size() <= upper_limit_count_) {
+            return;
+        }
+        auto erase_end = std::prev(captions_.end(), static_cast<ptrdiff_t>(upper_limit_count_));
+        if (erase_end != captions_.begin()) {
+            captions_.erase(captions_.begin(), erase_end);
+        }
+    } else if (storage_policy_ == CaptionStoragePolicy::kUpperLimitDuration) {
+        if (captions_.empty()) {
+            return;
+        }
+        int64_t last_caption_pts = captions_.rbegin()->first;
+        int64_t erase_end_pts = last_caption_pts - static_cast<int64_t>(upper_limit_duration_);
+        auto erase_end = captions_.lower_bound(erase_end_pts);
+        if (erase_end != captions_.end() && erase_end != captions_.begin()) {
+            captions_.erase(captions_.begin(), erase_end);
+        }
+    }
 }
 
 RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {

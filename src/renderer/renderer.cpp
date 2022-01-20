@@ -71,6 +71,10 @@ bool Renderer::SetMargins(int top, int bottom, int left, int right) {
     return pimpl_->SetMargins(top, bottom, left, right);
 }
 
+void Renderer::SetStoragePolicy(CaptionStoragePolicy policy, std::optional<size_t> upper_limit) {
+    pimpl_->SetStoragePolicy(policy, upper_limit);
+}
+
 bool Renderer::AppendCaption(const Caption& caption) {
     return pimpl_->AppendCaption(caption);
 }

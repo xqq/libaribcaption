@@ -177,13 +177,29 @@ bool RendererImpl::AppendCaption(const Caption& caption) {
         return false;
     }
 
-    auto prev = captions_.rbegin();
-    if (prev != captions_.rend() && prev->second.wait_duration == DURATION_INDEFINITE) {
-        Caption& prev_caption = prev->second;
-        prev_caption.wait_duration = caption.pts - prev_caption.pts;
+    int64_t pts = caption.pts;
+
+    if (captions_.empty()) {
+        captions_.emplace(pts, caption);
+    } else {
+        auto prev = captions_.lower_bound(pts - 1);
+        if (prev == captions_.end() || (prev != captions_.begin() && prev->first > pts - 1)) {
+            --prev;
+        }
+
+        // Correct previous caption's duration
+        if (prev->first < pts && prev->second.wait_duration == DURATION_INDEFINITE) {
+            Caption& prev_caption = prev->second;
+            prev_caption.wait_duration = pts - prev_caption.pts;
+        }
+
+        captions_.insert_or_assign(std::next(prev), pts, caption);
     }
 
-    captions_.insert_or_assign(captions_.end(), caption.pts, caption);
+    if (pts <= prev_rendered_caption_pts_) {
+        InvalidatePrevRenderedImages();
+    }
+
     CleanupCaptionsIfNecessary();
     return true;
 }
@@ -196,13 +212,29 @@ bool RendererImpl::AppendCaption(Caption&& caption) {
         return false;
     }
 
-    auto prev = captions_.rbegin();
-    if (prev != captions_.rend() && prev->second.wait_duration == DURATION_INDEFINITE) {
-        Caption& prev_caption = prev->second;
-        prev_caption.wait_duration = caption.pts - prev_caption.pts;
+    int64_t pts = caption.pts;
+
+    if (captions_.empty()) {
+        captions_.emplace(pts, std::move(caption));
+    } else {
+        auto prev = captions_.lower_bound(pts - 1);
+        if (prev == captions_.end() || (prev != captions_.begin() && prev->first > pts - 1)) {
+            --prev;
+        }
+
+        // Correct previous caption's duration
+        if (prev->first < pts && prev->second.wait_duration == DURATION_INDEFINITE) {
+            Caption& prev_caption = prev->second;
+            prev_caption.wait_duration = pts - prev_caption.pts;
+        }
+
+        captions_.insert_or_assign(std::next(prev), pts, std::move(caption));
     }
 
-    captions_.insert_or_assign(captions_.end(), caption.pts, std::move(caption));
+    if (pts <= prev_rendered_caption_pts_) {
+        InvalidatePrevRenderedImages();
+    }
+
     CleanupCaptionsIfNecessary();
     return true;
 }
@@ -246,38 +278,38 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
     out_result.duration = 0;
     out_result.images.clear();
 
-    if (has_prev_rendered_caption_) {
-        if (pts >= prev_rendered_caption_pts_ && pts < prev_rendered_caption_pts_ + prev_rendered_caption_duration_) {
-            if (!prev_rendered_images_.empty()) {
-                // Re-use previous rendered images
-                out_result.pts = prev_rendered_caption_pts_;
-                out_result.duration = prev_rendered_caption_duration_;
-                out_result.images = prev_rendered_images_;
-                return RenderStatus::kGotImageUnchanged;
-            } else {
-                return RenderStatus::kNoImage;
-            }
-        }
-    }
-
     if (captions_.empty()) {
+        InvalidatePrevRenderedImages();
         return RenderStatus::kNoImage;
     }
 
     auto iter = captions_.lower_bound(pts);
-    if (iter == captions_.end()) {
-        --iter;
-    } else if (iter != captions_.begin() && iter->first > pts) {
+    if (iter == captions_.end() || (iter != captions_.begin() && iter->first > pts)) {
         --iter;
     }
 
     Caption& caption = iter->second;
     if (pts < caption.pts || (caption.wait_duration != DURATION_INDEFINITE && pts >= caption.pts + caption.wait_duration)) {
         // Timeout
+        InvalidatePrevRenderedImages();
         return RenderStatus::kNoImage;
     }
     if (caption.regions.empty()) {
+        InvalidatePrevRenderedImages();
         return RenderStatus::kNoImage;
+    }
+
+    if (has_prev_rendered_caption_ && prev_rendered_caption_pts_ == caption.pts) {
+        // Reuse previous rendered caption
+        if (!prev_rendered_images_.empty()) {
+            out_result.pts = prev_rendered_caption_pts_;
+            out_result.duration = prev_rendered_caption_duration_;
+            out_result.images = prev_rendered_images_;
+            return RenderStatus::kGotImageUnchanged;
+        } else {
+            InvalidatePrevRenderedImages();
+            return RenderStatus::kNoImage;
+        }
     }
 
     // Prepare for rendering
@@ -306,6 +338,7 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
             images.push_back(std::move(result.value()));
         } else {
             log_->e("RendererImpl: RenderCaptionRegion() failed with error: %d", static_cast<int>(result.error()));
+            InvalidatePrevRenderedImages();
             return RenderStatus::kError;
         }
     }

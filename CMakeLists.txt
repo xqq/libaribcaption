@@ -161,6 +161,7 @@ add_library(aribcaption
         src/base/scoped_holder.hpp
         src/base/utf_helper.hpp
         src/base/wchar_helper.hpp
+        src/common/context.cpp
         src/decoder/b24_codesets.hpp
         src/decoder/b24_colors.hpp
         src/decoder/b24_controlsets.hpp
@@ -171,8 +172,6 @@ add_library(aribcaption
         src/decoder/decoder.cpp
         src/decoder/decoder_impl.cpp
         src/decoder/decoder_impl.hpp
-        src/c_api.cpp
-        src/context.cpp
 )
 
 # Append renderer-related sources if renderer not disabled

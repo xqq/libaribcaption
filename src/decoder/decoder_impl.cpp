@@ -38,7 +38,7 @@ DecoderImpl::DecoderImpl(Context& context) : log_(GetContextLogger(context)) {}
 DecoderImpl::~DecoderImpl() = default;
 
 bool DecoderImpl::Initialize(EncodingScheme encoding_scheme,
-                             B24Type type, B24Profile profile, B24LanguageId language_id) {
+                             CaptionType type, Profile profile, LanguageId language_id) {
     request_encoding_ = encoding_scheme;
     if (request_encoding_ != EncodingScheme::kAuto) {
         active_encoding_ = encoding_scheme;
@@ -67,12 +67,12 @@ void DecoderImpl::SetEncodingScheme(EncodingScheme encoding_scheme) {
     }
 };
 
-void DecoderImpl::SetProfile(B24Profile profile) {
+void DecoderImpl::SetProfile(Profile profile) {
     profile_ = profile;
     ResetWritingFormat();
 }
 
-void DecoderImpl::SwitchLanguage(B24LanguageId language_id) {
+void DecoderImpl::SwitchLanguage(LanguageId language_id) {
     if (language_id_ != language_id) {
         language_id_ = language_id;
         current_iso6392_language_code_ = QueryISO6392LanguageCode(language_id);
@@ -83,7 +83,7 @@ void DecoderImpl::SetReplaceMSZFullWidthAlphanumeric(bool replace) {
     replace_msz_fullwidth_ascii_ = replace;
 }
 
-uint32_t DecoderImpl::QueryISO6392LanguageCode(B24LanguageId language_id) const {
+uint32_t DecoderImpl::QueryISO6392LanguageCode(LanguageId language_id) const {
     if (language_infos_.empty()) {
         return current_iso6392_language_code_;
     }
@@ -240,13 +240,13 @@ void DecoderImpl::ResetGraphicSets() {
         GX_[1] = kAlphanumericEntry;
         GX_[2] = kLatinExtensionEntry;
         GX_[3] = kLatinSpecialEntry;
-    } else if (profile_ == B24Profile::kProfileA) {
+    } else if (profile_ == Profile::kProfileA) {
         // full-seg, Profile A
         GX_[0] = kKanjiEntry;
         GX_[1] = kAlphanumericEntry;
         GX_[2] = kHiraganaEntry;
         GX_[3] = kMacroEntry;
-    } else if (profile_ == B24Profile::kProfileC) {
+    } else if (profile_ == Profile::kProfileC) {
         // one-seg, Profile C
         GX_[0] = kDRCS1Entry;
         GX_[1] = kAlphanumericEntry;
@@ -258,7 +258,7 @@ void DecoderImpl::ResetGraphicSets() {
 }
 
 void DecoderImpl::ResetWritingFormat() {
-    if (profile_ == B24Profile::kProfileA) {
+    if (profile_ == Profile::kProfileA) {
         switch (swf_) {
             case 5:   // 1920 x 1080 horizontal
                 caption_plane_width_ = display_area_width_ = 1920;
@@ -302,7 +302,7 @@ void DecoderImpl::ResetWritingFormat() {
                 char_vertical_spacing_ = 24;
                 break;
         }
-    } else if (profile_ == B24Profile::kProfileC) {
+    } else if (profile_ == Profile::kProfileC) {
         caption_plane_width_ = display_area_width_ = 320;
         caption_plane_height_ = display_area_height_ = 180;
         char_width_ = 18;
@@ -382,7 +382,7 @@ bool DecoderImpl::ParseCaptionManagementData(const uint8_t* data, size_t length)
 
         LanguageInfo language_info;
         uint32_t language_tag = ((data[offset] & 0b11100000) >> 5);
-        language_info.language_id = static_cast<B24LanguageId>(language_tag + 1);
+        language_info.language_id = static_cast<LanguageId>(language_tag + 1);
         uint8_t DMF = language_info.DMF = data[offset] & 0b00001111;
         offset += 1;
 
@@ -1380,7 +1380,7 @@ bool DecoderImpl::IsRubyMode() const {
         return false;
     }
     if ((char_horizontal_scale_ == 0.5f && char_vertical_scale_ == 0.5f) ||
-            (profile_ == B24Profile::kProfileA && char_width_ == 18 && char_height_ == 18)) {
+            (profile_ == Profile::kProfileA && char_width_ == 18 && char_height_ == 18)) {
         return true;
     }
     return false;

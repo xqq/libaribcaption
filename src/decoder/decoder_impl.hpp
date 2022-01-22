@@ -39,16 +39,16 @@ public:
     ~DecoderImpl();
 public:
     bool Initialize(EncodingScheme encoding_scheme = EncodingScheme::kAuto,
-                    B24Type type = B24Type::kDefault,
-                    B24Profile profile = B24Profile::kDefault,
-                    B24LanguageId language_id = B24LanguageId::kDefault);
+                    CaptionType type = CaptionType::kDefault,
+                    Profile profile = Profile::kDefault,
+                    LanguageId language_id = LanguageId::kDefault);
     void SetEncodingScheme(EncodingScheme encoding_scheme);
-    void SetType(B24Type type) { type_ = type; }
-    void SetProfile(B24Profile profile);
-    void SwitchLanguage(B24LanguageId language_id);
+    void SetCaptionType(CaptionType type) { type_ = type; }
+    void SetProfile(Profile profile);
+    void SwitchLanguage(LanguageId language_id);
     void SetReplaceMSZFullWidthAlphanumeric(bool replace);
     [[nodiscard]]
-    uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;
+    uint32_t QueryISO6392LanguageCode(LanguageId language_id) const;
     DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result);
     void Flush();
 private:
@@ -90,7 +90,7 @@ public:
     DecoderImpl& operator=(DecoderImpl&&) = delete;
 private:
     struct LanguageInfo {
-        B24LanguageId language_id = B24LanguageId::kFirst;
+        LanguageId language_id = LanguageId::kFirst;
         uint8_t DMF = 0;
         uint8_t format = 0;
         uint8_t TCS = 0;
@@ -102,9 +102,9 @@ private:
     EncodingScheme request_encoding_ = EncodingScheme::kAuto;
     EncodingScheme active_encoding_ = EncodingScheme::kARIB_STD_B24_JIS;
 
-    B24Type type_ = B24Type::kDefault;
-    B24Profile profile_ = B24Profile::kDefault;
-    B24LanguageId language_id_ = B24LanguageId::kDefault;
+    CaptionType type_ = CaptionType::kDefault;
+    Profile profile_ = Profile::kDefault;
+    LanguageId language_id_ = LanguageId::kDefault;
 
     bool replace_msz_fullwidth_ascii_ = false;
 

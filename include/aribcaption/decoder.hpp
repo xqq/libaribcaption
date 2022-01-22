@@ -22,13 +22,25 @@
 #include <cstdint>
 #include <memory>
 #include "aribcc_export.h"
-#include "b24.hpp"
 #include "caption.hpp"
 #include "context.hpp"
 
 namespace aribcaption {
 
 namespace internal { class DecoderImpl; }
+
+enum class Profile : uint8_t {
+    kProfileA = 0x0008,
+    kProfileC = 0x0012,
+    kDefault = kProfileA
+};
+
+enum class LanguageId : uint8_t {
+    kFirst = 1,
+    kSecond = 2,
+    kDefault = kFirst,
+    kMax = kSecond
+};
 
 enum class EncodingScheme {
     kAuto = 0,
@@ -56,16 +68,16 @@ public:
     ARIBCC_API Decoder& operator=(Decoder&&) noexcept;
 public:
     ARIBCC_API bool Initialize(EncodingScheme encoding_scheme = EncodingScheme::kAuto,
-                               B24Type type = B24Type::kDefault,
-                               B24Profile profile = B24Profile::kDefault,
-                               B24LanguageId language_id = B24LanguageId::kDefault);
+                               CaptionType type = CaptionType::kDefault,
+                               Profile profile = Profile::kDefault,
+                               LanguageId language_id = LanguageId::kDefault);
     ARIBCC_API void SetEncodingScheme(EncodingScheme encoding_scheme);
-    ARIBCC_API void SetType(B24Type type);
-    ARIBCC_API void SetProfile(B24Profile profile);
-    ARIBCC_API void SwitchLanguage(B24LanguageId language_id);
+    ARIBCC_API void SetCaptionType(CaptionType type);
+    ARIBCC_API void SetProfile(Profile profile);
+    ARIBCC_API void SwitchLanguage(LanguageId language_id);
     ARIBCC_API void SetReplaceMSZFullWidthAlphanumeric(bool replace);
     [[nodiscard]]
-    ARIBCC_API uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;
+    ARIBCC_API uint32_t QueryISO6392LanguageCode(LanguageId language_id) const;
     ARIBCC_API DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result);
     ARIBCC_API void Flush();
 public:

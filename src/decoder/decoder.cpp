@@ -29,7 +29,7 @@ Decoder::Decoder(Decoder&&) noexcept = default;
 
 Decoder& Decoder::operator=(Decoder&&) noexcept = default;
 
-bool Decoder::Initialize(EncodingScheme encoding_scheme, B24Type type, B24Profile profile, B24LanguageId language_id) {
+bool Decoder::Initialize(EncodingScheme encoding_scheme, CaptionType type, Profile profile, LanguageId language_id) {
     return pimpl_->Initialize(encoding_scheme, type, profile, language_id);
 }
 
@@ -37,15 +37,15 @@ void Decoder::SetEncodingScheme(EncodingScheme encoding_scheme) {
     pimpl_->SetEncodingScheme(encoding_scheme);
 }
 
-void Decoder::SetType(B24Type type) {
-    pimpl_->SetType(type);
+void Decoder::SetCaptionType(CaptionType type) {
+    pimpl_->SetCaptionType(type);
 }
 
-void Decoder::SetProfile(B24Profile profile) {
+void Decoder::SetProfile(Profile profile) {
     pimpl_->SetProfile(profile);
 }
 
-void Decoder::SwitchLanguage(B24LanguageId language_id) {
+void Decoder::SwitchLanguage(LanguageId language_id) {
     pimpl_->SwitchLanguage(language_id);
 }
 
@@ -53,7 +53,7 @@ void Decoder::SetReplaceMSZFullWidthAlphanumeric(bool replace) {
     pimpl_->SetReplaceMSZFullWidthAlphanumeric(replace);
 }
 
-uint32_t Decoder::QueryISO6392LanguageCode(B24LanguageId language_id) const {
+uint32_t Decoder::QueryISO6392LanguageCode(LanguageId language_id) const {
     return pimpl_->QueryISO6392LanguageCode(language_id);
 }
 

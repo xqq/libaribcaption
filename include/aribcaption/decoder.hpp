@@ -67,7 +67,7 @@ public:
     [[nodiscard]]
     ARIBCC_API uint32_t QueryISO6392LanguageCode(B24LanguageId language_id) const;
     ARIBCC_API DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result);
-    ARIBCC_API bool Flush();
+    ARIBCC_API void Flush();
 public:
     Decoder(const Decoder&) = delete;
     Decoder& operator=(const Decoder&) = delete;

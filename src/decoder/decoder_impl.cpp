@@ -201,9 +201,8 @@ DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t
     return DecodeStatus::kNoCaption;
 }
 
-bool DecoderImpl::Flush() {
+void DecoderImpl::Flush() {
     ResetInternalState();
-    return true;
 }
 
 auto DecoderImpl::DetectEncodingScheme() -> EncodingScheme {

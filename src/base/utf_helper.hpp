@@ -56,6 +56,32 @@ inline size_t UTF8AppendCodePoint(std::string& u8str, uint32_t ucs4) {
     return 0;
 }
 
+inline size_t UTF8AppendCodePoint(char* buf, uint32_t ucs4) {
+    size_t bytes = 0;
+
+    if (ucs4 < 0x80) {
+        buf[0] = static_cast<char>(ucs4);
+        bytes = 1;
+    } else if (ucs4 < 0x800) {
+        buf[0] = static_cast<char>(0xC0 | (ucs4 >> 6));    // 110xxxxx
+        buf[1] = static_cast<char>(0x80 | (ucs4 & 0x3F));  // 10xxxxxx
+        bytes = 2;
+    } else if (ucs4 < 0x10000) {
+        buf[0] = static_cast<char>(0xE0 | (ucs4 >> 12));          // 1110xxxx
+        buf[1] = static_cast<char>(0x80 | ((ucs4 >> 6) & 0x3F));  // 10xxxxxx
+        buf[2] = static_cast<char>(0x80 | (ucs4 & 0x3F));         // 10xxxxxx
+        bytes = 3;
+    } else if (ucs4 < 0x110000) {
+        buf[0] = static_cast<char>(0xF0 | (ucs4 >> 18)),           // 11110xxx
+        buf[1] = static_cast<char>(0x80 | ((ucs4 >> 12) & 0x3F)),  // 10xxxxxx
+        buf[2] = static_cast<char>(0x80 | ((ucs4 >> 6) & 0x3F)),   // 10xxxxxx
+        buf[3] = static_cast<char>(0x80 | (ucs4 & 0x3F)),          // 10xxxxxx
+        bytes = 4;
+    }
+
+    return bytes;
+}
+
 inline size_t UTF16AppendCodePoint(std::u16string& u16str, uint32_t ucs4) {
     if (ucs4 < 0x10000) {
         u16str.push_back(static_cast<char16_t>(ucs4));

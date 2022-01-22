@@ -69,7 +69,7 @@ private:
     bool HandleUTF8(const uint8_t* data, size_t remain_bytes, size_t* bytes_processed);
     void PushCharacter(uint32_t ucs4, uint32_t pua = 0);
     void PushDRCSCharacter(uint32_t code, DRCS& drcs);
-    void PushCaptionChar(CaptionChar&& caption_char);
+    void PushCaptionChar(const CaptionChar& caption_char);
     void ApplyCaptionCharCommonProperties(CaptionChar& caption_char);
     bool NeedNewCaptionRegion();
     void MakeNewCaptionRegion();

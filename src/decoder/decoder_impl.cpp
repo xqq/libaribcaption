@@ -1262,13 +1262,15 @@ void DecoderImpl::PushCharacter(uint32_t ucs4, uint32_t pua) {
     caption_char.codepoint = ucs4;
     caption_char.pua_codepoint = pua;
 
-    utf::UTF8AppendCodePoint(caption_char.ch, ucs4);
+    size_t u8count = utf::UTF8AppendCodePoint(caption_char.u8str, ucs4);
+    caption_char.u8str[u8count] = '\0';
+
     if (!IsRubyMode()) {
         utf::UTF8AppendCodePoint(caption_->text, ucs4);
     }
 
     ApplyCaptionCharCommonProperties(caption_char);
-    PushCaptionChar(std::move(caption_char));
+    PushCaptionChar(caption_char);
 }
 
 void DecoderImpl::PushDRCSCharacter(uint32_t code, DRCS& drcs) {
@@ -1279,7 +1281,7 @@ void DecoderImpl::PushDRCSCharacter(uint32_t code, DRCS& drcs) {
         utf::UTF8AppendCodePoint(caption_->text, 0x3013);  // Fill a Geta Mark here
     } else {
         caption_char.type = CaptionCharType::kDRCSReplaced;
-        caption_char.ch = drcs.alternative_text;
+        strcpy(caption_char.u8str, drcs.alternative_text.c_str());
         caption_char.codepoint = drcs.alternative_ucs4;
         if (!IsRubyMode())
             caption_->text.append(drcs.alternative_text);
@@ -1293,16 +1295,16 @@ void DecoderImpl::PushDRCSCharacter(uint32_t code, DRCS& drcs) {
     caption_char.drcs_code = code;
 
     ApplyCaptionCharCommonProperties(caption_char);
-    PushCaptionChar(std::move(caption_char));
+    PushCaptionChar(caption_char);
 }
 
-void DecoderImpl::PushCaptionChar(CaptionChar&& caption_char) {
+void DecoderImpl::PushCaptionChar(const CaptionChar& caption_char) {
     if (NeedNewCaptionRegion()) {
         MakeNewCaptionRegion();
     }
     CaptionRegion& region = caption_->regions.back();
     region.width += caption_char.section_width();
-    region.chars.push_back(std::move(caption_char));
+    region.chars.push_back(caption_char);
 }
 
 void DecoderImpl::ApplyCaptionCharCommonProperties(CaptionChar& caption_char) {

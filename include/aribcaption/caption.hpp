@@ -41,7 +41,7 @@ inline constexpr uint32_t ThreeCC(const char (&str)[N]) {
             (static_cast<uint32_t>(str[2]) <<  0);
 }
 
-enum CharStyle : uint8_t {
+enum CharStyle {
     kCharStyleDefault = 0,
     kCharStyleBold = 1u << 0,
     kCharStyleItalic = 1u << 1,
@@ -49,7 +49,7 @@ enum CharStyle : uint8_t {
     kCharStyleStroke = 1u << 3
 };
 
-enum EnclosureStyle : uint8_t {
+enum EnclosureStyle {
     kEnclosureStyleNone = 0,
     kEnclosureStyleTop = 1u << 0,
     kEnclosureStyleRight = 1u << 1,
@@ -64,7 +64,7 @@ enum class CaptionType : uint8_t {
     kDefault = kCaption
 };
 
-enum class CaptionCharType : uint8_t {
+enum class CaptionCharType {
     kText = 0,
     kDRCS,
     kDRCSReplaced,
@@ -74,13 +74,11 @@ enum class CaptionCharType : uint8_t {
 struct CaptionChar {
     CaptionCharType type = CaptionCharType::kDefault;
 
-    // Character encoded in UTF-8
-    std::string ch;
     // Character's Unicode codepoint (UCS4)
     uint32_t codepoint = 0;
     // Character's PUA(Private Use Area) codepoint, if exists
     uint32_t pua_codepoint = 0;
-
+    // DRCS character's code
     uint32_t drcs_code = 0;
 
     int x = 0;
@@ -98,6 +96,9 @@ struct CaptionChar {
 
     CharStyle style = CharStyle::kCharStyleDefault;
     EnclosureStyle enclosure_style = EnclosureStyle::kEnclosureStyleDefault;
+
+    // Character encoded in UTF-8
+    char u8str[8] = {0};
 public:
     CaptionChar() = default;
     CaptionChar(const CaptionChar&) = default;

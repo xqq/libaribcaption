@@ -154,7 +154,7 @@ private:
             }
         });
 
-        decoder_.Initialize(EncodingScheme::kAuto, B24Type::kCaption);
+        decoder_.Initialize(EncodingScheme::kAuto, CaptionType::kCaption);
     }
 
     static std::string MillisecondsToTime(int64_t millis) {

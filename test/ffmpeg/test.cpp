@@ -134,7 +134,7 @@ private:
             }
         });
 
-        aribcc_decoder_.Initialize(EncodingScheme::kAuto, B24Type::kCaption);
+        aribcc_decoder_.Initialize(EncodingScheme::kAuto, CaptionType::kCaption);
 
         aribcc_renderer_.Initialize();
         // aribcc_renderer_.SetForceStrokeText(true);

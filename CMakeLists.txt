@@ -143,6 +143,7 @@ add_library(aribcaption
         include/aribcaption/aribcc_export.h
         include/aribcaption/caption.hpp
         include/aribcaption/color.hpp
+        include/aribcaption/context.h
         include/aribcaption/context.hpp
         include/aribcaption/decoder.hpp
         src/base/aligned_alloc.cpp
@@ -161,6 +162,7 @@ add_library(aribcaption
         src/base/utf_helper.hpp
         src/base/wchar_helper.hpp
         src/common/context.cpp
+        src/common/context_capi.cpp
         src/decoder/b24_codesets.hpp
         src/decoder/b24_colors.hpp
         src/decoder/b24_controlsets.hpp

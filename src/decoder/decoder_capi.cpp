@@ -87,7 +87,7 @@ static void ConvertCaptionRegionToCAPI(const CaptionRegion& region, aribcc_capti
     out_region->height = region.height;
     out_region->is_ruby = region.is_ruby;
 
-    out_region->char_count = region.chars.size();
+    out_region->char_count = static_cast<uint32_t>(region.chars.size());
 
     if (!region.chars.empty()) {
         out_region->chars = reinterpret_cast<aribcc_caption_char_t*>(
@@ -117,7 +117,7 @@ static void ConvertCaptionToCAPI(Caption&& caption, aribcc_caption_t* out_captio
     }
 
     if (!caption.regions.empty()) {
-        out_caption->region_count = caption.regions.size();
+        out_caption->region_count = static_cast<uint32_t>(caption.regions.size());
         out_caption->regions = reinterpret_cast<aribcc_caption_region_t*>(
             calloc(out_caption->region_count, sizeof(aribcc_caption_region_t))
         );

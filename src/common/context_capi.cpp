@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 magicxqq <xqq@xqq.im>. All rights reserved.
+ * Copyright (C) 2022 magicxqq <xqq@xqq.im>. All rights reserved.
  *
  * This file is part of libaribcaption.
  *
@@ -16,12 +16,28 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef ARIBCAPTION_ARIBCAPTION_H
-#define ARIBCAPTION_ARIBCAPTION_H
+#include "aribcaption/context.h"
+#include "aribcaption/context.hpp"
 
-#include "aribcc_config.h"
-#include "aribcc_export.h"
-#include "context.h"
+using namespace aribcaption;
 
+extern "C" {
 
-#endif  // ARIBCAPTION_ARIBCAPTION_H
+aribcc_context_t* aribcc_context_alloc() {
+    auto ctx = new Context;
+    return reinterpret_cast<aribcc_context_t*>(ctx);
+}
+
+void aribcc_context_set_logcat_callback(aribcc_context_t* context, aribcc_logcat_callback_t callback) {
+    auto ctx = reinterpret_cast<Context*>(context);
+    ctx->SetLogcatCallback([callback] (LogLevel level, const char* message) {
+        callback(static_cast<aribcc_loglevel_t>(level), message);
+    });
+}
+
+void aribcc_context_free(aribcc_context_t* context) {
+    auto ctx = reinterpret_cast<Context*>(context);
+    delete ctx;
+}
+
+}  // extern "C"

@@ -36,7 +36,7 @@ typedef void(*aribcc_logcat_callback_t)(aribcc_loglevel_t, const char*);
 typedef struct aribcc_context_t aribcc_context_t;
 
 
-ARIBCC_API aribcc_context_t* aribcc_context_alloc();
+ARIBCC_API aribcc_context_t* aribcc_context_alloc(void);
 
 ARIBCC_API void aribcc_context_free(aribcc_context_t* context);
 

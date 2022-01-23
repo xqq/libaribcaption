@@ -22,6 +22,7 @@
 #include "aribcc_config.h"
 #include "aribcc_export.h"
 #include "context.h"
+#include "caption.h"
 
 
 #endif  // ARIBCAPTION_ARIBCAPTION_H

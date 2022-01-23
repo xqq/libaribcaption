@@ -101,10 +101,6 @@ struct CaptionChar {
     char u8str[8] = {0};
 public:
     CaptionChar() = default;
-    CaptionChar(const CaptionChar&) = default;
-    CaptionChar(CaptionChar&&) = default;
-    CaptionChar& operator=(const CaptionChar&) = default;
-    CaptionChar& operator=(CaptionChar&&) = default;
 
     [[nodiscard]]
     int section_width() const {

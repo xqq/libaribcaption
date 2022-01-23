@@ -56,7 +56,7 @@ public:
     bool AppendCaption(Caption&& caption);
 
     RenderStatus Render(int64_t pts, RenderResult& out_result);
-    bool Flush();
+    void Flush();
 private:
     void LoadDefaultFontFamilies();
     void CleanupCaptionsIfNecessary();

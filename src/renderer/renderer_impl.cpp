@@ -373,10 +373,9 @@ void RendererImpl::AdjustCaptionArea(int origin_plane_width, int origin_plane_he
     region_renderer_.SetTargetCaptionAreaRect(caption_area);
 }
 
-bool RendererImpl::Flush() {
+void RendererImpl::Flush() {
     captions_.clear();
     InvalidatePrevRenderedImages();
-    return true;
 }
 
 void RendererImpl::InvalidatePrevRenderedImages() {

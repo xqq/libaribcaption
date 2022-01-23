@@ -113,7 +113,7 @@ public:
     ARIBCC_API bool AppendCaption(Caption&& caption);
 
     ARIBCC_API RenderStatus Render(int64_t pts, RenderResult& out_result);
-    ARIBCC_API bool Flush();
+    ARIBCC_API void Flush();
 public:
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;

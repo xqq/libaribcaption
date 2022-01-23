@@ -87,8 +87,8 @@ RenderStatus Renderer::Render(int64_t pts, RenderResult& out_result) {
     return pimpl_->Render(pts, out_result);
 }
 
-bool Renderer::Flush() {
-    return pimpl_->Flush();
+void Renderer::Flush() {
+    pimpl_->Flush();
 }
 
 }  // namespace aribcaption

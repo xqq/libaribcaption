@@ -147,6 +147,7 @@ add_library(aribcaption
         include/aribcaption/color.hpp
         include/aribcaption/context.h
         include/aribcaption/context.hpp
+        include/aribcaption/decoder.h
         include/aribcaption/decoder.hpp
         src/base/aligned_alloc.cpp
         src/base/always_inline.hpp
@@ -174,6 +175,7 @@ add_library(aribcaption
         src/decoder/b24_gaiji_table.hpp
         src/decoder/b24_macros.hpp
         src/decoder/decoder.cpp
+        src/decoder/decoder_capi.cpp
         src/decoder/decoder_impl.cpp
         src/decoder/decoder_impl.hpp
 )

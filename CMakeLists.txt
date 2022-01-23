@@ -142,6 +142,7 @@ add_library(aribcaption
         include/aribcaption/aribcaption.hpp
         include/aribcaption/aribcc_export.h
         include/aribcaption/caption.hpp
+        include/aribcaption/color.h
         include/aribcaption/color.hpp
         include/aribcaption/context.h
         include/aribcaption/context.hpp

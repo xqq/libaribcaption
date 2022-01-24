@@ -125,9 +125,9 @@ struct DRCS {
 public:
     DRCS() = default;
     DRCS(const DRCS&) = default;
-    DRCS(DRCS&&) = default;
+    DRCS(DRCS&&) noexcept = default;
     DRCS& operator=(const DRCS&) = default;
-    DRCS& operator=(DRCS&&) = default;
+    DRCS& operator=(DRCS&&) noexcept = default;
 };
 
 struct CaptionRegion {
@@ -173,9 +173,9 @@ struct Caption {
 public:
     Caption() = default;
     Caption(const Caption&) = default;
-    Caption(Caption&&) = default;
+    Caption(Caption&&) noexcept = default;
     Caption& operator=(const Caption&) = default;
-    Caption& operator=(Caption&&) = default;
+    Caption& operator=(Caption&&) noexcept = default;
 };
 
 }  // namespace aribcaption

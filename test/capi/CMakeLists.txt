@@ -16,15 +16,32 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-if(BUILD_SHARED_LIBS)
-    set(BUILD_SHARED_LIBS OFF)
-endif()
+cmake_minimum_required(VERSION 3.1)
 
-add_subdirectory(alphablend)
-add_subdirectory(capi)
-add_subdirectory(caption2srt)
-add_subdirectory(png_writer)
-add_subdirectory(decode)
-add_subdirectory(drcs)
-add_subdirectory(ffmpeg)
-add_subdirectory(fontconfig_freetype)
+add_executable(test_capi
+    EXCLUDE_FROM_ALL
+        test.c
+)
+
+target_compile_features(test_capi
+    PRIVATE
+        c_std_11
+)
+
+target_include_directories(test_capi
+    PRIVATE
+        ../../include
+        ../png_writer/include
+        ../sample_data/include
+)
+
+target_link_libraries(test_capi
+    PRIVATE
+        aribcaption
+        png_writer
+)
+
+set_target_properties(test_capi
+    PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)

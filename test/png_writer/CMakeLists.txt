@@ -23,6 +23,7 @@ find_package(PNG REQUIRED)
 add_library(png_writer
     STATIC
     EXCLUDE_FROM_ALL
+        include/png_writer.h
         include/png_writer.hpp
         png_writer.cpp
 )

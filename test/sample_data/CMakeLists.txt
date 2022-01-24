@@ -20,7 +20,7 @@ cmake_minimum_required(VERSION 3.1)
 
 add_library(sample_data
     STATIC
-        EXCLUDE_FROM_ALL
+    EXCLUDE_FROM_ALL
         include/sample_data.h
 )
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 magicxqq <xqq@xqq.im>. All rights reserved.
+ * Copyright (C) 2022 magicxqq <xqq@xqq.im>. All rights reserved.
  *
  * This file is part of libaribcaption.
  *
@@ -16,18 +16,43 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef ARIBCAPTION_ARIBCAPTION_H
-#define ARIBCAPTION_ARIBCAPTION_H
+#ifndef ARIBCAPTION_IMAGE_H
+#define ARIBCAPTION_IMAGE_H
 
-#include "aribcc_config.h"
+#include <stddef.h>
+#include <stdint.h>
 #include "aribcc_export.h"
-#include "context.h"
-#include "color.h"
-#include "caption.h"
-#include "decoder.h"
 
-#ifndef ARIBCC_NO_RENDERER
-#include "image.h"
-#endif  // ARIBCC_NO_RENDERER
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#endif  // ARIBCAPTION_ARIBCAPTION_H
+typedef enum aribcc_pixelformat_t {
+    ARIBCC_PIXELFORMAT_RGBA8888 = 0,
+    ARIBCC_PIXELFORMAT_DEFAULT = ARIBCC_PIXELFORMAT_RGBA8888
+} aribcc_pixelformat_t;
+
+
+typedef struct aribcc_image_t {
+    int width;
+    int height;
+    int stride;
+
+    int dst_x;
+    int dst_y;
+
+    aribcc_pixelformat_t pixel_format;
+
+    uint8_t* bitmap;
+    uint32_t bitmap_size;
+} aribcc_image_t;
+
+
+ARIBCC_API void aribcc_image_cleanup(aribcc_image_t* image);
+
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
+
+#endif  // ARIBCAPTION_IMAGE_H

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 magicxqq <xqq@xqq.im>. All rights reserved.
+ * Copyright (C) 2022 magicxqq <xqq@xqq.im>. All rights reserved.
  *
  * This file is part of libaribcaption.
  *
@@ -16,18 +16,19 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef ARIBCAPTION_ARIBCAPTION_H
-#define ARIBCAPTION_ARIBCAPTION_H
+#include "aribcaption/aligned_alloc.hpp"
+#include "aribcaption/image.h"
 
-#include "aribcc_config.h"
-#include "aribcc_export.h"
-#include "context.h"
-#include "color.h"
-#include "caption.h"
-#include "decoder.h"
+using namespace aribcaption;
 
-#ifndef ARIBCC_NO_RENDERER
-#include "image.h"
-#endif  // ARIBCC_NO_RENDERER
+extern "C" {
 
-#endif  // ARIBCAPTION_ARIBCAPTION_H
+void aribcc_image_cleanup(aribcc_image_t* image) {
+    if (image->bitmap) {
+        AlignedFree(image->bitmap);
+        image->bitmap = nullptr;
+        image->bitmap_size = 0;
+    }
+}
+
+}  // extern "C"

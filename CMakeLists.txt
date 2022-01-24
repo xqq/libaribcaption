@@ -183,6 +183,7 @@ add_library(aribcaption
 # Append renderer-related sources if renderer not disabled
 if(NOT ARIBCC_NO_RENDERER)
     target_sources(aribcaption PRIVATE
+        include/aribcaption/image.h
         include/aribcaption/image.hpp
         include/aribcaption/renderer.hpp
         $<$<BOOL:${ARIBCC_IS_ANDROID}>:src/base/tinyxml2.cpp>
@@ -206,6 +207,7 @@ if(NOT ARIBCC_NO_RENDERER)
         $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:src/renderer/font_provider_directwrite.hpp>
         $<$<BOOL:${ARIBCC_USE_FONTCONFIG}>:src/renderer/font_provider_fontconfig.cpp>
         $<$<BOOL:${ARIBCC_USE_FONTCONFIG}>:src/renderer/font_provider_fontconfig.hpp>
+        src/renderer/image_capi.cpp
         src/renderer/rect.hpp
         src/renderer/region_renderer.cpp
         src/renderer/region_renderer.hpp

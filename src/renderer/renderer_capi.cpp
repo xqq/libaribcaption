@@ -25,6 +25,52 @@
 using namespace aribcaption;
 using namespace aribcaption::internal;
 
+static CaptionRegion ConstructCaptionRegionFromCAPI(const aribcc_caption_region_t* src) {
+    CaptionRegion region;
+    region.x = src->x;
+    region.y = src->y;
+    region.width = src->width;
+    region.height = src->height;
+    region.is_ruby = src->is_ruby;
+
+    if (src->chars) {
+        region.chars.resize(src->char_count);
+        memcpy(region.chars.data(), src->chars, src->char_count * sizeof(aribcc_caption_char_t));
+    }
+
+    return region;
+}
+
+static Caption ConstructCaptionFromCAPI(const aribcc_caption_t* src) {
+    Caption caption;
+    caption.type = static_cast<CaptionType>(src->type);
+    caption.flags = static_cast<CaptionFlags>(src->flags);
+    caption.iso6392_language_code = src->iso6392_language_code;
+    caption.pts = src->pts;
+    caption.wait_duration = src->wait_duration;
+    caption.plane_width = src->plane_width;
+    caption.plane_height = src->plane_height;
+    caption.has_builtin_sound = src->has_builtin_sound;
+    caption.builtin_sound_id = src->builtin_sound_id;
+
+    if (src->text) {
+        caption.text = src->text;
+    }
+
+    if (src->regions) {
+        for (uint32_t i = 0; i < src->region_count; i++) {
+            caption.regions.emplace_back(ConstructCaptionRegionFromCAPI(&src->regions[i]));
+        }
+    }
+
+    if (src->drcs_map) {
+        auto drcs_map = reinterpret_cast<std::unordered_map<uint32_t, DRCS>*>(src->drcs_map);
+        caption.drcs_map = *drcs_map;
+    }
+
+    return caption;
+}
+
 extern "C" {
 
 void aribcc_render_result_cleanup(aribcc_render_result_t* render_result) {
@@ -132,52 +178,6 @@ void aribcc_renderer_set_storage_policy(aribcc_renderer_t* renderer,
     impl->SetStoragePolicy(static_cast<CaptionStoragePolicy>(storage_policy), upper_limit);
 }
 
-static CaptionRegion ConstructCaptionRegionFromCAPI(const aribcc_caption_region_t* src) {
-    CaptionRegion region;
-    region.x = src->x;
-    region.y = src->y;
-    region.width = src->width;
-    region.height = src->height;
-    region.is_ruby = src->is_ruby;
-
-    if (src->chars) {
-        region.chars.resize(src->char_count);
-        memcpy(region.chars.data(), src->chars, src->char_count * sizeof(aribcc_caption_char_t));
-    }
-
-    return region;
-}
-
-static Caption ConstructCaptionFromCAPI(const aribcc_caption_t* src) {
-    Caption caption;
-    caption.type = static_cast<CaptionType>(src->type);
-    caption.flags = static_cast<CaptionFlags>(src->flags);
-    caption.iso6392_language_code = src->iso6392_language_code;
-    caption.pts = src->pts;
-    caption.wait_duration = src->wait_duration;
-    caption.plane_width = src->plane_width;
-    caption.plane_height = src->plane_height;
-    caption.has_builtin_sound = src->has_builtin_sound;
-    caption.builtin_sound_id = src->builtin_sound_id;
-
-    if (src->text) {
-        caption.text = src->text;
-    }
-
-    if (src->regions) {
-        for (uint32_t i = 0; i < src->region_count; i++) {
-            caption.regions.emplace_back(ConstructCaptionRegionFromCAPI(&src->regions[i]));
-        }
-    }
-
-    if (src->drcs_map) {
-        auto drcs_map = reinterpret_cast<std::unordered_map<uint32_t, DRCS>*>(src->drcs_map);
-        caption.drcs_map = *drcs_map;
-    }
-
-    return caption;
-}
-
 bool aribcc_renderer_append_caption(aribcc_renderer_t* renderer, const aribcc_caption_t* caption) {
     auto impl = reinterpret_cast<RendererImpl*>(renderer);
     Caption cap = ConstructCaptionFromCAPI(caption);
@@ -193,7 +193,7 @@ static void ConvertImageToCAPI(const Image& image, aribcc_image_t* out_image) {
     out_image->pixel_format = static_cast<aribcc_pixelformat_t>(image.pixel_format);
 
     if (!image.bitmap.empty()) {
-        out_image->bitmap_size = image.bitmap.size();
+        out_image->bitmap_size = static_cast<uint32_t>(image.bitmap.size());
         out_image->bitmap = reinterpret_cast<uint8_t*>(AlignedAlloc(out_image->bitmap_size, Image::kAlignedTo));
         memcpy(out_image->bitmap, image.bitmap.data(), out_image->bitmap_size);
     }

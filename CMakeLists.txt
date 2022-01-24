@@ -324,10 +324,13 @@ install(
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aribcc_export.h
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aribcaption.h
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aribcaption.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/b24.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/caption.h
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/caption.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/color.h
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/color.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/context.h
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/context.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/decoder.h
         ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/decoder.hpp
     DESTINATION
         ${CMAKE_INSTALL_INCLUDEDIR}/aribcaption
@@ -338,7 +341,9 @@ if(NOT ARIBCC_NO_RENDERER)
     install(
         FILES
             ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/aligned_alloc.hpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/image.h
             ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/image.hpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/renderer.h
             ${CMAKE_CURRENT_SOURCE_DIR}/include/aribcaption/renderer.hpp
         DESTINATION
             ${CMAKE_INSTALL_INCLUDEDIR}/aribcaption

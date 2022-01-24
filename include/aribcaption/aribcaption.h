@@ -28,6 +28,7 @@
 
 #ifndef ARIBCC_NO_RENDERER
 #include "image.h"
+#include "renderer.h"
 #endif  // ARIBCC_NO_RENDERER
 
 #endif  // ARIBCAPTION_ARIBCAPTION_H

@@ -185,6 +185,7 @@ if(NOT ARIBCC_NO_RENDERER)
     target_sources(aribcaption PRIVATE
         include/aribcaption/image.h
         include/aribcaption/image.hpp
+        include/aribcaption/renderer.h
         include/aribcaption/renderer.hpp
         $<$<BOOL:${ARIBCC_IS_ANDROID}>:src/base/tinyxml2.cpp>
         $<$<BOOL:${ARIBCC_IS_ANDROID}>:src/base/tinyxml2.h>
@@ -212,6 +213,7 @@ if(NOT ARIBCC_NO_RENDERER)
         src/renderer/region_renderer.cpp
         src/renderer/region_renderer.hpp
         src/renderer/renderer.cpp
+        src/renderer/renderer_capi.cpp
         src/renderer/renderer_impl.cpp
         src/renderer/renderer_impl.hpp
         src/renderer/text_renderer.cpp

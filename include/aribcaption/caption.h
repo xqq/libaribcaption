@@ -29,6 +29,9 @@
 extern "C" {
 #endif
 
+// For encoding ISO 639-2 3-char language codes
+#define ARIBCC_MAKE_LANG(a,b,c) ((((a) & 0xff) << 16) | (((b) & 0xff) << 8) | ((c) & 0xff))
+
 const int64_t ARIBCC_PTS_NOPTS = (int64_t)UINT64_C(0x8000000000000000);
 const int64_t ARIBCC_DURATION_INDEFINITE = (int64_t)UINT64_C(0x7FFFFFFFFFFFFFFF);
 

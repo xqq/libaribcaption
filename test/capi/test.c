@@ -59,7 +59,7 @@ int main(int argc, char* argv[]) {
                                                                  &caption);
     printf("DecodeStatus: %d\n", decode_status);
     if (decode_status == ARIBCC_DECODE_STATUS_GOT_CAPTION) {
-        caption.iso6392_language_code = 0x6a706e;
+        caption.iso6392_language_code = ARIBCC_MAKE_LANG('j', 'p', 'n');
         printf("%s\n", caption.text);
     } else if (decode_status == ARIBCC_DECODE_STATUS_NO_CAPTION) {
         printf("aribcc_decoder_decode() returned with no caption\n");

@@ -120,29 +120,29 @@ const char* aribcc_drcs_get_alternative_text(aribcc_drcs_t* drcs) {
 }
 
 
-// aribcc_drcs_map_t related function implementations
-aribcc_drcs_map_t* aribcc_drcs_map_alloc() {
+// aribcc_drcsmap_t related function implementations
+aribcc_drcsmap_t* aribcc_drcsmap_alloc() {
     auto map = new std::unordered_map<uint32_t, DRCS>();
-    return reinterpret_cast<aribcc_drcs_map_t*>(map);
+    return reinterpret_cast<aribcc_drcsmap_t*>(map);
 }
 
-void aribcc_drcs_map_free(aribcc_drcs_map_t* drcs_map) {
+void aribcc_drcsmap_free(aribcc_drcsmap_t* drcs_map) {
     auto map = reinterpret_cast<std::unordered_map<uint32_t, DRCS>*>(drcs_map);
     delete map;
 }
 
-void aribcc_drcs_map_erase(aribcc_drcs_map_t* drcs_map, uint32_t key) {
+void aribcc_drcsmap_erase(aribcc_drcsmap_t* drcs_map, uint32_t key) {
     auto map = reinterpret_cast<std::unordered_map<uint32_t, DRCS>*>(drcs_map);
     map->erase(key);
 }
 
-void aribcc_drcs_map_put(aribcc_drcs_map_t* drcs_map, uint32_t key, const aribcc_drcs_t* drcs) {
+void aribcc_drcsmap_put(aribcc_drcsmap_t* drcs_map, uint32_t key, const aribcc_drcs_t* drcs) {
     auto map = reinterpret_cast<std::unordered_map<uint32_t, DRCS>*>(drcs_map);
     auto drcspp = reinterpret_cast<const DRCS*>(drcs);
     map->insert_or_assign(key, *drcspp);
 }
 
-aribcc_drcs_t* aribcc_drcs_map_get(aribcc_drcs_map_t* drcs_map, uint32_t key) {
+aribcc_drcs_t* aribcc_drcsmap_get(aribcc_drcsmap_t* drcs_map, uint32_t key) {
     auto map = reinterpret_cast<std::unordered_map<uint32_t, DRCS>*>(drcs_map);
     auto iter = map->find(key);
     if (iter != map->end()) {
@@ -151,7 +151,7 @@ aribcc_drcs_t* aribcc_drcs_map_get(aribcc_drcs_map_t* drcs_map, uint32_t key) {
     return nullptr;
 }
 
-void aribcc_drcs_map_clear(aribcc_drcs_map_t* drcs_map) {
+void aribcc_drcsmap_clear(aribcc_drcsmap_t* drcs_map) {
     auto map = reinterpret_cast<std::unordered_map<uint32_t, DRCS>*>(drcs_map);
     map->clear();
 }
@@ -184,7 +184,7 @@ void aribcc_caption_cleanup(aribcc_caption_t* caption) {
     }
 
     if (caption->drcs_map) {
-        aribcc_drcs_map_free(caption->drcs_map);
+        aribcc_drcsmap_free(caption->drcs_map);
         caption->drcs_map = nullptr;
     }
 }

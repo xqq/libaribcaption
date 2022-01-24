@@ -131,7 +131,7 @@ static void ConvertCaptionToCAPI(Caption&& caption, aribcc_caption_t* out_captio
 
     if (!caption.drcs_map.empty()) {
         auto drcs_map = new std::unordered_map<uint32_t, DRCS>(std::move(caption.drcs_map));
-        out_caption->drcs_map = reinterpret_cast<aribcc_drcs_map_t*>(drcs_map);
+        out_caption->drcs_map = reinterpret_cast<aribcc_drcsmap_t*>(drcs_map);
     }
 }
 

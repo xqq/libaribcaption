@@ -131,19 +131,19 @@ ARIBCC_API const char* aribcc_drcs_get_alternative_text(aribcc_drcs_t* drcs);
 
 
 // Opaque type
-typedef struct aribcc_drcs_map_t aribcc_drcs_map_t;
+typedef struct aribcc_drcsmap_t aribcc_drcsmap_t;
 
-ARIBCC_API aribcc_drcs_map_t* aribcc_drcs_map_alloc(void);
+ARIBCC_API aribcc_drcsmap_t* aribcc_drcsmap_alloc(void);
 
-ARIBCC_API void aribcc_drcs_map_free(aribcc_drcs_map_t* drcs_map);
+ARIBCC_API void aribcc_drcsmap_free(aribcc_drcsmap_t* drcs_map);
 
-ARIBCC_API void aribcc_drcs_map_erase(aribcc_drcs_map_t* drcs_map, uint32_t key);
+ARIBCC_API void aribcc_drcsmap_erase(aribcc_drcsmap_t* drcs_map, uint32_t key);
 
-ARIBCC_API void aribcc_drcs_map_put(aribcc_drcs_map_t* drcs_map, uint32_t key, const aribcc_drcs_t* drcs);
+ARIBCC_API void aribcc_drcsmap_put(aribcc_drcsmap_t* drcs_map, uint32_t key, const aribcc_drcs_t* drcs);
 
-ARIBCC_API aribcc_drcs_t* aribcc_drcs_map_get(aribcc_drcs_map_t* drcs_map, uint32_t key);
+ARIBCC_API aribcc_drcs_t* aribcc_drcsmap_get(aribcc_drcsmap_t* drcs_map, uint32_t key);
 
-ARIBCC_API void aribcc_drcs_map_clear(aribcc_drcs_map_t* drcs_map);
+ARIBCC_API void aribcc_drcsmap_clear(aribcc_drcsmap_t* drcs_map);
 
 
 typedef struct aribcc_caption_region_t {
@@ -180,7 +180,7 @@ typedef struct aribcc_caption_t {
     aribcc_caption_region_t* regions;
     uint32_t region_count;
 
-    aribcc_drcs_map_t* drcs_map;
+    aribcc_drcsmap_t* drcs_map;
 
     int64_t pts;
     int64_t wait_duration;

@@ -31,6 +31,7 @@ target_compile_features(test_decode
 target_include_directories(test_decode
     PRIVATE
         ../../include
+        ../sample_data/include
 )
 
 target_link_libraries(test_decode

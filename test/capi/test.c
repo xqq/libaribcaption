@@ -29,7 +29,7 @@ const int margin_top = 0;
 const int margin_right = 0;
 const int margin_bottom = 0;
 
-void logcat_callback(aribcc_loglevel_t level, const char* message) {
+void logcat_callback(aribcc_loglevel_t level, const char* message, void* userdata) {
     if (level == ARIBCC_LOGLEVEL_ERROR || level == ARIBCC_LOGLEVEL_WARNING) {
         fprintf(stderr, "%s\n", message);
         fflush(stderr);
@@ -41,7 +41,7 @@ void logcat_callback(aribcc_loglevel_t level, const char* message) {
 
 int main(int argc, char* argv[]) {
     aribcc_context_t* ctx = aribcc_context_alloc();
-    aribcc_context_set_logcat_callback(ctx, logcat_callback);
+    aribcc_context_set_logcat_callback(ctx, logcat_callback, NULL);
 
     aribcc_decoder_t* decoder = aribcc_decoder_alloc(ctx);
 

@@ -31,7 +31,7 @@ typedef enum aribcc_loglevel_t {
     ARIBCC_LOGLEVEL_VERBOSE = 2
 } aribcc_loglevel_t;
 
-typedef void(*aribcc_logcat_callback_t)(aribcc_loglevel_t, const char*);
+typedef void(*aribcc_logcat_callback_t)(aribcc_loglevel_t, const char*, void*);
 
 typedef struct aribcc_context_t aribcc_context_t;
 
@@ -40,7 +40,9 @@ ARIBCC_API aribcc_context_t* aribcc_context_alloc(void);
 
 ARIBCC_API void aribcc_context_free(aribcc_context_t* context);
 
-ARIBCC_API void aribcc_context_set_logcat_callback(aribcc_context_t* context, aribcc_logcat_callback_t callback);
+ARIBCC_API void aribcc_context_set_logcat_callback(aribcc_context_t* context,
+                                                   aribcc_logcat_callback_t callback,
+                                                   void* userdata);
 
 
 #ifdef __cplusplus

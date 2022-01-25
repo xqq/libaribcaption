@@ -69,8 +69,12 @@ Bitmap DRCSRenderer::DRCSToColoredBitmap(const DRCS& drcs, int target_width, int
             uint8_t value = (byte >> (8 - (bit_offset + drcs.depth_bits))) & (drcs.depth - 1);
             uint8_t grey = alphablend::Clamp255((uint32_t)255 * value / (drcs.depth - 1));
 
-            uint8_t alpha = alphablend::Div255(static_cast<uint32_t>(color.a) * grey);
-            dest[x] = ColorRGBA(color, alpha);
+            if (grey) {
+                uint8_t alpha = (static_cast<uint32_t>(grey) * color.a) >> 8;
+                dest[x] = ColorRGBA(color, alpha);
+            } else {
+                dest[x] = ColorRGBA(0);
+            }
         }
     }
 

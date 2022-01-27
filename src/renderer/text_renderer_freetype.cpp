@@ -21,10 +21,13 @@
 #include <cstdint>
 #include <cmath>
 #include "base/scoped_holder.hpp"
+#include "base/utf_helper.hpp"
 #include "renderer/alphablend.hpp"
 #include "renderer/canvas.hpp"
 #include "renderer/text_renderer_freetype.hpp"
 #include FT_STROKER_H
+#include FT_SFNT_NAMES_H
+#include FT_TRUETYPE_IDS_H
 
 namespace aribcaption {
 
@@ -59,6 +62,8 @@ bool TextRendererFreetype::SetFontFamily(const std::vector<std::string>& font_fa
         // Reset Freetype faces
         main_face_.Reset();
         fallback_face_.Reset();
+        main_face_data_.clear();
+        fallback_face_data_.clear();
         main_face_index_ = 0;
     }
 
@@ -93,7 +98,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
     if (!main_face_) {
         // If main FT_Face is not yet loaded, try load FT_Face from font_family_
         // We don't care about the codepoint (ucs4) now
-        auto result = LoadFontFace();
+        auto result = LoadFontFace(false);
         if (result.is_err()) {
             log_->e("Freetype: Cannot find valid font");
             return FontProviderErrorToStatus(result.error());
@@ -122,7 +127,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
         } else {
             // Fallback fontface not loaded, or fallback fontface doesn't contain required codepoint
             // Load next fallback font face by specific codepoint
-            auto result = LoadFontFace(ucs4, main_face_index_ + 1);
+            auto result = LoadFontFace(true, ucs4, main_face_index_ + 1);
             if (result.is_err()) {
                 log_->e("Freetype: Cannot find available fallback font for U+%04X", ucs4);
                 return FontProviderErrorToStatus(result.error());
@@ -260,7 +265,36 @@ Bitmap TextRendererFreetype::FTBitmapToColoredBitmap(const FT_Bitmap& ft_bmp, Co
     return bitmap;
 }
 
-auto TextRendererFreetype::LoadFontFace(std::optional<uint32_t> codepoint, std::optional<size_t> begin_index)
+static bool MatchFontFamilyName(FT_Face face, const std::string& family_name) {
+    FT_UInt sfnt_name_count = FT_Get_Sfnt_Name_Count(face);
+
+    for (FT_UInt i = 0; i < sfnt_name_count; i++) {
+        FT_SfntName sfnt_name = {0};
+
+        if (FT_Get_Sfnt_Name(face, i, &sfnt_name)) {
+            continue;
+        }
+
+        if (sfnt_name.name_id == TT_NAME_ID_FONT_FAMILY || sfnt_name.name_id == TT_NAME_ID_FULL_NAME) {
+            std::string name_str;
+            if (sfnt_name.platform_id == TT_PLATFORM_MICROSOFT) {
+                name_str = utf::ConvertUTF16BEToUTF8(reinterpret_cast<uint16_t*>(sfnt_name.string),
+                                                     sfnt_name.string_len / 2);
+            } else {
+                name_str = std::string(sfnt_name.string, sfnt_name.string + sfnt_name.string_len);
+            }
+            if (name_str == family_name) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+auto TextRendererFreetype::LoadFontFace(bool is_fallback,
+                                        std::optional<uint32_t> codepoint,
+                                        std::optional<size_t> begin_index)
         -> Result<std::pair<FT_Face, size_t>, FontProviderError> {
     if (begin_index && begin_index.value() >= font_family_.size()) {
         return Err(FontProviderError::kFontNotFound);
@@ -284,32 +318,73 @@ auto TextRendererFreetype::LoadFontFace(std::optional<uint32_t> codepoint, std::
 
     FontfaceInfo& info = result.value();
 
-    FT_Face face = nullptr;
-    if (FT_New_Face(library_, info.filename.c_str(), info.face_index, &face)) {
-        return Err(FontProviderError::kFontNotFound);
+    bool use_memory_data = false;
+    std::vector<uint8_t>* memory_data = nullptr;
+    if (!info.font_data.empty()) {
+        use_memory_data = true;
+        if (!is_fallback) {
+            main_face_.Reset();
+            main_face_data_ = std::move(info.font_data);
+            memory_data = &main_face_data_;
+        } else {  // is_fallback
+            fallback_face_.Reset();
+            fallback_face_data_ = std::move(info.font_data);
+            memory_data = &fallback_face_data_;
+        }
     }
 
-    // face_index is negative, e.g. -1, means face index is unknown
-    if (info.face_index < 0) {
-        // Find exact font face by PostScript name
-        if (info.postscript_name.empty()) {
-            log_->e("Freetype: Missing PostScript font name for cases that face_index < 0");
+    FT_Face face = nullptr;
+    if (!use_memory_data) {
+        if (FT_New_Face(library_, info.filename.c_str(), info.face_index, &face)) {
+            return Err(FontProviderError::kFontNotFound);
+        }
+    } else {  // use_memory_data
+        if (FT_New_Memory_Face(library_,
+                               memory_data->data(),
+                               static_cast<FT_Long>(memory_data->size()),
+                               info.face_index,
+                               &face)) {
+            return Err(FontProviderError::kFontNotFound);
+        }
+    }
+
+    if (info.face_index >= 0) {
+        return Ok(std::make_pair(face, font_index));
+    } else {
+        // face_index is negative, e.g. -1, means face index is unknown
+        // Find exact font face by PostScript name or Family name
+        if (info.family_name.empty() && info.postscript_name.empty()) {
+            log_->e("Freetype: Missing Family name / PostScript name for cases that face_index < 0");
             return Err(FontProviderError::kOtherError);
         }
 
         for (FT_Long i = 0; i < face->num_faces; i++) {
             FT_Done_Face(face);
-            if (FT_New_Face(library_, info.filename.c_str(), i, &face)) {
-                return Err(FontProviderError::kFontNotFound);
+
+            if (!use_memory_data) {
+                if (FT_New_Face(library_, info.filename.c_str(), i, &face)) {
+                    return Err(FontProviderError::kFontNotFound);
+                }
+            } else {  // use_memory_data
+                if (FT_New_Memory_Face(library_,
+                                       memory_data->data(),
+                                       static_cast<FT_Long>(memory_data->size()),
+                                       i,
+                                       &face)) {
+                    return Err(FontProviderError::kFontNotFound);
+                }
             }
+
             // Find by comparing PostScript name
-            if (info.postscript_name == FT_Get_Postscript_Name(face)) {
-                break;
+            if (!info.postscript_name.empty() && info.postscript_name == FT_Get_Postscript_Name(face)) {
+                return Ok(std::make_pair(face, font_index));
+            } else if (!info.family_name.empty() && MatchFontFamilyName(face, info.family_name)) {
+                // Find by matching family name
+                return Ok(std::make_pair(face, font_index));
             }
         }
+        return Err(FontProviderError::kFontNotFound);
     }
-
-    return Ok(std::make_pair(face, font_index));
 }
 
 }  // namespace aribcaption

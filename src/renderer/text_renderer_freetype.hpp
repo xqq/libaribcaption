@@ -54,7 +54,8 @@ public:
                   TextRenderFallbackPolicy fallback_policy) -> TextRenderStatus override;
 private:
     static Bitmap FTBitmapToColoredBitmap(const FT_Bitmap& ft_bmp, ColorRGBA color);
-    auto LoadFontFace(std::optional<uint32_t> codepoint = std::nullopt,
+    auto LoadFontFace(bool is_fallback,
+                      std::optional<uint32_t> codepoint = std::nullopt,
                       std::optional<size_t> begin_index = std::nullopt)
         -> Result<std::pair<FT_Face, size_t>, FontProviderError>;  // Result<Pair<face, font_index>, error>
 private:
@@ -66,6 +67,8 @@ private:
     ScopedHolder<FT_Library> library_;
     ScopedHolder<FT_Face> main_face_;
     ScopedHolder<FT_Face> fallback_face_;
+    std::vector<uint8_t> main_face_data_;
+    std::vector<uint8_t> fallback_face_data_;
     size_t main_face_index_ = 0;
 };
 

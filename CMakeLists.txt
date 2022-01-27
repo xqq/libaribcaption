@@ -42,8 +42,9 @@ if(ARIBCC_NO_RENDERER)
     # Renderer is disabled
     message(STATUS "Renderer has been disabled by ARIBCC_NO_RENDERER")
 elseif(WIN32)
-    # Windows, use DirectWrite
+    # Windows, use DirectWrite by default
     option(ARIBCC_USE_DIRECTWRITE "Enable DirectWrite text rendering backend" ON)
+    option(ARIBCC_USE_GDI_FONT "Enable Win32 GDI font provider" OFF)
 elseif(APPLE)
     # macOS or iOS, use CoreText by default
     option(ARIBCC_USE_CORETEXT "Enable CoreText text rendering backend" ON)
@@ -208,6 +209,8 @@ if(NOT ARIBCC_NO_RENDERER)
         $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:src/renderer/font_provider_directwrite.hpp>
         $<$<BOOL:${ARIBCC_USE_FONTCONFIG}>:src/renderer/font_provider_fontconfig.cpp>
         $<$<BOOL:${ARIBCC_USE_FONTCONFIG}>:src/renderer/font_provider_fontconfig.hpp>
+        $<$<BOOL:${ARIBCC_USE_GDI_FONT}>:src/renderer/font_provider_gdi.cpp>
+        $<$<BOOL:${ARIBCC_USE_GDI_FONT}>:src/renderer/font_provider_gdi.hpp>
         src/renderer/image_capi.cpp
         src/renderer/rect.hpp
         src/renderer/region_renderer.cpp

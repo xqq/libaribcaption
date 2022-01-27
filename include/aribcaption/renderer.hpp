@@ -46,6 +46,10 @@ enum class FontProviderType {
 #if defined(ARIBCC_IS_ANDROID)
     kAndroid = 4,
 #endif
+
+#if defined(ARIBCC_USE_GDI_FONT)
+    kGDI = 5,
+#endif
 };
 
 enum class TextRendererType {

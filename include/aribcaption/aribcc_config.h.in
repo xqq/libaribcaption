@@ -29,5 +29,6 @@
 #cmakedefine ARIBCC_USE_DIRECTWRITE  1
 #cmakedefine ARIBCC_USE_FONTCONFIG   1
 #cmakedefine ARIBCC_USE_FREETYPE     1
+#cmakedefine ARIBCC_USE_GDI_FONT     1
 
 #endif  // ARIBCAPTION_ARIBCC_CONFIG_H

@@ -49,6 +49,10 @@ typedef enum aribcc_fontprovider_type_t {
 #if defined(ARIBCC_IS_ANDROID)
     ARIBCC_FONTPROVIDER_TYPE_ANDROID = 4,
 #endif
+
+#if defined(ARIBCC_USE_GDI_FONT)
+    ARIBCC_FONTPROVIDER_TYPE_GDI = 5
+#endif
 } aribcc_fontprovider_type_t;
 
 typedef enum aribcc_textrenderer_type_t {

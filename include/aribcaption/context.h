@@ -31,15 +31,37 @@ typedef enum aribcc_loglevel_t {
     ARIBCC_LOGLEVEL_VERBOSE = 2
 } aribcc_loglevel_t;
 
-typedef void(*aribcc_logcat_callback_t)(aribcc_loglevel_t, const char*, void*);
+/**
+ * Logcat callback function prototype
+ *
+ * See @aribcc_context_set_logcat_callback()
+ */
+typedef void(*aribcc_logcat_callback_t)(aribcc_loglevel_t level, const char* message, void* userdata);
 
+/**
+ * An opaque type that is needed for other aribcc APIs.
+ *
+ * Construct a context using @aribcc_context_alloc() before using any other aribcc APIs.
+ */
 typedef struct aribcc_context_t aribcc_context_t;
 
 
 ARIBCC_API aribcc_context_t* aribcc_context_alloc(void);
 
+/**
+ * Free a context
+ *
+ * Context must be freed after all the objects constructed by the context have been freed.
+ */
 ARIBCC_API void aribcc_context_free(aribcc_context_t* context);
 
+/**
+ * Indicate a callback function to context for receiving logcat messages.
+ *
+ * @param context  aribcc_context_t*
+ * @param callback See @aribcc_logcat_callback_t
+ * @param userdata User data that will be passed in callback
+ */
 ARIBCC_API void aribcc_context_set_logcat_callback(aribcc_context_t* context,
                                                    aribcc_logcat_callback_t callback,
                                                    void* userdata);

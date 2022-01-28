@@ -31,10 +31,20 @@ enum class LogLevel {
     kVerbose
 };
 
-using LogcatCB = std::function<void(LogLevel, const char*)>;
+/**
+ * Logcat callback function prototype
+ *
+ * See @Context::SetLogcatCallback()
+ */
+using LogcatCB = std::function<void(LogLevel level, const char* message)>;
 
 class Logger;
 
+/**
+ * Construct a context before using any other aribcc APIs.
+ *
+ * Context must be freed after all the objects constructed by the context have been freed.
+ */
 class Context {
 public:
     ARIBCC_API Context();
@@ -42,6 +52,11 @@ public:
     ARIBCC_API Context(Context&&) noexcept;
     ARIBCC_API Context& operator=(Context&&) noexcept;
 public:
+    /**
+     * Indicate a callback function for receiving logcat messages.
+     *
+     * @param logcat_cb See @LogcatCB
+     */
     ARIBCC_API void SetLogcatCallback(const LogcatCB& logcat_cb);
 public:
     Context(const Context&) = delete;

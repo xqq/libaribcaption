@@ -16,6 +16,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifdef _WIN32
+    #include <Windows.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "aribcaption/aribcaption.h"
@@ -40,6 +44,11 @@ void logcat_callback(aribcc_loglevel_t level, const char* message, void* userdat
 }
 
 int main(int argc, char* argv[]) {
+#ifdef _WIN32
+    UINT old_codepage = GetConsoleOutputCP();
+    SetConsoleOutputCP(CP_UTF8);
+#endif
+
     aribcc_context_t* ctx = aribcc_context_alloc();
     aribcc_context_set_logcat_callback(ctx, logcat_callback, NULL);
 
@@ -105,4 +114,11 @@ int main(int argc, char* argv[]) {
     aribcc_renderer_free(renderer);
     aribcc_decoder_free(decoder);
     aribcc_context_free(ctx);
+
+
+#ifdef _WIN32
+    SetConsoleOutputCP(old_codepage);
+#endif
+
+    return 0;
 }

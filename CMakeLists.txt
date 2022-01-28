@@ -32,6 +32,9 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Default to Release build" FORCE)
 endif()
 
+# Indicate -DARIBCC_BUILD_TESTS:BOOL=ON to build tests
+option(ARIBCC_BUILD_TESTS "Build libaribcaption tests" OFF)
+
 # Indicate -DARIBCC_SHARED_LIBRARY:BOOL=ON to build as shared library
 option(ARIBCC_SHARED_LIBRARY "Build libaribcaption as shared library" OFF)
 
@@ -401,7 +404,9 @@ install(
         ${CMAKE_INSTALL_LIBDIR}/cmake/aribcaption
 )
 
-if(ARIBCC_IS_MAIN_PROJECT)
+
+### Testing (if enabled)
+if(ARIBCC_IS_MAIN_PROJECT AND ARIBCC_BUILD_TESTS)
     add_subdirectory(test EXCLUDE_FROM_ALL)
 endif()
 

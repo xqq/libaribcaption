@@ -23,7 +23,7 @@ if(NOT ARIBCC_USE_FREETYPE)
 endif()
 
 if(NOT ARIBCC_USE_FONTCONFIG)
-    find_package(Fontconfig REQUIRED)
+    find_package(Fontconfig)
 endif()
 
 add_executable(test_drcs

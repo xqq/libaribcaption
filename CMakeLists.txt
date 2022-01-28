@@ -427,9 +427,11 @@ endif()
 
 set(CPACK_SOURCE_IGNORE_FILES
     /.idea
+    /.vs
     /.vscode
     /.git
     /.*build.*
+    /out
     /\\\\.DS_Store
     compile_commands.json
 )

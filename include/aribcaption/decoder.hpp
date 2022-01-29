@@ -84,7 +84,7 @@ enum class EncodingScheme {
 };
 
 /**
- * Enums for reporting decoding result
+ * Enums for reporting decoding status
  *
  * See @Decoder::Decode()
  */

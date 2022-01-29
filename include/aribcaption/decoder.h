@@ -87,7 +87,7 @@ typedef enum aribcc_encoding_scheme_t {
 } aribcc_encoding_scheme_t;
 
 /**
- * Enums for reporting decoding result
+ * Enums for reporting decoding status
  *
  * See @aribcc_decoder_decode()
  */

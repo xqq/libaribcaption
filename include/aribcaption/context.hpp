@@ -43,7 +43,7 @@ class Logger;
 /**
  * Construct a context before using any other aribcc APIs.
  *
- * Context must be freed after all the objects constructed by the context have been freed.
+ * Context must be freed after all the objects constructed from the context have been freed.
  */
 class Context {
 public:

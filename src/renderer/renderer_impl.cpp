@@ -126,7 +126,10 @@ bool RendererImpl::SetFrameSize(int frame_width, int frame_height) {
 }
 
 bool RendererImpl::SetMargins(int top, int bottom, int left, int right) {
-    assert(frame_size_inited_ && "Frame size is not indicated, call SetFrameSize() first");
+    if (!frame_size_inited_) {
+        assert(frame_size_inited_ && "Frame size is not indicated, call SetFrameSize() first");
+        return false;
+    }
 
     int video_width = frame_width_ - left - right;
     int video_height = frame_height_ - top - bottom;
@@ -270,7 +273,10 @@ void RendererImpl::CleanupCaptionsIfNecessary() {
 }
 
 RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
-    assert(frame_size_inited_ && margins_inited_ && "Frame size / margins must be indicated first");
+    if (!frame_size_inited_ || !margins_inited_) {
+        assert(frame_size_inited_ && margins_inited_ && "Frame size / margins must be indicated first");
+        return RenderStatus::kError;
+    }
 
     out_result.pts = 0;
     out_result.duration = 0;

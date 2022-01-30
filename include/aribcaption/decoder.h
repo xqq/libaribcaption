@@ -66,7 +66,7 @@ typedef enum aribcc_languageid_t {
 /**
  * Enums for encoding scheme indication.
  *
- * Indicate kAuto for automatic detecting.
+ * Indicate @ARIBCC_ENCODING_SCHEME_AUTO for automatic detecting.
  *
  * For handling Japan (Japanese) ISDB captions, indicate @ARIBCC_ENCODING_SCHEME_ARIB_STD_B24_JIS
  * which uses 8-char JIS encoding.

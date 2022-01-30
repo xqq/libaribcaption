@@ -49,10 +49,10 @@ typedef struct aribcc_image_t {
     int dst_x;     ///< x coordinate of bitmap's top-left corner inside the player's renderer frame
     int dst_y;     ///< y coordinate of bitmap's top-left corner inside the player's renderer frame
 
-    aribcc_pixelformat_t pixel_format;    ///< pixel format, always be kRGBA8888
+    aribcc_pixelformat_t pixel_format;    ///< pixel format, always be @ARIBCC_PIXELFORMAT_RGBA8888
 
     /**
-     * pointer pointed to the bitmap area. The buffer size is indicated in bitmap_size field.
+     * Pointer pointed to the bitmap area. The buffer size is indicated in bitmap_size field.
      *
      * Do not manually free this pointer if you received this image from the renderer.
      * Call @aribcc_image_cleanup() instead.
@@ -63,7 +63,7 @@ typedef struct aribcc_image_t {
 
 
 /**
- * Cleanup the aribcc_image_t structure, include the buffer where the bitmap pointed to.
+ * Cleanup the @aribcc_image_t structure, include the buffer where the bitmap pointed to.
  *
  * Call this function only if if you received the image from aribcc API.
  * Otherwise it may cause a crash.

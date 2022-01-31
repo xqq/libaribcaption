@@ -18,8 +18,9 @@ Though ISDB-based TV broadcasting has been operating for about 20 years, ARIB ba
 
 ## Overview
 libaribcaption provides decoder and renderer for handling ARIB STD-B24 based broadcast captions,
-makes it possible for general players to render ARIB captions with the same effect (or even better) as Television.
+making it possible for general players to render ARIB captions with the same effect (or even better) as Television.
 libaribcaption is written in C++17 but also provides C interfaces to make it easier to integrate into video players.
+It is a lightweight library that only depends on libfreetype and libfontconfig in the worst case.
 
 libaribcaption is a cross-platform library that works on various platforms, including but not limited to:
 - Windows 7+
@@ -145,6 +146,17 @@ The C API ([public headers] with ".h" extensions) could be useful for calling fr
 see [capi sample](test/capi) for usage.
 
 [public headers]: include/aribcaption
+
+## Remmended fonts
+These fonts are recommended for Japanese ARIB caption rendering:
+
+Windows TV MaruGothic
+
+Hiragino Maru Gothic ProN (macOS)
+
+[Rounded M+ 1m for ARIB](https://www.axfc.net/u/3107925)
+
+[和田研中丸ゴシック2004ARIB](https://ja.osdn.net/projects/jis2004/wiki/FrontPage)
 
 ## License
 libaribcaption is released under MIT License. You should include the copyright notice and permission notice in your distribution.

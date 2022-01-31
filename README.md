@@ -81,7 +81,7 @@ For Windows XP support, you have to turn off DirectWrite (which will result in a
 cmake .. -DCMAKE_BUILD_TYPE=Release -ARIBCC_USE_DIRECTWRITE:BOOL=OFF -DARIBCC_USE_GDI_FONT:BOOL=ON -DARIBCC_USE_FREETYPE:BOOL=ON
 ```
 
-For enabling FreeType text renderer backend on Windows, consider using `vcpkg` or `msys2` for accessing third-party libraries.
+For enabling FreeType text renderer on Windows, consider using `vcpkg` or `msys2` for accessing third-party libraries.
 
 If you are under some kind of environment (like Android NDK or Windows) that is hard to prepare system-wide installed FreeType,
 consider using embedded FreeType by indicating `-DARIBCC_USE_EMBEDDED_FREETYPE:BOOL=ON`.

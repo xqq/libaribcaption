@@ -147,7 +147,7 @@ see [capi sample](test/capi) for usage.
 
 [public headers]: include/aribcaption
 
-## Remmended fonts
+## Recommended fonts
 These fonts are recommended for Japanese ARIB caption rendering:
 
 Windows TV MaruGothic

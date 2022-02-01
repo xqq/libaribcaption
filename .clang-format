@@ -3,3 +3,5 @@ Standard: Latest
 UseTab: Never
 IndentWidth: 4
 ColumnLimit: 120
+IndentAccessModifiers: false
+AccessModifierOffset: -4

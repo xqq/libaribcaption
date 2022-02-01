@@ -30,6 +30,8 @@ inline const char* ISO6392ToISO6391LanguageString(uint32_t iso6392_language_code
             return "pt";
         case ThreeCC("spa"):
             return "es";
+        case ThreeCC("eng"):
+            return "en";
         case ThreeCC("jpn"):
         default:
             return "ja";

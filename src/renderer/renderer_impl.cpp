@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <iterator>
 #include "aribcaption/context.hpp"
+#include "renderer/region_image_rearranger.hpp"
 #include "renderer/renderer_impl.hpp"
 
 namespace aribcaption::internal {
@@ -331,6 +332,9 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
     // Set up origin plane size / target caption area
     AdjustCaptionArea(caption.plane_width, caption.plane_height);
 
+    RegionImageRearranger rearranger;
+    rearranger.BeginRearrange(caption.regions);
+
     std::vector<Image> images;
     for (CaptionRegion& region : caption.regions) {
         if (region.is_ruby && force_no_ruby_) {
@@ -339,6 +343,7 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
 
         Result<Image, RegionRenderError> result = region_renderer_.RenderCaptionRegion(region, caption.drcs_map);
         if (result.is_ok()) {
+            rearranger.RearrangeImage(region, result.value());
             images.push_back(std::move(result.value()));
         } else {
             log_->e("RendererImpl: RenderCaptionRegion() failed with error: %d", static_cast<int>(result.error()));
@@ -346,6 +351,8 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
             return RenderStatus::kError;
         }
     }
+
+    rearranger.EndRearrange();
 
     has_prev_rendered_caption_ = true;
     prev_rendered_caption_pts_ = caption.pts;

@@ -50,7 +50,7 @@ bool RegionRenderer::SetFontFamily(const std::vector<std::string>& font_family) 
     return text_renderer_->SetFontFamily(font_family);
 }
 
-void RegionRenderer::SetOriginPlaneSize(int plane_width, int plane_height) {
+void RegionRenderer::SetOriginalPlaneSize(int plane_width, int plane_height) {
     assert(plane_width > 0 && plane_height > 0);
     plane_width_ = plane_width;
     plane_height_ = plane_height;

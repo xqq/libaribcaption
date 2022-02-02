@@ -23,7 +23,7 @@
     #include <mach/clock.h>
     #include <mach/mach.h>
 #elif defined(_WIN32)
-    #include <Windows.h>
+    #include <windows.h>
 #endif
 
 #include <ctime>

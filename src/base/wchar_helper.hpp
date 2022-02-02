@@ -19,7 +19,7 @@
 #ifndef ARIBCAPTION_WCHAR_HELPER_HPP
 #define ARIBCAPTION_WCHAR_HELPER_HPP
 
-#include <Windows.h>
+#include <windows.h>
 #include <cstring>
 #include <string>
 #include "base/always_inline.hpp"

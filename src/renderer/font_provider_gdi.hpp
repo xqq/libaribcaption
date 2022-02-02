@@ -19,7 +19,7 @@
 #ifndef ARIBCAPTION_FONT_PROVIDER_GDI_HPP
 #define ARIBCAPTION_FONT_PROVIDER_GDI_HPP
 
-#include <Windows.h>
+#include <windows.h>
 #include "aribcaption/context.hpp"
 #include "base/logger.hpp"
 #include "base/scoped_holder.hpp"

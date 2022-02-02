@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <Windows.h>
+#include <windows.h>
 #include <vector>
 #include "base/utf_helper.hpp"
 #include "base/wchar_helper.hpp"

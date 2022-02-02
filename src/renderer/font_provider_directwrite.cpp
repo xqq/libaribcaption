@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <Windows.h>
+#include <windows.h>
 #include <initguid.h>
 #include "base/wchar_helper.hpp"
 #include "renderer/font_provider_directwrite.hpp"

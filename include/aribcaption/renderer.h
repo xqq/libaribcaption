@@ -329,6 +329,14 @@ ARIBCC_API bool aribcc_renderer_set_frame_size(aribcc_renderer_t* renderer, int 
  */
 ARIBCC_API bool aribcc_renderer_set_margins(aribcc_renderer_t* renderer, int top, int bottom, int left, int right);
 
+/**
+ * Set storage policy for renderer's internal caption storage
+ *
+ * @param renderer       @aribcc_renderer_t
+ * @param storage_policy See @aribcc_caption_storage_policy_t
+ * @param upper_limit    Must be non-zero value for ARIBCC_CAPTION_STORAGE_POLICY_UPPER_LIMIT_COUNT or
+ *                       ARIBCC_CAPTION_STORAGE_POLICY_UPPER_LIMIT_DURATION
+ */
 ARIBCC_API void aribcc_renderer_set_storage_policy(aribcc_renderer_t* renderer,
                                                    aribcc_caption_storage_policy_t storage_policy,
                                                    size_t upper_limit);

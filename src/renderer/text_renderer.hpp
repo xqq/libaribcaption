@@ -73,8 +73,8 @@ public:
     TextRenderContext(const TextRenderContext&) = delete;
     TextRenderContext& operator=(const TextRenderContext&) = delete;
     // Allow move construct / move assignment
-    TextRenderContext(TextRenderContext&&) = default;
-    TextRenderContext& operator=(TextRenderContext&&) = default;
+    TextRenderContext(TextRenderContext&&) noexcept = default;
+    TextRenderContext& operator=(TextRenderContext&&) noexcept = default;
 private:
     Bitmap* bitmap_ = nullptr;  // Should be non-null
     std::unique_ptr<ContextPrivate> priv_;

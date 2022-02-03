@@ -42,9 +42,9 @@ public:
     Bitmap(int width, int height, PixelFormat pixel_format);
     ~Bitmap() = default;
     Bitmap(const Bitmap& bmp) = default;
-    Bitmap(Bitmap&& bmp) = default;
+    Bitmap(Bitmap&& bmp) noexcept = default;
     Bitmap& operator=(const Bitmap&) = default;
-    Bitmap& operator=(Bitmap&&) = default;
+    Bitmap& operator=(Bitmap&&) noexcept = default;
 public:
     [[nodiscard]]
     ALWAYS_INLINE uint8_t* data() { return pixels.data(); }

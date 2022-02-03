@@ -55,9 +55,9 @@ public:
 public:
     Image() = default;
     Image(const Image&) = default;
-    Image(Image&&) = default;
+    Image(Image&&) noexcept = default;
     Image& operator=(const Image&) = default;
-    Image& operator=(Image&&) = default;
+    Image& operator=(Image&&) noexcept = default;
 };
 
 }  // namespace aribcaption

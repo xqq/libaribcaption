@@ -207,9 +207,9 @@ struct CaptionRegion {
 public:
     CaptionRegion() = default;
     CaptionRegion(const CaptionRegion&) = default;
-    CaptionRegion(CaptionRegion&&) = default;
+    CaptionRegion(CaptionRegion&&) noexcept = default;
     CaptionRegion& operator=(const CaptionRegion&) = default;
-    CaptionRegion& operator=(CaptionRegion&&) = default;
+    CaptionRegion& operator=(CaptionRegion&&) noexcept = default;
 };
 
 /**

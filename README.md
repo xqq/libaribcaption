@@ -19,6 +19,7 @@ Though ISDB-based TV broadcasting has been operating for about 20 years, ARIB ba
 ## Overview
 libaribcaption provides decoder and renderer for handling ARIB STD-B24 based broadcast captions,
 making it possible for general players to render ARIB captions with the same effect (or even better) as Television.
+
 libaribcaption is written in C++17 but also provides C interfaces to make it easier to integrate into video players.
 It is a lightweight library that only depends on libfreetype and libfontconfig in the worst case.
 

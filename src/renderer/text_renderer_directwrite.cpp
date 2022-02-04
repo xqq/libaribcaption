@@ -555,6 +555,8 @@ static const wchar_t* ISO6392ToWindowsLocaleName(uint32_t iso6392_language_code)
             return L"pt-BR";
         case ThreeCC("spa"):
             return L"es-CL";
+        case ThreeCC("eng"):
+            return L"en";
         case ThreeCC("jpn"):
         default:
             return L"ja-JP";

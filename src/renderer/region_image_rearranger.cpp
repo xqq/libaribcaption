@@ -44,14 +44,17 @@ void RegionImageRearranger::RearrangeImage(const CaptionRegion& region, Image& i
     if (track.original_y == prev_track.original_y + prev_track.original_height) {
         // Current track is tightly connected to the previous track
         if (prev_track.scaled_y == -1 || prev_track.scaled_height == -1) {
-            // Lack of scaled size data, skip
-            return;
+            // Lack of prev_track's scaled size data, fill in scaled y / height and skip rearrange
+            track.scaled_y = image.dst_y;
+            track.scaled_height = std::max(track.scaled_height, image.height);
+        } else {
+            // Rearrange image based on previous caption track
+            if (track.scaled_y == -1) {
+                track.scaled_y = prev_track.scaled_y + prev_track.scaled_height;
+            }
+            track.scaled_height = std::max(track.scaled_height, image.height);
+            image.dst_y = track.scaled_y;
         }
-        if (track.scaled_y == -1) {
-            track.scaled_y = prev_track.scaled_y + prev_track.scaled_height;
-        }
-        track.scaled_height = std::max(track.scaled_height, image.height);
-        image.dst_y = track.scaled_y;
     }
 }
 

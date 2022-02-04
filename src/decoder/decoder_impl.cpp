@@ -965,6 +965,9 @@ bool DecoderImpl::HandleC1(const uint8_t* data, size_t remain_bytes, size_t* byt
             return false;
         case C1::RPC:  // Repeat Character
             // TODO
+            if (remain_bytes < 2)
+                return false;
+            bytes = 2;
             break;
         case C1::STL:  // Start Lining
             has_underline_ = true;
@@ -978,6 +981,7 @@ bool DecoderImpl::HandleC1(const uint8_t* data, size_t remain_bytes, size_t* byt
             if (remain_bytes < 2)
                 return false;
             enclosure_style_ = static_cast<EnclosureStyle>(data[1] & 0x0F);
+            bytes = 2;
             break;
         case C1::CSI: {  // Control Sequence Introducer
             size_t csi_bytes = 0;

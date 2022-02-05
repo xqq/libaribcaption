@@ -171,10 +171,13 @@ add_library(aribcaption
         src/common/caption_capi.cpp
         src/common/context.cpp
         src/common/context_capi.cpp
+        src/decoder/b24_codesets.cpp
         src/decoder/b24_codesets.hpp
+        src/decoder/b24_colors.cpp
         src/decoder/b24_colors.hpp
         src/decoder/b24_controlsets.hpp
         src/decoder/b24_conv_tables.hpp
+        src/decoder/b24_drcs_conv.cpp
         src/decoder/b24_drcs_conv.hpp
         src/decoder/b24_gaiji_table.hpp
         src/decoder/b24_macros.hpp

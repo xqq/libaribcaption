@@ -87,26 +87,6 @@ inline constexpr CodesetEntry kJIS_X0213_2004_Kanji_1_Entry(GraphicSet::kJIS_X02
 inline constexpr CodesetEntry kJIS_X0213_2004_Kanji_2_Entry(GraphicSet::kJIS_X0213_2004_Kanji_2, 2);
 inline constexpr CodesetEntry kAdditionalSymbolsEntry(GraphicSet::kAdditionalSymbols, 2);
 
-inline const std::unordered_map<uint8_t, CodesetEntry> kGCodesetByF = {
-    {0x42, kKanjiEntry},
-    {0x4a, kAlphanumericEntry},
-    {0x4b, kLatinExtensionEntry},
-    {0x4c, kLatinSpecialEntry},
-    {0x30, kHiraganaEntry},
-    {0x31, kKatakanaEntry},
-    {0x32, kMosaicAEntry},
-    {0x33, kMosaicBEntry},
-    {0x34, kMosaicCEntry},
-    {0x35, kMosaicDEntry},
-    {0x36, kProportionalAlphanumericEntry},
-    {0x37, kProportionalHiraganaEntry},
-    {0x38, kProportionalKatakanaEntry},
-    {0x49, kJIS_X0201_Katakana_Entry},
-    {0x39, kJIS_X0213_2004_Kanji_1_Entry},
-    {0x3a, kJIS_X0213_2004_Kanji_2_Entry},
-    {0x3b, kAdditionalSymbolsEntry}
-};
-
 inline constexpr CodesetEntry kDRCS0Entry(GraphicSet::kDRCS_0, 2);
 inline constexpr CodesetEntry kDRCS1Entry(GraphicSet::kDRCS_1, 1);
 inline constexpr CodesetEntry kDRCS2Entry(GraphicSet::kDRCS_2, 1);
@@ -125,25 +105,9 @@ inline constexpr CodesetEntry kDRCS14Entry(GraphicSet::kDRCS_14, 1);
 inline constexpr CodesetEntry kDRCS15Entry(GraphicSet::kDRCS_15, 1);
 inline constexpr CodesetEntry kMacroEntry(GraphicSet::kMacro, 1);
 
-inline const std::unordered_map<uint8_t, CodesetEntry> kDRCSCodesetByF = {
-    {0x40, kDRCS0Entry},
-    {0x41, kDRCS1Entry},
-    {0x42, kDRCS2Entry},
-    {0x43, kDRCS3Entry},
-    {0x44, kDRCS4Entry},
-    {0x45, kDRCS5Entry},
-    {0x46, kDRCS6Entry},
-    {0x47, kDRCS7Entry},
-    {0x48, kDRCS8Entry},
-    {0x49, kDRCS9Entry},
-    {0x4a, kDRCS10Entry},
-    {0x4b, kDRCS11Entry},
-    {0x4c, kDRCS12Entry},
-    {0x4d, kDRCS13Entry},
-    {0x4e, kDRCS14Entry},
-    {0x4f, kDRCS15Entry},
-    {0x70, kMacroEntry},
-};
+// Definitions moved into b24_codesets.cpp due to VS2017 compiler bug
+extern const std::unordered_map<uint8_t, CodesetEntry> kGCodesetByF;
+extern const std::unordered_map<uint8_t, CodesetEntry> kDRCSCodesetByF;
 
 }  // namespace aribcaption
 

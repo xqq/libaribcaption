@@ -21,7 +21,17 @@
 
 #include <xmmintrin.h>  // SSE
 #include <emmintrin.h>  // SSE2
+#include <algorithm>
 #include "renderer/alphablend_generic.hpp"
+
+// Workaround Windows.h (minwindef.h) max/min macro definitions
+#ifdef max
+    #undef max
+#endif
+
+#ifdef min
+    #undef min
+#endif
 
 namespace aribcaption::alphablend::internal {
 
@@ -36,7 +46,7 @@ union alignas(16) Vec128i {
 
 ALWAYS_INLINE void FillLine_SSE2(ColorRGBA* __restrict dest, ColorRGBA color, size_t width) {
     if (uint32_t unaligned_prefix_pixels = (reinterpret_cast<uintptr_t>(dest) % 16) / 4) {
-        uint32_t unaligned_pixels = 4 - unaligned_prefix_pixels;
+        uint32_t unaligned_pixels = std::min(static_cast<uint32_t>(width), 4 - unaligned_prefix_pixels);
         FillLine_Generic(dest, color, unaligned_pixels);
         dest += unaligned_pixels;
         width -= unaligned_pixels;
@@ -118,7 +128,7 @@ ALWAYS_INLINE void BlendColorToLine_SSE2(ColorRGBA* __restrict dest, ColorRGBA c
 
 
     if (uint32_t unaligned_prefix_pixels = (reinterpret_cast<uintptr_t>(dest) % 16) / 4) {
-        uint32_t unaligned_pixels = 4 - unaligned_prefix_pixels;
+        uint32_t unaligned_pixels = std::min(static_cast<uint32_t>(width), 4 - unaligned_prefix_pixels);
 
         for (uint32_t i = 0; i < unaligned_pixels; i++) {
             __m128i dst = _mm_cvtsi32_si128(static_cast<int>(dest[i].u32));

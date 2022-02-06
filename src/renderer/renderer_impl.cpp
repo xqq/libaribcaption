@@ -78,22 +78,27 @@ void RendererImpl::LoadDefaultFontFamilies() {
 
 void RendererImpl::SetStrokeWidth(float dots) {
     region_renderer_.SetStrokeWidth(dots);
+    InvalidatePrevRenderedImages();
 }
 
 void RendererImpl::SetReplaceDRCS(bool replace) {
     region_renderer_.SetReplaceDRCS(replace);
+    InvalidatePrevRenderedImages();
 }
 
 void RendererImpl::SetForceStrokeText(bool force_stroke) {
     region_renderer_.SetForceStrokeText(force_stroke);
+    InvalidatePrevRenderedImages();
 }
 
 void RendererImpl::SetForceNoRuby(bool force_no_ruby) {
     force_no_ruby_ = force_no_ruby;
+    InvalidatePrevRenderedImages();
 }
 
 void RendererImpl::SetForceNoBackground(bool force_no_background) {
     region_renderer_.SetForceNoBackground(force_no_background);
+    InvalidatePrevRenderedImages();
 }
 
 bool RendererImpl::SetDefaultFontFamily(const std::vector<std::string>& font_family, bool force_default) {

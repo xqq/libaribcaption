@@ -104,6 +104,10 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
     bool has_codepoint_not_found_error = false;
     bool has_other_error = false;
 
+    if (ScaleWidth(region.width) < 3 || ScaleHeight(region.height) < 3) {
+        return Err(RegionRenderError::kImageTooSmall);
+    }
+
     Bitmap bitmap(ScaleWidth(region.width),
                   ScaleHeight(region.height),
                   PixelFormat::kRGBA8888);
@@ -117,6 +121,10 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
                           section_y,
                           section_x + ScaleWidth(ch.section_width()),
                           section_y + ScaleHeight(ch.section_height()));
+        if (section_rect.width() < 3 || section_rect.height() < 3) {
+            continue;  // Too small, skip
+        }
+
         // Draw background if not disabled
         if (!force_no_background_) {
             canvas.ClearRect(ch.back_color, section_rect);
@@ -160,6 +168,10 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
         int char_y = ScaleY((float)(ch.y - region.y) + (float)ch.char_vertical_spacing * ch.char_vertical_scale / 2);
         int char_width = ScaleWidth((float)ch.char_width * ch.char_horizontal_scale);
         int char_height = ScaleHeight((float)ch.char_height * ch.char_vertical_scale);
+
+        if (char_width < 2 || char_height < 2) {
+            continue;  // Too small, skip
+        }
 
         CaptionCharType type = ch.type;
         CharStyle style = ch.style;

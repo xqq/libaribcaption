@@ -345,6 +345,9 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
         if (result.is_ok()) {
             rearranger.RearrangeImage(region, result.value());
             images.push_back(std::move(result.value()));
+        } else if (result.error() == RegionRenderError::kImageTooSmall) {
+            // Skip image which is too small
+            continue;
         } else {
             log_->e("RendererImpl: RenderCaptionRegion() failed with error: %d", static_cast<int>(result.error()));
             InvalidatePrevRenderedImages();

@@ -39,6 +39,7 @@ namespace aribcaption {
 enum class RegionRenderError {
     kFontNotFound,
     kCodePointNotFound,
+    kImageTooSmall,
     kOtherError,
 };
 

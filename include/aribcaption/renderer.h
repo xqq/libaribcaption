@@ -274,7 +274,7 @@ ARIBCC_API void aribcc_renderer_set_force_no_background(aribcc_renderer_t* rende
  * @endcode
  */
 ARIBCC_API bool aribcc_renderer_set_default_font_family(aribcc_renderer_t* renderer,
-                                                        const char** font_family,
+                                                        const char * const * font_family,
                                                         size_t family_count,
                                                         bool force_default);
 
@@ -300,7 +300,7 @@ ARIBCC_API bool aribcc_renderer_set_default_font_family(aribcc_renderer_t* rende
  */
 ARIBCC_API bool aribcc_renderer_set_language_specific_font_family(aribcc_renderer_t* renderer,
                                                                   uint32_t language_code,
-                                                                  const char** font_family,
+                                                                  const char * const * font_family,
                                                                   size_t family_count);
 
 /**

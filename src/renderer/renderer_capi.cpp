@@ -132,7 +132,7 @@ void aribcc_renderer_set_force_no_background(aribcc_renderer_t* renderer, bool f
 }
 
 bool aribcc_renderer_set_default_font_family(aribcc_renderer_t* renderer,
-                                             const char** font_family,
+                                             const char * const * font_family,
                                              size_t family_count,
                                              bool force_default) {
     auto impl = reinterpret_cast<RendererImpl*>(renderer);
@@ -148,7 +148,7 @@ bool aribcc_renderer_set_default_font_family(aribcc_renderer_t* renderer,
 
 bool aribcc_renderer_set_language_specific_font_family(aribcc_renderer_t* renderer,
                                                        uint32_t language_code,
-                                                       const char** font_family,
+                                                       const char * const * font_family,
                                                        size_t family_count) {
     auto impl = reinterpret_cast<RendererImpl*>(renderer);
     std::vector<std::string> font_families;

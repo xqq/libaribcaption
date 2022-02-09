@@ -36,7 +36,7 @@ bool FontProviderGDI::Initialize() {
         return false;
     }
 
-    hdc_ = ScopedHolder<HDC>(dc, DeleteDC);
+    hdc_ = ScopedHolder<HDC>(dc, [](HDC h) { DeleteDC(h); });
     return true;
 }
 
@@ -139,7 +139,7 @@ auto FontProviderGDI::GetFontFace(const std::string& font_name, std::optional<ui
     EnumFontFamiliesExW(
         hdc_,
         &lf,
-        [](const LOGFONTW* lf, const TEXTMETRICW* tm, DWORD font_type, LPARAM lparam) -> int {
+        [](const LOGFONTW* lf, const TEXTMETRICW* tm, DWORD font_type, LPARAM lparam) CALLBACK -> int {
             auto vec = reinterpret_cast<std::vector<LOGFONTW>*>(lparam);
             vec->push_back(*lf);
             return 1;
@@ -156,7 +156,7 @@ auto FontProviderGDI::GetFontFace(const std::string& font_name, std::optional<ui
     info.family_name = wchar::WideStringToUTF8(lf.lfFaceName);
     info.provider_type = FontProviderType::kGDI;
 
-    ScopedHolder<HFONT> hfont(CreateFontIndirectW(&lf), DeleteObject);
+    ScopedHolder<HFONT> hfont(CreateFontIndirectW(&lf), [](HFONT obj) { DeleteObject(obj); });
     SelectObject(hdc_, hfont);
 
     if (ucs4.has_value()) {

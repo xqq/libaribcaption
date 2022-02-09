@@ -467,6 +467,7 @@ set(CPACK_SOURCE_IGNORE_FILES
     /.git
     /.*build.*
     /out
+    /screenshots
     /\\\\.DS_Store
     CMakeSettings.json
     compile_commands.json

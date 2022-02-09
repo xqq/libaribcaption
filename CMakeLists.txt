@@ -18,7 +18,16 @@
 
 cmake_minimum_required(VERSION 3.11)
 
-project(libaribcaption VERSION 0.1.0 LANGUAGES C CXX)
+project(libaribcaption
+    VERSION
+        0.1.0
+    DESCRIPTION
+        "Portable ARIB STD-B24 Caption Decoder/Renderer"
+    HOMEPAGE_URL
+        "https://github.com/xqq/libaribcaption"
+    LANGUAGES
+        C CXX
+)
 
 # main project detecting
 # avoid building test subdirectory if used as subproject (e.g. add_subdirectory)
@@ -409,6 +418,22 @@ install(
         ${CMAKE_INSTALL_LIBDIR}/cmake/aribcaption
 )
 
+## Generate pkg-config config file (.pc)
+include(cmake/GeneratePkgConfig.cmake)
+generate_pkg_config_pc_file(aribcaption
+    TEMPLATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/libaribcaption.pc.in
+    OUTPUT
+        ${CMAKE_CURRENT_BINARY_DIR}/libaribcaption.pc
+)
+
+## Install pkg-config config file (.pc)
+install(
+    FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/libaribcaption.pc
+    DESTINATION
+        ${CMAKE_INSTALL_LIBDIR}/pkgconfig
+)
 
 ### Testing (if enabled)
 if(ARIBCC_IS_MAIN_PROJECT AND ARIBCC_BUILD_TESTS)
@@ -419,7 +444,7 @@ endif()
 ### Packaging
 set(CPACK_PACKAGE_NAME ${CMAKE_PROJECT_NAME})
 set(CPACK_PACKAGE_VENDOR "magicxqq")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Portable ARIB STD-B24 Caption Decoder/Renderer")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY ${CMAKE_PROJECT_DESCRIPTION})
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
 

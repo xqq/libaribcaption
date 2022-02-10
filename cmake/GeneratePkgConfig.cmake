@@ -29,29 +29,38 @@ function(generate_pkg_config_pc_file TARGET TEMPLATE template OUTPUT output)
     if(NOT BUILD_SHARED_LIBS)
         if(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES)
             foreach(IMPLICIT_LIB ${CMAKE_CXX_IMPLICIT_LINK_LIBRARIES})
-                string(APPEND PKG_LIBS_PRIVATE "-l${IMPLICIT_LIB} ")
+                list(APPEND LIBS_PRIVATE_LIST "-l${IMPLICIT_LIB}")
                 unset(IMPLICIT_LIB)
             endforeach()
         endif()
 
+        if(LIBS_PRIVATE_LIST)
+            # Blacklist for MinGW-w64
+            list(REMOVE_ITEM LIBS_PRIVATE_LIST
+                "-lmingw32" "-lgcc_s" "-lgcc" "-lmoldname" "-lmingwex" "-lmingwthrd"
+                "-lmsvcrt" "-lpthread" "-ladvapi32" "-lshell32" "-luser32" "-lkernel32")
+        endif()
+
         if(ARIBCC_USE_FREETYPE AND NOT ARIBCC_USE_EMBEDDED_FREETYPE)
             # Only required for system-wide installed FreeType
-            string(APPEND PKG_LIBS_PRIVATE "-lfreetype ")
-            string(APPEND PKG_REQUIRES_PRIVATE "freetype2 ")
+            list(APPEND LIBS_PRIVATE_LIST "-lfreetype")
+            list(APPEND PKG_REQUIRES_PRIVATE "freetype2 ")
         endif()
 
         if(ARIBCC_USE_FONTCONFIG)
-            string(APPEND PKG_LIBS_PRIVATE "-lfontconfig ")
-            string(APPEND PKG_REQUIRES_PRIVATE "fontconfig ")
+            list(APPEND LIBS_PRIVATE_LIST "-lfontconfig")
+            list(APPEND PKG_REQUIRES_PRIVATE "fontconfig ")
         endif()
 
         if(ARIBCC_USE_CORETEXT)
-            string(APPEND PKG_LIBS_PRIVATE "-framework CoreFoundation -framework CoreGraphics -framework CoreText")
+            list(APPEND LIBS_PRIVATE_LIST "-framework CoreFoundation" "-framework CoreGraphics" "-framework CoreText")
         endif()
 
         if(ARIBCC_USE_DIRECTWRITE)
-            string(APPEND PKG_LIBS_PRIVATE "-lole32 -ld2d1 -ldwrite -lwindowscodecs")
+            list(APPEND LIBS_PRIVATE_LIST "-lole32" "-ld2d1" "-ldwrite" "-lwindowscodecs")
         endif()
+
+        string(REPLACE ";" " " PKG_LIBS_PRIVATE "${LIBS_PRIVATE_LIST}")
     endif()
 
     configure_file(${template} ${output} @ONLY)

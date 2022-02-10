@@ -16,6 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <cstdlib>
 #include "aribcaption/aligned_alloc.hpp"
 
 #if defined(_MSC_VER) || defined(__MINGW32__)

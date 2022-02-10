@@ -47,6 +47,12 @@ option(ARIBCC_BUILD_TESTS "Build libaribcaption tests" OFF)
 # Indicate -DARIBCC_SHARED_LIBRARY:BOOL=ON to build as shared library
 option(ARIBCC_SHARED_LIBRARY "Build libaribcaption as shared library" OFF)
 
+# Indicate -DARIBCC_NO_EXCEPTIONS:BOOL=ON to disable C++ exceptions
+option(ARIBCC_NO_EXCEPTIONS "Disable C++ Exceptions" OFF)
+
+# Indicate -DARIBCC_NO_RTTI:BOOL=ON to disable C++ RTTI
+option(ARIBCC_NO_RTTI "Disable C++ RTTI" OFF)
+
 # Indicate -DARIBCC_NO_RENDERER:BOOL=ON to disable renderer
 option(ARIBCC_NO_RENDERER "Disable Renderer" OFF)
 
@@ -266,6 +272,44 @@ target_compile_options(aribcaption
     PRIVATE
         $<$<CXX_COMPILER_ID:MSVC>:/utf-8>
 )
+
+# Disable C++ exceptions, if required
+if(ARIBCC_NO_EXCEPTIONS)
+    if(MSVC)
+        string(REGEX REPLACE "/EH[a-z]+" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+        target_compile_options(aribcaption
+            PRIVATE
+                /EHs-c-
+        )
+        target_compile_definitions(aribcaption
+            PRIVATE
+                _HAS_EXCEPTIONS=0
+        )
+    else()
+        string(REGEX REPLACE "-fexceptions" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+        target_compile_options(aribcaption
+            PRIVATE
+                $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+        )
+    endif()
+endif()
+
+# Disable C++ RTTI, if required
+if(ARIBCC_NO_RTTI)
+    if(MSVC)
+        string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+        target_compile_options(aribcaption
+            PUBLIC
+                /GR-
+        )
+    else()
+        string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+        target_compile_options(aribcaption
+            PUBLIC
+                $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+        )
+    endif()
+endif()
 
 # Enable necessary SSE instruction sets for x86/x64 build on gcc/clang
 if(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)" AND CMAKE_SYSTEM_PROCESSOR MATCHES "(x86|X86|x64|X64|amd64|AMD64|i386|i686)")

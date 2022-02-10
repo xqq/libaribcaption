@@ -276,7 +276,7 @@ target_compile_options(aribcaption
 # Disable C++ exceptions, if required
 if(ARIBCC_NO_EXCEPTIONS)
     if(MSVC)
-        string(REGEX REPLACE "/EH[a-z]+" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+        string(REGEX REPLACE "/EH[a-z]+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
         target_compile_options(aribcaption
             PRIVATE
                 /EHs-c-
@@ -286,7 +286,7 @@ if(ARIBCC_NO_EXCEPTIONS)
                 _HAS_EXCEPTIONS=0
         )
     else()
-        string(REGEX REPLACE "-fexceptions" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+        string(REGEX REPLACE "-fexceptions" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
         target_compile_options(aribcaption
             PRIVATE
                 $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
@@ -297,13 +297,13 @@ endif()
 # Disable C++ RTTI, if required
 if(ARIBCC_NO_RTTI)
     if(MSVC)
-        string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+        string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
         target_compile_options(aribcaption
             PUBLIC
                 /GR-
         )
     else()
-        string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+        string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
         target_compile_options(aribcaption
             PUBLIC
                 $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>

@@ -43,13 +43,13 @@ function(generate_pkg_config_pc_file TARGET TEMPLATE template OUTPUT output)
 
         if(ARIBCC_USE_FREETYPE AND NOT ARIBCC_USE_EMBEDDED_FREETYPE)
             # Only required for system-wide installed FreeType
+            list(APPEND REQUIRES_PRIVATE_LIST "freetype2")
             list(APPEND LIBS_PRIVATE_LIST "-lfreetype")
-            list(APPEND PKG_REQUIRES_PRIVATE "freetype2 ")
         endif()
 
         if(ARIBCC_USE_FONTCONFIG)
+            list(APPEND REQUIRES_PRIVATE_LIST "fontconfig")
             list(APPEND LIBS_PRIVATE_LIST "-lfontconfig")
-            list(APPEND PKG_REQUIRES_PRIVATE "fontconfig ")
         endif()
 
         if(ARIBCC_USE_CORETEXT)
@@ -60,6 +60,7 @@ function(generate_pkg_config_pc_file TARGET TEMPLATE template OUTPUT output)
             list(APPEND LIBS_PRIVATE_LIST "-lole32" "-ld2d1" "-ldwrite" "-lwindowscodecs")
         endif()
 
+        string(REPLACE ";" " " PKG_REQUIRES_PRIVATE "${REQUIRES_PRIVATE_LIST}")
         string(REPLACE ";" " " PKG_LIBS_PRIVATE "${LIBS_PRIVATE_LIST}")
     endif()
 

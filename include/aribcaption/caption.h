@@ -68,9 +68,9 @@ typedef enum aribcc_charstyle_t {
  */
 typedef enum aribcc_enclosurestyle_t {
     ARIBCC_ENCLOSURESTYLE_NONE = 0,
-    ARIBCC_ENCLOSURESTYLE_TOP = 1u << 0,
+    ARIBCC_ENCLOSURESTYLE_BOTTOM = 1u << 0,
     ARIBCC_ENCLOSURESTYLE_RIGHT = 1u << 1,
-    ARIBCC_ENCLOSURESTYLE_BOTTOM = 1u << 2,
+    ARIBCC_ENCLOSURESTYLE_TOP = 1u << 2,
     ARIBCC_ENCLOSURESTYLE_LEFT = 1u << 3,
     ARIBCC_ENCLOSURESTYLE_DEFAULT = ARIBCC_ENCLOSURESTYLE_NONE
 } aribcc_enclosurestyle_t;

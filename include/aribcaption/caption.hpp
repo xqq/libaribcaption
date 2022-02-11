@@ -72,9 +72,9 @@ enum CharStyle {
  */
 enum EnclosureStyle {
     kEnclosureStyleNone = 0,
-    kEnclosureStyleTop = 1u << 0,
+    kEnclosureStyleBottom = 1u << 0,
     kEnclosureStyleRight = 1u << 1,
-    kEnclosureStyleBottom = 1u << 2,
+    kEnclosureStyleTop = 1u << 2,
     kEnclosureStyleLeft = 1u << 3,
     kEnclosureStyleDefault = kEnclosureStyleNone
 };

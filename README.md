@@ -67,6 +67,7 @@ ARIBCC_SHARED_LIBRARY:BOOL         # Compile as shared library. Default to OFF
 ARIBCC_NO_EXCEPTIONS:BOOL          # Disable C++ Exceptions. Default to OFF
 ARIBCC_NO_RTTI:BOOL                # Disable C++ RTTI. Default to OFF
 ARIBCC_NO_RENDERER:BOOL            # Disable the renderer and leave only the decoder behind. Default to OFF
+ARIBCC_IS_ANDROID:BOOL             # Indicate target platform is Android. Detected automatically by default.
 ARIBCC_USE_DIRECTWRITE:BOOL        # Enable DirectWrite font provider & renderer. Default to ON on Windows
 ARIBCC_USE_GDI_FONT:BOOL           # Enable GDI font provider which is necessary for WinXP support. Default to OFF.
 ARIBCC_USE_CORETEXT:BOOL           # Enable CoreText font provider & renderer. Default to ON on macOS / iOS

@@ -66,7 +66,7 @@ elseif(WIN32)
 elseif(APPLE)
     # macOS or iOS, use CoreText by default
     option(ARIBCC_USE_CORETEXT "Enable CoreText text rendering backend" ON)
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
+elseif(ANDROID OR (${CMAKE_SYSTEM_NAME} STREQUAL "Android") OR ARIBCC_IS_ANDROID)
     # Android, FreeType required
     set(ARIBCC_IS_ANDROID TRUE CACHE BOOL "Specify target OS is Android")
     option(ARIBCC_USE_FREETYPE "Enable FreeType text rendering backend" ON)

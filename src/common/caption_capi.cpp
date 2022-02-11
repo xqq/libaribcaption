@@ -41,7 +41,7 @@ int aribcc_caption_char_get_section_height(aribcc_caption_char_t* ch) {
 
 // aribcc_drcs_t related function implementations
 aribcc_drcs_t* aribcc_drcs_alloc() {
-    auto drcs = new DRCS();
+    auto drcs = new(std::nothrow) DRCS();
     return reinterpret_cast<aribcc_drcs_t*>(drcs);
 }
 
@@ -52,7 +52,7 @@ void aribcc_drcs_free(aribcc_drcs_t* drcs) {
 
 aribcc_drcs_t* aribcc_drcs_clone(aribcc_drcs_t* drcs) {
     auto drcspp = reinterpret_cast<DRCS*>(drcs);
-    DRCS* cloned = new DRCS(*drcspp);
+    DRCS* cloned = new(std::nothrow) DRCS(*drcspp);
     return reinterpret_cast<aribcc_drcs_t*>(cloned);
 }
 
@@ -122,7 +122,7 @@ const char* aribcc_drcs_get_alternative_text(aribcc_drcs_t* drcs) {
 
 // aribcc_drcsmap_t related function implementations
 aribcc_drcsmap_t* aribcc_drcsmap_alloc() {
-    auto map = new std::unordered_map<uint32_t, DRCS>();
+    auto map = new(std::nothrow) std::unordered_map<uint32_t, DRCS>();
     return reinterpret_cast<aribcc_drcsmap_t*>(map);
 }
 

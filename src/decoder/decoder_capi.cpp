@@ -29,7 +29,7 @@ extern "C" {
 
 aribcc_decoder_t* aribcc_decoder_alloc(aribcc_context_t* context) {
     auto ctx = reinterpret_cast<Context*>(context);
-    auto impl = new DecoderImpl(*ctx);
+    auto impl = new(std::nothrow) DecoderImpl(*ctx);
     return reinterpret_cast<aribcc_decoder_t*>(impl);
 }
 
@@ -130,7 +130,7 @@ static void ConvertCaptionToCAPI(Caption&& caption, aribcc_caption_t* out_captio
     }
 
     if (!caption.drcs_map.empty()) {
-        auto drcs_map = new std::unordered_map<uint32_t, DRCS>(std::move(caption.drcs_map));
+        auto drcs_map = new(std::nothrow) std::unordered_map<uint32_t, DRCS>(std::move(caption.drcs_map));
         out_caption->drcs_map = reinterpret_cast<aribcc_drcsmap_t*>(drcs_map);
     }
 }

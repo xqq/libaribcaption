@@ -87,7 +87,7 @@ void aribcc_render_result_cleanup(aribcc_render_result_t* render_result) {
 
 aribcc_renderer_t* aribcc_renderer_alloc(aribcc_context_t* context) {
     auto ctx = reinterpret_cast<Context*>(context);
-    auto impl = new RendererImpl(*ctx);
+    auto impl = new(std::nothrow) RendererImpl(*ctx);
     return reinterpret_cast<aribcc_renderer_t*>(impl);
 }
 

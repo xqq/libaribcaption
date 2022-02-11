@@ -42,7 +42,7 @@ extern "C" {
 /**
  * Constant for marking the PTS is undefined.
  */
-const int64_t ARIBCC_PTS_NOPTS = (int64_t)UINT64_C(0x8000000000000000);
+#define ARIBCC_PTS_NOPTS ((int64_t)UINT64_C(0x8000000000000000))
 
 /**
  * Constant for marking the duration is indefinite.
@@ -50,7 +50,7 @@ const int64_t ARIBCC_PTS_NOPTS = (int64_t)UINT64_C(0x8000000000000000);
  * Some ARIB captions have indefinite duration which means the caption's end time is undetermined.
  * Captions with indefinite duration should be presented until the next caption's PTS.
  */
-const int64_t ARIBCC_DURATION_INDEFINITE = (int64_t)UINT64_C(0x7FFFFFFFFFFFFFFF);
+#define ARIBCC_DURATION_INDEFINITE ((int64_t)UINT64_C(0x7FFFFFFFFFFFFFFF))
 
 /**
  * Per-CaptionChar character styles

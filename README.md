@@ -138,6 +138,15 @@ target_link_libraries(testarib2
 )
 ```
 
+Or using pkg-config if you have installed it into system:
+```bash
+# Link to libaribcaption static library
+gcc main.c -o main `pkg-config --cflags --libs --static libaribcaption`
+
+# Link to libaribcaption shared library
+gcc main.c -o main `pkg-config --cflags --libs libaribcaption`
+```
+
 ## Documents
 See the comments in [public headers](include/aribcaption), and [sample code with ffmpeg](test/ffmpeg)
 

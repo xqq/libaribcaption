@@ -124,6 +124,14 @@ static bool CheckCodePointExists(HDC hdc, uint32_t ucs4) {
     return true;
 }
 
+#if defined(_MSC_VER) && !defined(__clang__)
+    // Specifying calling convention for lambdas is unsupported in MSVC (except clang-cl)
+    #define LAMBDA_CALL_CONV(a)
+#else
+    // gcc, clang, etc.
+    #define LAMBDA_CALL_CONV(a) a
+#endif
+
 auto FontProviderGDI::GetFontFace(const std::string& font_name, std::optional<uint32_t> ucs4)
         -> Result<FontfaceInfo, FontProviderError> {
     std::string converted_family_name = ConvertFamilyName(font_name, iso6392_language_code_);
@@ -139,7 +147,7 @@ auto FontProviderGDI::GetFontFace(const std::string& font_name, std::optional<ui
     EnumFontFamiliesExW(
         hdc_,
         &lf,
-        [](const LOGFONTW* lf, const TEXTMETRICW* tm, DWORD font_type, LPARAM lparam) CALLBACK -> int {
+        [](const LOGFONTW* lf, const TEXTMETRICW* tm, DWORD font_type, LPARAM lparam) LAMBDA_CALL_CONV(CALLBACK) -> int {
             auto vec = reinterpret_cast<std::vector<LOGFONTW>*>(lparam);
             vec->push_back(*lf);
             return 1;

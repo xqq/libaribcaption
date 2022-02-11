@@ -26,7 +26,7 @@ namespace aribcaption {
 class ScopedCOMInitializer {
 public:
     ScopedCOMInitializer() {
-        (void)CoInitialize(nullptr);
+        (void)CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     }
 
     ~ScopedCOMInitializer() {

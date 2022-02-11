@@ -320,6 +320,14 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)" AND CMAKE_SYSTEM_PROCESSOR MATCHE
     )
 endif()
 
+# Disable aligned allocation on Apple platforms, which is only supported on macOS 10.14 / iOS 11 or newer
+if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(aribcaption
+        PRIVATE
+            -fno-aligned-allocation
+    )
+endif()
+
 target_compile_definitions(aribcaption
     PRIVATE
         ARIBCC_IMPLEMENTATION

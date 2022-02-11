@@ -16,6 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <cstdint>
 #include <cstdlib>
 #include "aribcaption/aligned_alloc.hpp"
 

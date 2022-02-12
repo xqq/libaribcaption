@@ -35,6 +35,8 @@
 
 namespace aribcaption {
 
+#if !(defined(_MSC_VER) || defined(__MINGW32__)) && !HAS_POSIX_MEMALIGN
+
 static void* aligned_malloc_generic(size_t size, size_t alignment) {
     void* ptr = malloc(size + (alignment - 1) + sizeof(void*));
     if (!ptr) {
@@ -61,6 +63,8 @@ static void aligned_free_generic(void* ptr) {
         free(original_addr);
     }
 }
+
+#endif
 
 void* AlignedAlloc(size_t size, size_t alignment) {
     void* ptr = nullptr;

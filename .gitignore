@@ -43,7 +43,7 @@ compile_commands.json
 cmake-build-*/
 
 # build
-build/
+build*/
 
 # Mongo Explorer plugin
 .idea/**/mongoSettings.xml

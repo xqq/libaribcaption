@@ -99,7 +99,11 @@ uint32_t DecoderImpl::QueryISO6392LanguageCode(LanguageId language_id) const {
 }
 
 DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result) {
-    assert(pes_data != nullptr && length > 0);
+    if (pes_data == nullptr || length == 0) {
+        assert(pes_data != nullptr && length > 0);
+        log_->e("DecoderImpl: pes_data is nullptr or length is 0");
+        return DecodeStatus::kError;
+    }
 
     out_result.caption.reset();
 

@@ -137,7 +137,7 @@ auto FontProviderGDI::GetFontFace(const std::string& font_name, std::optional<ui
     std::string converted_family_name = ConvertFamilyName(font_name, iso6392_language_code_);
     std::wstring wide_font_name = wchar::UTF8ToWideString(converted_family_name);
 
-    LOGFONTW lf = {0};
+    LOGFONTW lf{};
     wcscpy_s(lf.lfFaceName, wide_font_name.c_str());
     lf.lfWeight = FW_NORMAL;
     lf.lfCharSet = DEFAULT_CHARSET;
@@ -147,7 +147,7 @@ auto FontProviderGDI::GetFontFace(const std::string& font_name, std::optional<ui
     EnumFontFamiliesExW(
         hdc_,
         &lf,
-        [](const LOGFONTW* lf, const TEXTMETRICW* tm, DWORD font_type, LPARAM lparam) LAMBDA_CALL_CONV(CALLBACK) -> int {
+        [](const LOGFONTW* lf, const TEXTMETRICW*, DWORD, LPARAM lparam) LAMBDA_CALL_CONV(CALLBACK) -> int {
             auto vec = reinterpret_cast<std::vector<LOGFONTW>*>(lparam);
             vec->push_back(*lf);
             return 1;

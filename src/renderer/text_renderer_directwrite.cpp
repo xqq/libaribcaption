@@ -439,6 +439,7 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
     DWRITE_FONT_METRICS font_metrics = {0};
     face_info_priv->font->GetMetrics(&font_metrics);
     int ascent = MulDiv(font_metrics.ascent, char_height, font_metrics.designUnitsPerEm);
+    [[maybe_unused]]
     int descent = MulDiv(font_metrics.descent, char_height, font_metrics.designUnitsPerEm);
 
     // Calculate horizontal scale factor

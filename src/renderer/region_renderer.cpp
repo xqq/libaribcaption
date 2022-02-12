@@ -102,7 +102,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
     size_t succeed = 0;
     bool has_font_not_found_error = false;
     bool has_codepoint_not_found_error = false;
-    bool has_other_error = false;
+    [[maybe_unused]] bool has_other_error = false;
 
     if (ScaleWidth(region.width) < 3 || ScaleHeight(region.height) < 3) {
         return Err(RegionRenderError::kImageTooSmall);

@@ -26,12 +26,17 @@ namespace aribcaption {
 class ScopedCOMInitializer {
 public:
     ScopedCOMInitializer() {
-        (void)CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        init_succeeded_ = SUCCEEDED(hr);
     }
 
     ~ScopedCOMInitializer() {
-        CoUninitialize();
+        if (init_succeeded_) {
+            CoUninitialize();
+        }
     }
+private:
+    bool init_succeeded_ = false;
 };
 
 }  // namespace aribcaption

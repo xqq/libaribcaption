@@ -99,19 +99,18 @@ uint32_t DecoderImpl::QueryISO6392LanguageCode(LanguageId language_id) const {
 }
 
 DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result) {
-    if (pes_data == nullptr || length == 0) {
-        assert(pes_data != nullptr && length > 0);
-        log_->e("DecoderImpl: pes_data is nullptr or length is 0");
+    if (pes_data == nullptr) {
+        log_->e("DecoderImpl: pes_data is nullptr");
+        assert(pes_data != nullptr);
         return DecodeStatus::kError;
     }
-
-    out_result.caption.reset();
 
     if (length < 3) {
         log_->e("DecoderImpl: pes_data size < 3, cannot parse");
         return DecodeStatus::kError;
     }
 
+    out_result.caption.reset();
     pts_ = pts;
     const uint8_t* data = pes_data;
 

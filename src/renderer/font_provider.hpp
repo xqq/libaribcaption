@@ -34,8 +34,6 @@ struct FontfaceInfoPrivate {
 public:
     FontfaceInfoPrivate() = default;
     virtual ~FontfaceInfoPrivate() = default;
-private:
-    int placeholder_ = 0;
 };
 
 struct FontfaceInfo {

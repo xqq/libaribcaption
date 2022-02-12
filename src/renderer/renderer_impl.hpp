@@ -66,6 +66,7 @@ public:
     RendererImpl(const RendererImpl&) = delete;
     RendererImpl& operator=(const RendererImpl&) = delete;
 private:
+    [[maybe_unused]]
     Context& context_;
     std::shared_ptr<Logger> log_;
 

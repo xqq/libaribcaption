@@ -36,6 +36,7 @@ bool TextRendererCoreText::Initialize() {
 }
 
 void TextRendererCoreText::SetLanguage(uint32_t iso6392_language_code) {
+    (void)iso6392_language_code;
     // No-OP
 }
 

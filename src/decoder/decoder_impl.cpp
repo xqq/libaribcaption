@@ -578,7 +578,7 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
                 return false;
             }
 
-            uint8_t font_id = (data[offset] & 0xF0) >> 4;
+            [[maybe_unused]] uint8_t font_id = (data[offset] & 0xF0) >> 4;
             uint8_t mode = data[offset] & 0x0F;
             offset += 1;
 
@@ -635,8 +635,8 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
                     drcs_maps_[0].insert({ch, std::move(drcs)});
                 }
             } else {
-                uint8_t region_x = data[offset];
-                uint8_t region_y = data[offset + 1];
+                [[maybe_unused]] uint8_t region_x = data[offset];
+                [[maybe_unused]] uint8_t region_y = data[offset + 1];
                 size_t geometric_data_length = ((size_t)data[offset + 2] << 8) |
                                                ((size_t)data[offset + 3] << 0);
                 offset += 4 + geometric_data_length;

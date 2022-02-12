@@ -50,6 +50,7 @@ bool TextRendererFreetype::Initialize() {
 }
 
 void TextRendererFreetype::SetLanguage(uint32_t iso6392_language_code) {
+    (void)iso6392_language_code;
     // No-OP
 }
 
@@ -76,6 +77,7 @@ auto TextRendererFreetype::BeginDraw(Bitmap& target_bmp) -> TextRenderContext {
 }
 
 void TextRendererFreetype::EndDraw(TextRenderContext& context) {
+    (void)context;
     // No-op
 }
 
@@ -269,7 +271,7 @@ static bool MatchFontFamilyName(FT_Face face, const std::string& family_name) {
     FT_UInt sfnt_name_count = FT_Get_Sfnt_Name_Count(face);
 
     for (FT_UInt i = 0; i < sfnt_name_count; i++) {
-        FT_SfntName sfnt_name = {0};
+        FT_SfntName sfnt_name{};
 
         if (FT_Get_Sfnt_Name(face, i, &sfnt_name)) {
             continue;

@@ -52,6 +52,7 @@ public:
     explicit AlignedAllocator(const AlignedAllocator<U, N>&) noexcept {}
 
     pointer allocate(size_type n, const_pointer hint = nullptr) const noexcept {
+        (void)hint;
         size_t size = n * sizeof(T);
         void* ptr = AlignedAlloc(size, N);
         return reinterpret_cast<pointer>(ptr);

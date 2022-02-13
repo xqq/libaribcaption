@@ -632,10 +632,10 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
                     CodesetEntry entry = kDRCSCodesetByF.at(index);
                     size_t map_index = static_cast<uint8_t>(entry.graphics_set) -
                                        static_cast<uint8_t>(GraphicSet::kDRCS_0);
-                    drcs_maps_[map_index].insert({ch, std::move(drcs)});
+                    drcs_maps_[map_index].insert_or_assign(ch, std::move(drcs));
                 } else if (byte_count == 2) {
                     uint16_t ch = character_code & 0x7F7F;
-                    drcs_maps_[0].insert({ch, std::move(drcs)});
+                    drcs_maps_[0].insert_or_assign(ch, std::move(drcs));
                 }
             } else {
                 [[maybe_unused]] uint8_t region_x = data[offset];

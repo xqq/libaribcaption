@@ -324,10 +324,6 @@ void DecoderImpl::ResetInternalState() {
     ResetGraphicSets();
     ResetWritingFormat();
 
-    for (auto& drcs_map : drcs_maps_) {
-        drcs_map.clear();
-    }
-
     display_area_start_x_ = 0;
     display_area_start_y_ = 0;
     active_pos_inited_ = false;

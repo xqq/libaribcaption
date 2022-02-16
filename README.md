@@ -1,5 +1,7 @@
 libaribcaption
 ======
+[日本語](README_ja.md)
+
 A portable caption decoder / renderer for handling ARIB STD-B24 based TV broadcast captions.
 
 ## Background

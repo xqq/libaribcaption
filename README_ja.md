@@ -80,7 +80,7 @@ ARIBCC_USE_EMBEDDED_FREETYPE:BOOL  # Use embedded FreeType instead of searching 
 ARIBCC_USE_FONTCONFIG:BOOL         # Enable Fontconfig font provider. Default to ON on Linux and other platforms
 ```
 
-ディフォルトとして、Windows および macOS / iOS においては DirectWrite と CoreText のみを用いる。
+ディフォルトとして、Windows および macOS / iOS においては OS が提供した DirectWrite と CoreText のみが使われます。
 ただ、`ARIBCC_USE_FREETYPE:BOOL=ON` を指定すれば、FreeType ベースのレンダリングバックエンドをオンにすることも可能です。
 
 Windows XP を支援したい場合は、DirectWrite を禁止し、GDI font provider と FreeType をオンにする必要があります：

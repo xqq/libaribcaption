@@ -357,9 +357,11 @@ target_link_libraries(aribcaption
         $<$<BOOL:${ARIBCC_USE_CORETEXT}>:${COREFOUNDATION_FRAMEWORK}>
         $<$<BOOL:${ARIBCC_USE_CORETEXT}>:${COREGRAPHICS_FRAMEWORK}>
         $<$<BOOL:${ARIBCC_USE_CORETEXT}>:${CORETEXT_FRAMEWORK}>
+        $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:ole32>
         $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:d2d1>
         $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:dwrite>
         $<$<BOOL:${ARIBCC_USE_DIRECTWRITE}>:windowscodecs>
+        $<$<BOOL:${ARIBCC_USE_GDI_FONT}>:gdi32>
 )
 
 # vcpkg uses optimized/debug keyword in XXXXX_LIBRARIES variables

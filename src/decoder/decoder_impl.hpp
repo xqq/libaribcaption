@@ -131,7 +131,7 @@ private:
     int caption_plane_width_ = 960;  // indicated by SWF
     int caption_plane_height_ = 540;
     int display_area_width_ = 960;   // indicated by SDF
-    int display_area_height_ = 960;
+    int display_area_height_ = 540;
     int display_area_start_x_ = 0;   // indicated by SDP
     int display_area_start_y_ = 0;
     bool active_pos_inited_ = false; // Active position is inited

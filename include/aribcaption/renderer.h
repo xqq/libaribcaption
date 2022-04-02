@@ -251,6 +251,13 @@ ARIBCC_API void aribcc_renderer_set_force_no_ruby(aribcc_renderer_t* renderer, b
 ARIBCC_API void aribcc_renderer_set_force_no_background(aribcc_renderer_t* renderer, bool force_no_background);
 
 /**
+ * Merge rendered region images into one big image on aribcc_renderer_render() call.
+ * @param renderer  @aribcc_renderer_t
+ * @param merge     default as false
+ */
+ARIBCC_API void aribcc_renderer_set_merge_region_images(aribcc_renderer_t* renderer, bool merge);
+
+/**
  * Indicate font families (an array of font family names) for default usage
  *
  * Default font family will be used only if captions' language is unknown (iso6392_language_code == 0).

@@ -131,6 +131,11 @@ void aribcc_renderer_set_force_no_background(aribcc_renderer_t* renderer, bool f
     impl->SetForceNoBackground(force_no_background);
 }
 
+void aribcc_renderer_set_merge_region_images(aribcc_renderer_t* renderer, bool merge) {
+    auto impl = reinterpret_cast<RendererImpl*>(renderer);
+    impl->SetMergeRegionImages(merge);
+}
+
 bool aribcc_renderer_set_default_font_family(aribcc_renderer_t* renderer,
                                              const char * const * font_family,
                                              size_t family_count,

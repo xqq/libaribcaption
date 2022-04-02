@@ -20,6 +20,8 @@
 #include <algorithm>
 #include <iterator>
 #include "aribcaption/context.hpp"
+#include "renderer/bitmap.hpp"
+#include "renderer/canvas.hpp"
 #include "renderer/region_image_rearranger.hpp"
 #include "renderer/renderer_impl.hpp"
 
@@ -99,6 +101,14 @@ void RendererImpl::SetForceNoRuby(bool force_no_ruby) {
 void RendererImpl::SetForceNoBackground(bool force_no_background) {
     region_renderer_.SetForceNoBackground(force_no_background);
     InvalidatePrevRenderedImages();
+}
+
+void RendererImpl::SetMergeRegionImages(bool merge) {
+    bool prev = merge_region_images_;
+    merge_region_images_ = merge;
+    if (prev != merge) {
+        InvalidatePrevRenderedImages();
+    }
 }
 
 bool RendererImpl::SetDefaultFontFamily(const std::vector<std::string>& font_family, bool force_default) {
@@ -367,6 +377,12 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
 
     rearranger.EndRearrange();
 
+    if (merge_region_images_ && images.size() > 1) {
+        Image merged = MergeImages(images);
+        images.clear();
+        images.push_back(std::move(merged));
+    }
+
     has_prev_rendered_caption_ = true;
     prev_rendered_caption_pts_ = caption.pts;
     prev_rendered_caption_duration_ = caption.wait_duration;
@@ -376,6 +392,32 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
     out_result.duration = caption.wait_duration;
     out_result.images = prev_rendered_images_;
     return RenderStatus::kGotImage;
+}
+
+Image RendererImpl::MergeImages(std::vector<Image>& images) {
+    if (images.empty()) return Image{};
+
+    Rect rect(images[0].dst_x, images[0].dst_y, images[0].dst_x, images[0].dst_y);
+
+    for (auto& image : images) {
+        rect.Include(image.dst_x, image.dst_y);  // top left corner
+        rect.Include(image.dst_x + image.width - 1, image.dst_y + image.height - 1);  // bottom right corner
+    }
+
+    Bitmap bitmap(rect.width(), rect.height(), PixelFormat::kRGBA8888);
+    Canvas canvas(bitmap);
+
+    for (auto& image : images) {
+        int x = image.dst_x - rect.left;
+        int y = image.dst_y - rect.top;
+        Bitmap bmp = Bitmap::FromImage(std::move(image));
+        canvas.DrawBitmap(bmp, x, y);
+    }
+
+    Image merged = Bitmap::ToImage(std::move(bitmap));
+    merged.dst_x = rect.left;
+    merged.dst_y = rect.top;
+    return merged;
 }
 
 void RendererImpl::AdjustCaptionArea(int origin_plane_width, int origin_plane_height) {

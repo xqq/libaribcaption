@@ -55,6 +55,10 @@ void Renderer::SetForceNoBackground(bool force_no_background) {
     pimpl_->SetForceNoBackground(force_no_background);
 }
 
+void Renderer::SetMergeRegionImages(bool merge) {
+    pimpl_->SetMergeRegionImages(merge);
+}
+
 bool Renderer::SetDefaultFontFamily(const std::vector<std::string>& font_family, bool force_default) {
     return pimpl_->SetDefaultFontFamily(font_family, force_default);
 }

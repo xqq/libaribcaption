@@ -213,6 +213,12 @@ public:
     ARIBCC_API void SetForceNoBackground(bool force_no_background);
 
     /**
+     * Merge rendered region images into one big image on Render() call.
+     * @param merge default as false
+     */
+    ARIBCC_API void SetMergeRegionImages(bool merge);
+
+    /**
      * Indicate font families (an array of font family names) for default usage
      *
      * Default font family will be used only if captions' language is unknown (iso6392_language_code == 0).

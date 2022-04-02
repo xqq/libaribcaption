@@ -44,6 +44,7 @@ public:
     void SetForceStrokeText(bool force_stroke);
     void SetForceNoRuby(bool force_no_ruby);
     void SetForceNoBackground(bool force_no_background);
+    void SetMergeRegionImages(bool merge);
 
     bool SetDefaultFontFamily(const std::vector<std::string>& font_family, bool force_default);
     bool SetLanguageSpecificFontFamily(uint32_t language_code, const std::vector<std::string>& font_family);
@@ -62,6 +63,8 @@ private:
     void CleanupCaptionsIfNecessary();
     void AdjustCaptionArea(int origin_plane_width, int origin_plane_height);
     void InvalidatePrevRenderedImages();
+private:
+    static Image MergeImages(std::vector<Image>& images);
 public:
     RendererImpl(const RendererImpl&) = delete;
     RendererImpl& operator=(const RendererImpl&) = delete;
@@ -97,6 +100,8 @@ private:
     CaptionStoragePolicy storage_policy_ = CaptionStoragePolicy::kMinimum;
     size_t upper_limit_count_ = 0;
     size_t upper_limit_duration_ = 0;
+
+    bool merge_region_images_ = false;
 
     // PTS => Caption
     // Sorted by PTS incrementally

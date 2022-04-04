@@ -31,11 +31,13 @@ void Logger::e(const char* format, ...) {
 
     va_list args;
     va_start(args, format);
-
     auto length = static_cast<size_t>(std::vsnprintf(nullptr, 0, format, args));
-    std::string buffer(length, 0);
-    std::vsnprintf(buffer.data(), length + 1, format, args);
+    va_end(args);
 
+    std::string buffer(length, 0);
+
+    va_start(args, format);
+    std::vsnprintf(buffer.data(), length + 1, format, args);
     va_end(args);
 
     logcat_cb_(LogLevel::kError, buffer.c_str());
@@ -48,11 +50,13 @@ void Logger::w(const char* format, ...) {
 
     va_list args;
     va_start(args, format);
-
     auto length = static_cast<size_t>(std::vsnprintf(nullptr, 0, format, args));
-    std::string buffer(length, 0);
-    std::vsnprintf(buffer.data(), length + 1, format, args);
+    va_end(args);
 
+    std::string buffer(length, 0);
+
+    va_start(args, format);
+    std::vsnprintf(buffer.data(), length + 1, format, args);
     va_end(args);
 
     logcat_cb_(LogLevel::kWarning, buffer.c_str());
@@ -65,11 +69,13 @@ void Logger::v(const char* format, ...) {
 
     va_list args;
     va_start(args, format);
-
     auto length = static_cast<size_t>(std::vsnprintf(nullptr, 0, format, args));
-    std::string buffer(length, 0);
-    std::vsnprintf(buffer.data(), length + 1, format, args);
+    va_end(args);
 
+    std::string buffer(length, 0);
+
+    va_start(args, format);
+    std::vsnprintf(buffer.data(), length + 1, format, args);
     va_end(args);
 
     logcat_cb_(LogLevel::kVerbose, buffer.c_str());

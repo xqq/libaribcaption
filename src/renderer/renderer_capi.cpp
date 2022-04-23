@@ -220,6 +220,12 @@ static void ConvertRenderResultToCAPI(const RenderResult& result, aribcc_render_
     }
 }
 
+aribcc_render_status_t aribcc_renderer_try_render(aribcc_renderer_t* renderer, int64_t pts) {
+    auto impl = reinterpret_cast<RendererImpl*>(renderer);
+    RenderStatus status = impl->TryRender(pts);
+    return static_cast<aribcc_render_status_t>(status);
+}
+
 aribcc_render_status_t aribcc_renderer_render(aribcc_renderer_t* renderer,
                                               int64_t pts,
                                               aribcc_render_result_t* out_result) {

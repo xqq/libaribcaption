@@ -360,6 +360,19 @@ ARIBCC_API void aribcc_renderer_set_storage_policy(aribcc_renderer_t* renderer,
 ARIBCC_API bool aribcc_renderer_append_caption(aribcc_renderer_t* renderer, const aribcc_caption_t* caption);
 
 /**
+ * Retrieve expected render status at specific PTS, rather than actually do rendering.
+ *
+ * Useful for detecting whether will got an identical image that is unchanged from the previous rendering.
+ *
+ * @param renderer    @aribcc_renderer_t
+ * @param pts         Presentation timestamp, in milliseconds
+ * @return            ARIBCC_RENDER_STATUS_GOT_IMAGE_UNCHANGED means a aribcc_renderer_render() call
+ *                    at this PTS will return an image identical to the previous.
+ */
+ARIBCC_API aribcc_render_status_t aribcc_renderer_try_render(aribcc_renderer_t* renderer,
+                                                             int64_t pts);
+
+/**
  * Render caption at specific PTS
  *
  * @param renderer    @aribcc_renderer_t

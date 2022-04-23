@@ -299,6 +299,17 @@ public:
     ARIBCC_API bool AppendCaption(Caption&& caption);
 
     /**
+     * Retrieve expected RenderStatus at specific PTS, rather than actually do rendering.
+     *
+     * Useful for detecting whether will got an identical image that is unchanged from the previous rendering.
+     *
+     * @param pts    Presentation timestamp, in milliseconds
+     * @return       kError / kNoImage / kGotImage / kGotImageUnchanged
+     *               kGotImageUnchanged means a Render() call at this PTS will return an image identical to the previous
+     */
+    ARIBCC_API RenderStatus TryRender(int64_t pts);
+
+    /**
      * Render caption at specific PTS
      *
      * This function queries a caption from the specified PTS and render it into images if exists.

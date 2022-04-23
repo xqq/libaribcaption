@@ -293,6 +293,40 @@ void RendererImpl::CleanupCaptionsIfNecessary() {
     }
 }
 
+RenderStatus RendererImpl::TryRender(int64_t pts) {
+    if (!frame_size_inited_ || !margins_inited_) {
+        return RenderStatus::kError;
+    }
+
+    if (captions_.empty()) {
+        return RenderStatus::kNoImage;
+    }
+
+    auto iter = captions_.lower_bound(pts);
+    if (iter == captions_.end() || (iter != captions_.begin() && iter->first > pts)) {
+        --iter;
+    }
+
+    Caption& caption = iter->second;
+    if (pts < caption.pts || (caption.wait_duration != DURATION_INDEFINITE && pts >= caption.pts + caption.wait_duration)) {
+        // Timeout
+        return RenderStatus::kNoImage;
+    }
+    if (caption.regions.empty()) {
+        return RenderStatus::kNoImage;
+    }
+
+    if (has_prev_rendered_caption_ && prev_rendered_caption_pts_ == caption.pts) {
+        if (!prev_rendered_images_.empty()) {
+            return RenderStatus::kGotImageUnchanged;
+        } else {
+            return RenderStatus::kNoImage;
+        }
+    }
+
+    return RenderStatus::kGotImage;
+}
+
 RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
     if (!frame_size_inited_ || !margins_inited_) {
         assert(frame_size_inited_ && margins_inited_ && "Frame size / margins must be indicated first");

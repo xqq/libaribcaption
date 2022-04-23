@@ -56,6 +56,7 @@ public:
     bool AppendCaption(const Caption& caption);
     bool AppendCaption(Caption&& caption);
 
+    RenderStatus TryRender(int64_t pts);
     RenderStatus Render(int64_t pts, RenderResult& out_result);
     void Flush();
 private:

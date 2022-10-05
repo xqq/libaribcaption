@@ -75,14 +75,14 @@ private:
 
     template <typename T>
     [[nodiscard]]
-    int ScaleWidth(T width) const {
-        return static_cast<int>(std::ceil(static_cast<float>(width) * x_magnification_));
+    int ScaleWidth(T width, T x = 0) const {
+        return ScaleX(x + width) - ScaleX(x);
     }
 
     template <typename T>
     [[nodiscard]]
-    int ScaleHeight(T height) const {
-        return static_cast<int>(std::ceil(static_cast<float>(height) * y_magnification_));
+    int ScaleHeight(T height, T y = 0) const {
+        return ScaleY(y + height) - ScaleY(y);
     }
 public:
     RegionRenderer(const RegionRenderer&) = delete;

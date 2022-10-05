@@ -386,9 +386,6 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
     // Set up origin plane size / target caption area
     AdjustCaptionArea(caption.plane_width, caption.plane_height);
 
-    RegionImageRearranger rearranger;
-    rearranger.BeginRearrange(caption.regions);
-
     std::vector<Image> images;
     for (CaptionRegion& region : caption.regions) {
         if (region.is_ruby && force_no_ruby_) {
@@ -397,7 +394,6 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
 
         Result<Image, RegionRenderError> result = region_renderer_.RenderCaptionRegion(region, caption.drcs_map);
         if (result.is_ok()) {
-            rearranger.RearrangeImage(region, result.value());
             images.push_back(std::move(result.value()));
         } else if (result.error() == RegionRenderError::kImageTooSmall) {
             // Skip image which is too small
@@ -408,8 +404,6 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
             return RenderStatus::kError;
         }
     }
-
-    rearranger.EndRearrange();
 
     if (merge_region_images_ && images.size() > 1) {
         Image merged = MergeImages(images);

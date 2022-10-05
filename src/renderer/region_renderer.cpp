@@ -104,23 +104,23 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
     bool has_codepoint_not_found_error = false;
     [[maybe_unused]] bool has_other_error = false;
 
-    if (ScaleWidth(region.width) < 3 || ScaleHeight(region.height) < 3) {
+    if (ScaleWidth(region.width, region.x) < 3 || ScaleHeight(region.height, region.y) < 3) {
         return Err(RegionRenderError::kImageTooSmall);
     }
 
-    Bitmap bitmap(ScaleWidth(region.width),
-                  ScaleHeight(region.height),
+    Bitmap bitmap(ScaleWidth(region.width, region.x),
+                  ScaleHeight(region.height, region.y),
                   PixelFormat::kRGBA8888);
     Canvas canvas(bitmap);
     TextRenderContext text_render_ctx = text_renderer_->BeginDraw(bitmap);
 
     for (const CaptionChar& ch : region.chars) {
-        int section_x = ScaleX(ch.x - region.x);
-        int section_y = ScaleY(ch.y - region.y);
+        int section_x = ScaleX(ch.x) - ScaleX(region.x);
+        int section_y = ScaleY(ch.y) - ScaleY(region.y);
         Rect section_rect(section_x,
                           section_y,
-                          section_x + ScaleWidth(ch.section_width()),
-                          section_y + ScaleHeight(ch.section_height()));
+                          section_x + ScaleWidth(ch.section_width(), ch.x),
+                          section_y + ScaleHeight(ch.section_height(), ch.y));
         if (section_rect.width() < 3 || section_rect.height() < 3) {
             continue;  // Too small, skip
         }

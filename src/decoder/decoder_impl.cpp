@@ -142,6 +142,10 @@ DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t
     uint8_t data_group_id = (data[data_group_begin] & 0b11111100) >> 2;
     size_t data_group_size = ((size_t)data[data_group_begin + 3] << 8) |
                              ((size_t)data[data_group_begin + 4] << 0);
+    if (data_group_begin + 5 + data_group_size > length) {
+        log_->e("DecoderImpl: pes_data length does not enough for a whole data_group");
+        return DecodeStatus::kError;
+    }
 
     if (data_group_size == 0) {
         return DecodeStatus::kNoCaption;
@@ -382,7 +386,7 @@ bool DecoderImpl::ParseCaptionManagementData(const uint8_t* data, size_t length)
     language_infos_.resize(num_languages);
 
     for (uint8_t i = 0; i < num_languages; i++) {
-        if (offset + 5 > length) {
+        if (offset + 6 > length) {
             log_->e("DecoderImpl: Data not enough for parsing language specific info in CaptionManagementData");
             return false;
         }
@@ -480,14 +484,14 @@ bool DecoderImpl::ParseCaptionStatementData(const uint8_t* data, size_t length) 
 }
 
 bool DecoderImpl::ParseDataUnit(const uint8_t* data, size_t length) {
-    if (length < 5) {
-        log_->e("DecoderImpl: Data not enough for parsing DataUnit");
-        return false;
-    }
-
     size_t offset = 0;
 
     while (offset < length) {
+        if (offset + 5 > length) {
+            log_->e("DecoderImpl: Data not enough for parsing DataUnit");
+            return false;
+        }
+
         uint8_t unit_separator = data[offset];
         uint8_t data_unit_parameter = data[offset + 1];
         size_t data_unit_size = ((size_t)data[offset + 2] << 16) |
@@ -565,6 +569,11 @@ bool DecoderImpl::ParseStatementBody(const uint8_t* data, size_t length) {
 }
 
 bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_count) {
+    if (length == 0) {
+        log_->e("DecoderImpl: Data not enough for parsing DRCS");
+        return false;
+    }
+
     size_t offset = 0;
     uint8_t number_of_code = data[offset];
     offset += 1;
@@ -615,11 +624,10 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
                 drcs.height = static_cast<int>(height);
                 drcs.depth = static_cast<int>(depth);
                 drcs.depth_bits = static_cast<int>(depth_bits);
-                drcs.pixels.resize(bitmap_size);
-                memcpy(&drcs.pixels[0], &data[offset], bitmap_size);
+                drcs.pixels.assign(data + offset, data + offset + bitmap_size);
                 offset += bitmap_size;
 
-                drcs.md5 = md5::GetDigest(&drcs.pixels[0], bitmap_size);
+                drcs.md5 = md5::GetDigest(drcs.pixels.data(), bitmap_size);
 
                 // Find alternative replacement
                 auto iter = kDRCSReplacementMap.find(drcs.md5);
@@ -643,6 +651,11 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
                     drcs_maps_[0].insert_or_assign(ch, std::move(drcs));
                 }
             } else {
+                if (offset + 4 > length) {
+                    log_->e("DecoderImpl: Data not enough for parsing DRCS");
+                    return false;
+                }
+
                 [[maybe_unused]] uint8_t region_x = data[offset];
                 [[maybe_unused]] uint8_t region_y = data[offset + 1];
                 size_t geometric_data_length = ((size_t)data[offset + 2] << 8) |
@@ -953,7 +966,7 @@ bool DecoderImpl::HandleC1(const uint8_t* data, size_t remain_bytes, size_t* byt
             bytes = 2;
             break;
         case C1::TIME:  // Time Controls
-            if (remain_bytes < 2)
+            if (remain_bytes < 3)
                 return false;
             if (data[1] == 0x20) {
                 uint8_t p2 = data[2] & 0b00111111;

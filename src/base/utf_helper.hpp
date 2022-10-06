@@ -147,6 +147,8 @@ inline uint32_t DecodeUTF8ToCodePoint(const uint8_t* str, size_t bytes_available
         } else {
             *bytes_processed = 1;
         }
+    } else {
+        *bytes_processed = 1;
     }
 
     return ucs4;

@@ -132,8 +132,8 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
 
         // Draw enclosure if needed
         if (ch.enclosure_style) {
-            int w = ScaleX(1);  // use floor
-            int h = ScaleY(1);  // use floor
+            int w = std::max(ScaleX(1), 1);  // use floor
+            int h = std::max(ScaleY(1), 1);  // use floor
             if (ch.enclosure_style & EnclosureStyle::kEnclosureStyleTop) {
                 canvas.ClearRect(ch.text_color,
                                  Rect(section_rect.left,

@@ -210,10 +210,12 @@ void DecoderImpl::Flush() {
 
 auto DecoderImpl::DetectEncodingScheme() -> EncodingScheme {
     EncodingScheme encoding_scheme = EncodingScheme::kARIB_STD_B24_JIS;
-    bool has_jpn = false, has_latin = false, has_eng = false, has_tgl = false;
+    bool has_ucs = false, has_jpn = false, has_latin = false, has_eng = false, has_tgl = false;
 
     for (const auto& info : language_infos_) {
-        if (info.iso6392_language_code == ThreeCC("jpn")) {
+        if (info.TCS == 1) {
+            has_ucs = true;
+        } else if (info.iso6392_language_code == ThreeCC("jpn")) {
             has_jpn = true;
         } else if (info.iso6392_language_code == ThreeCC("por") || info.iso6392_language_code == ThreeCC("spa")) {
             has_latin = true;
@@ -224,7 +226,9 @@ auto DecoderImpl::DetectEncodingScheme() -> EncodingScheme {
         }
     }
 
-    if (has_jpn) {
+    if (has_ucs) {
+        encoding_scheme = EncodingScheme::kARIB_STD_B24_UTF8;
+    } else if (has_jpn) {
         encoding_scheme = EncodingScheme::kARIB_STD_B24_JIS;
     } else if (has_latin) {
         encoding_scheme = EncodingScheme::kABNT_NBR_15606_1_Latin;
@@ -634,7 +638,8 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
                                        static_cast<uint8_t>(GraphicSet::kDRCS_0);
                     drcs_maps_[map_index].insert_or_assign(ch, std::move(drcs));
                 } else if (byte_count == 2) {
-                    uint16_t ch = character_code & 0x7F7F;
+                    uint16_t ch = character_code;
+                    ch = ch >= 0xEC00 && ch <= 0xF8FF ? ch : ch & 0x7F7F;
                     drcs_maps_[0].insert_or_assign(ch, std::move(drcs));
                 }
             } else {
@@ -1257,7 +1262,19 @@ bool DecoderImpl::HandleUTF8(const uint8_t* data, size_t remain_bytes, size_t* b
     }
 
     uint32_t ucs4 = utf::DecodeUTF8ToCodePoint(data, remain_bytes, bytes_processed);
-    PushCharacter(ucs4);
+    if (ucs4 >= 0xEC00 && ucs4 <= 0xF8FF) {
+        // DRCS is mapped into the PUA starts with U+EC00 (STD-B24)
+        auto iter = drcs_maps_[0].find(static_cast<uint16_t>(ucs4));
+        if (iter == drcs_maps_[0].end()) {
+            // Unfindable DRCS character, insert Geta Mark instead
+            PushCharacter(0x3013);
+        } else {
+            PushDRCSCharacter(ucs4, iter->second);
+        }
+    } else {
+        PushCharacter(ucs4);
+    }
+
     MoveRelativeActivePos(1, 0);
 
     return true;

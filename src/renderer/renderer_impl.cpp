@@ -22,7 +22,6 @@
 #include "aribcaption/context.hpp"
 #include "renderer/bitmap.hpp"
 #include "renderer/canvas.hpp"
-#include "renderer/region_image_rearranger.hpp"
 #include "renderer/renderer_impl.hpp"
 
 namespace aribcaption::internal {

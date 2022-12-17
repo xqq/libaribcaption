@@ -234,8 +234,6 @@ if(NOT ARIBCC_NO_RENDERER)
         $<$<BOOL:${ARIBCC_USE_GDI_FONT}>:src/renderer/font_provider_gdi.hpp>
         src/renderer/image_capi.cpp
         src/renderer/rect.hpp
-        src/renderer/region_image_rearranger.cpp
-        src/renderer/region_image_rearranger.hpp
         src/renderer/region_renderer.cpp
         src/renderer/region_renderer.hpp
         src/renderer/renderer.cpp

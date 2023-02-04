@@ -180,15 +180,10 @@ auto FontProviderDirectWrite::GetFontFace(const std::string& font_name,
     // Retrieve Font family name
     BOOL exists = FALSE;
     ComPtr<IDWriteLocalizedStrings> localized_family_names;
-    hr = dwrite_font->GetInformationalStrings(DWRITE_INFORMATIONAL_STRING_WIN32_FAMILY_NAMES,
-                                              &localized_family_names,
-                                              &exists);
-    if (FAILED(hr) || !exists) {
-        hr = dwrite_font_family->GetFamilyNames(&localized_family_names);
-        if (FAILED(hr)) {
-            log_->w("FontProviderDirectWrite: Retrieve font family name failed");
-            return Err(FontProviderError::kOtherError);
-        }
+    hr = dwrite_font_family->GetFamilyNames(&localized_family_names);
+    if (FAILED(hr)) {
+        log_->w("FontProviderDirectWrite: Retrieve font family name failed");
+        return Err(FontProviderError::kOtherError);
     }
 
     // Retrieve Font PostScript name

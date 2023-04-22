@@ -1207,7 +1207,8 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
             uint32_t index = ku * 94 + ten;
             ucs4 = kKanjiTable[index];
             // If [ucs4 is Fullwidth alphanumeric] && [request replace] && [under MSZ mode]
-            if ((ucs4 >= 0xFF01 && ucs4 <= 0xFF5E) && replace_msz_fullwidth_ascii_ &&
+            if ((ucs4 == 0x3000 || (ucs4 >= 0xFF01 && ucs4 <= 0xFF5E)) &&
+                replace_msz_fullwidth_ascii_ &&
                 char_horizontal_scale_ * 2 == char_vertical_scale_) {
                 // Replace Fullwidth alphanumerics with Halfwidth alphanumerics
                 ucs4 = (ucs4 & 0xFF) + 0x20;
@@ -1227,7 +1228,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kAlphanumeric ||
                entry->graphics_set == GraphicSet::kProportionalAlphanumeric) {
-        uint32_t index = (uint32_t)ch - 0x21;
+        uint32_t index = (uint32_t)ch - 0x20;
         uint32_t ucs4 = 0;
         if (active_encoding_ == EncodingScheme::kABNT_NBR_15606_1_Latin) {
             ucs4 = kAlphanumericTable_Latin[index];

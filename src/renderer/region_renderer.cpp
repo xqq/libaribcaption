@@ -169,6 +169,13 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
         int char_width = ScaleWidth((float)ch.char_width * ch.char_horizontal_scale);
         int char_height = ScaleHeight((float)ch.char_height * ch.char_vertical_scale);
 
+        if ((ch.char_horizontal_scale * 2 == ch.char_vertical_scale) &&
+            ((ch.codepoint != 0 && (ch.codepoint & 0xFFFFFF00) == 0) ||
+             (ch.codepoint >= 0xFF61 && ch.codepoint <= 0xFF9F) ||
+             (ch.codepoint >= 0xFFE8 && ch.codepoint <= 0xFFEE))) {
+            char_width = ScaleWidth((float)ch.char_width * ch.char_horizontal_scale * 2);
+        }
+
         if (char_width < 2 || char_height < 2) {
             continue;  // Too small, skip
         }

@@ -1177,19 +1177,36 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
 
     if (entry->graphics_set == GraphicSet::kHiragana ||
                entry->graphics_set == GraphicSet::kProportionalHiragana) {
-        uint32_t index = (uint32_t)ch - 0x21;
-        uint32_t ucs4 = kHiraganaTable[index];
+        uint32_t index;
+        uint32_t ucs4;
+        if ((ch >= 0x79 && ch < 0x7f) &&
+            replace_msz_fullwidth_ascii_ &&
+            char_horizontal_scale_ * 2 == char_vertical_scale_) {
+             index = (uint32_t)ch - 0x79;
+             ucs4 = kHiraganaTable_Halfwidth[index];
+        } else {
+            index = (uint32_t)ch - 0x21;
+            ucs4 = kHiraganaTable[index];
+        }
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kKatakana ||
                entry->graphics_set == GraphicSet::kProportionalKatakana) {
         uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = kKatakanaTable[index];
+        if (replace_msz_fullwidth_ascii_ &&
+            char_horizontal_scale_ * 2 == char_vertical_scale_) {
+            ucs4 = kKatakanaTable_Halfwidth[index];
+        }
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kJIS_X0201_Katakana) {
         uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = kJISX0201KatakanaTable[index];
+        if (replace_msz_fullwidth_ascii_ &&
+            char_horizontal_scale_ * 2 == char_vertical_scale_) {
+            ucs4 = kJISX0201KatakanaTable_Halfwidth[index];
+        }
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kKanji ||
@@ -1207,11 +1224,16 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
             uint32_t index = ku * 94 + ten;
             ucs4 = kKanjiTable[index];
             // If [ucs4 is Fullwidth alphanumeric] && [request replace] && [under MSZ mode]
-            if ((ucs4 == 0x3000 || (ucs4 >= 0xFF01 && ucs4 <= 0xFF5E)) &&
-                replace_msz_fullwidth_ascii_ &&
+            if (replace_msz_fullwidth_ascii_ &&
                 char_horizontal_scale_ * 2 == char_vertical_scale_) {
                 // Replace Fullwidth alphanumerics with Halfwidth alphanumerics
-                ucs4 = (ucs4 & 0xFF) + 0x20;
+                if (ucs4 == 0x3000 || (ucs4 >= 0xFF01 && ucs4 <= 0xFF5E)) {
+                    ucs4 = (ucs4 & 0xFF) + 0x20;
+                } else if (ucs4 == 0xFFE5) {
+                    ucs4 = 0x00A5;
+                } else if (ucs4 >= 0x2190 && ucs4 <= 0x2193) {
+                    ucs4 = ucs4 - 0x2190 + 0xFFE9;
+                }
             }
         } else {  // ku >= 84
             // Additional Kanji + Additional Symbols
@@ -1232,7 +1254,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         uint32_t ucs4 = 0;
         if (active_encoding_ == EncodingScheme::kABNT_NBR_15606_1_Latin) {
             ucs4 = kAlphanumericTable_Latin[index];
-        } else if (replace_msz_fullwidth_ascii_ && char_horizontal_scale_ * 2 == char_vertical_scale_) {
+        } else if (char_horizontal_scale_ * 2 == char_vertical_scale_) {
             ucs4 = kAlphanumericTable_Halfwidth[index];
         } else {
             ucs4 = kAlphanumericTable_Fullwidth[index];

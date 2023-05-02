@@ -1229,10 +1229,8 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
                 // Replace Fullwidth alphanumerics with Halfwidth alphanumerics
                 if (ucs4 == 0x3000 || (ucs4 >= 0xFF01 && ucs4 <= 0xFF5E)) {
                     ucs4 = (ucs4 & 0xFF) + 0x20;
-                } else if (ucs4 == 0xFFE5) {
-                    ucs4 = 0x00A5;
-                } else if (ucs4 >= 0x2190 && ucs4 <= 0x2193) {
-                    ucs4 = ucs4 - 0x2190 + 0xFFE9;
+                } else if (ku < 2) {
+                    ucs4 = kKanjiTable_Halfwidth[index];
                 }
             }
         } else {  // ku >= 84

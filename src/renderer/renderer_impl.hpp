@@ -48,6 +48,7 @@ public:
 
     bool SetDefaultFontFamily(const std::vector<std::string>& font_family, bool force_default);
     bool SetLanguageSpecificFontFamily(uint32_t language_code, const std::vector<std::string>& font_family);
+    void SetReplaceMSZHalfWidthGlyph(bool replace);
     bool SetFrameSize(int frame_width, int frame_height);
     bool SetMargins(int top, int bottom, int left, int right);
 

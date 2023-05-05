@@ -58,6 +58,7 @@ public:
     void SetReplaceDRCS(bool replace);
     void SetForceStrokeText(bool force_stroke);
     void SetForceNoBackground(bool force_no_background);
+    void SetReplaceMSZHalfWidthGlyph(bool replace);
     auto RenderCaptionRegion(const CaptionRegion& region,
                              const std::unordered_map<uint32_t, DRCS>& drcs_map) -> Result<Image, RegionRenderError>;
 private:

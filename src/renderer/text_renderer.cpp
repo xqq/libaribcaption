@@ -77,4 +77,9 @@ auto TextRenderer::FontProviderErrorToStatus(FontProviderError error) -> TextRen
     }
 }
 
+void TextRenderer::SetReplaceMSZHalfWidthGlyph(bool replace) {
+    // No-OP
+    (void)replace;
+}
+
 }  // namespace aribcaption

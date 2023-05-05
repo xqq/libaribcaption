@@ -67,6 +67,10 @@ bool Renderer::SetLanguageSpecificFontFamily(uint32_t language_code, const std::
     return pimpl_->SetLanguageSpecificFontFamily(language_code, font_family);
 }
 
+void Renderer::SetReplaceMSZHalfWidthGlyph(bool replace) {
+    pimpl_->SetReplaceMSZHalfWidthGlyph(replace);
+}
+
 bool Renderer::SetFrameSize(int frame_width, int frame_height) {
     return pimpl_->SetFrameSize(frame_width, frame_height);
 }

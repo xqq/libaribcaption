@@ -1177,16 +1177,12 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
 
     if (entry->graphics_set == GraphicSet::kHiragana ||
                entry->graphics_set == GraphicSet::kProportionalHiragana) {
-        uint32_t index;
-        uint32_t ucs4;
-        if ((ch >= 0x79 && ch < 0x7f) &&
+        uint32_t index = (uint32_t)ch - 0x21;
+        uint32_t ucs4 = kHiraganaTable[index];
+        if (ch >= 0x79 &&
             replace_msz_fullwidth_ascii_ &&
             char_horizontal_scale_ * 2 == char_vertical_scale_) {
-             index = (uint32_t)ch - 0x79;
-             ucs4 = kHiraganaTable_Halfwidth[index];
-        } else {
-            index = (uint32_t)ch - 0x21;
-            ucs4 = kHiraganaTable[index];
+            ucs4 = kKanaTable_Halfwidth[index + 0x21 - 0x79];
         }
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);
@@ -1194,9 +1190,10 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
                entry->graphics_set == GraphicSet::kProportionalKatakana) {
         uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = kKatakanaTable[index];
-        if (replace_msz_fullwidth_ascii_ &&
+        if (ch >= 0x79 &&
+            replace_msz_fullwidth_ascii_ &&
             char_horizontal_scale_ * 2 == char_vertical_scale_) {
-            ucs4 = kKatakanaTable_Halfwidth[index];
+            ucs4 = kKanaTable_Halfwidth[index + 0x21 - 0x79];
         }
         PushCharacter(ucs4);
         MoveRelativeActivePos(1, 0);

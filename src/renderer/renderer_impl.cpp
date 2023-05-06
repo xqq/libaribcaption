@@ -64,7 +64,7 @@ void RendererImpl::LoadDefaultFontFamilies() {
 #else  // Linux, or other platforms
     jpn_default_font_family = {
         "Noto Sans Mono CJK JP",
-        "Source Han Mono",
+        "Source Han Sans HW",
         "monospace",
     };
 #endif

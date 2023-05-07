@@ -766,7 +766,8 @@ bool DecoderImpl::HandleC0(const uint8_t* data, size_t remain_bytes, size_t* byt
             break;
         case C0::SP:   // Space character
             if (active_encoding_ == EncodingScheme::kABNT_NBR_15606_1_Latin ||
-                    active_encoding_ == EncodingScheme::kARIB_STD_B24_UTF8) {
+                    active_encoding_ == EncodingScheme::kARIB_STD_B24_UTF8 ||
+                    char_horizontal_scale_ * 2 == char_vertical_scale_) {
                 PushCharacter(0x0020);  // Space (Basic Latin)
             } else {
                 PushCharacter(0x3000);  // Ideographic Space (CJK)
@@ -1245,7 +1246,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         MoveRelativeActivePos(1, 0);
     } else if (entry->graphics_set == GraphicSet::kAlphanumeric ||
                entry->graphics_set == GraphicSet::kProportionalAlphanumeric) {
-        uint32_t index = (uint32_t)ch - 0x20;
+        uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = 0;
         if (active_encoding_ == EncodingScheme::kABNT_NBR_15606_1_Latin) {
             ucs4 = kAlphanumericTable_Latin[index];

@@ -138,6 +138,9 @@ auto FontProviderDirectWrite::GetFontFace(const std::string& font_name,
     std::wstring wide_font_name = wchar::UTF8ToWideString(converted_family_name);
 
     LOGFONTW lf = {0};
+    if (wide_font_name.length() >= std::size(lf.lfFaceName)) {
+        return Err(FontProviderError::kFontNotFound);
+    }
     wcscpy_s(lf.lfFaceName, wide_font_name.c_str());
     lf.lfWeight = FW_NORMAL;
     lf.lfCharSet = DEFAULT_CHARSET;

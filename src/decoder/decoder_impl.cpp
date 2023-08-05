@@ -1225,14 +1225,19 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         if (ku < gaiji_begin_ku) {
             uint32_t index = ku * 94 + ten;
             ucs4 = kKanjiTable[index];
-            // If [ucs4 is Fullwidth alphanumeric] && [request replace] && [under MSZ mode]
-            if (replace_msz_fullwidth_ja_ &&
-                char_horizontal_scale_ * 2 == char_vertical_scale_) {
+            // If [request replace MSZ fullwidth Japanese] && [under MSZ mode]
+            if (replace_msz_fullwidth_ja_ && char_horizontal_scale_ * 2 == char_vertical_scale_) {
+                // Replace symbols used in Japanese (CJK) paragraph, etc. into halfwidth characters
+                if (ku < 2) {
+                    ucs4 = kKanjiSymbolsTable_Halfwidth[index];
+                }
+            }
+            // If [request replace MSZ fullwidth ASCII] && [under MSZ mode]
+            if (replace_msz_fullwidth_ascii_ && char_horizontal_scale_ * 2 == char_vertical_scale_) {
+                // If [ucs4 is Ideographic Space or Fullwidth alphanumeric]
                 // Replace Fullwidth alphanumerics with Halfwidth alphanumerics
                 if (ucs4 == 0x3000 || (ucs4 >= 0xFF01 && ucs4 <= 0xFF5E)) {
                     ucs4 = (ucs4 & 0xFF) + 0x20;
-                } else if (ku < 2) {
-                    ucs4 = kKanjiSymbolsTable_Halfwidth[index];
                 }
             }
         } else {  // ku >= 84

@@ -169,6 +169,13 @@ ARIBCC_API void aribcc_decoder_switch_language(aribcc_decoder_t* decoder, aribcc
 ARIBCC_API void aribcc_decoder_set_replace_msz_fullwidth_ascii(aribcc_decoder_t* decoder, bool replace);
 
 /**
+ * Set whether to replace MSZ (Middle Size, half width) fullwidth Japanese characters into halfwidth (if possible)
+ * @param decoder  @aribcc_decoder_t
+ * @param replace  bool
+ */
+ARIBCC_API void aribcc_decoder_set_replace_msz_fullwidth_japanese(aribcc_decoder_t* decoder, bool replace);
+
+/**
  * Query ISO639-2 Language Code for specific language id
  * @param decoder      @aribcc_decoder_t
  * @param language_id  @aribcc_languageid_t

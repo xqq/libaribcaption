@@ -47,6 +47,7 @@ public:
     void SetProfile(Profile profile);
     void SwitchLanguage(LanguageId language_id);
     void SetReplaceMSZFullWidthAlphanumeric(bool replace);
+    void SetReplaceMSZFullwidthJapanese(bool replace);
     [[nodiscard]]
     uint32_t QueryISO6392LanguageCode(LanguageId language_id) const;
     DecodeStatus Decode(const uint8_t* pes_data, size_t length, int64_t pts, DecodeResult& out_result);
@@ -107,6 +108,7 @@ private:
     LanguageId language_id_ = LanguageId::kDefault;
 
     bool replace_msz_fullwidth_ascii_ = false;
+    bool replace_msz_fullwidth_ja_ = false;
 
     std::vector<LanguageInfo> language_infos_;
     uint32_t current_iso6392_language_code_ = 0;

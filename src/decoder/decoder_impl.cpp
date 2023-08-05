@@ -83,6 +83,10 @@ void DecoderImpl::SetReplaceMSZFullWidthAlphanumeric(bool replace) {
     replace_msz_fullwidth_ascii_ = replace;
 }
 
+void DecoderImpl::SetReplaceMSZFullwidthJapanese(bool replace) {
+    replace_msz_fullwidth_ja_ = replace;
+}
+
 uint32_t DecoderImpl::QueryISO6392LanguageCode(LanguageId language_id) const {
     if (language_infos_.empty()) {
         return current_iso6392_language_code_;
@@ -1181,7 +1185,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = kHiraganaTable[index];
         if (ch >= 0x79 &&
-            replace_msz_fullwidth_ascii_ &&
+            replace_msz_fullwidth_ja_ &&
             char_horizontal_scale_ * 2 == char_vertical_scale_) {
             ucs4 = kKanaSymbolsTable_Halfwidth[ch - 0x79];
         }
@@ -1192,7 +1196,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
         uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = kKatakanaTable[index];
         if (ch >= 0x79 &&
-            replace_msz_fullwidth_ascii_ &&
+            replace_msz_fullwidth_ja_ &&
             char_horizontal_scale_ * 2 == char_vertical_scale_) {
             ucs4 = kKanaSymbolsTable_Halfwidth[ch - 0x79];
         }
@@ -1201,7 +1205,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
     } else if (entry->graphics_set == GraphicSet::kJIS_X0201_Katakana) {
         uint32_t index = (uint32_t)ch - 0x21;
         uint32_t ucs4 = kJISX0201KatakanaTable[index];
-        if (replace_msz_fullwidth_ascii_ &&
+        if (replace_msz_fullwidth_ja_ &&
             char_horizontal_scale_ * 2 == char_vertical_scale_) {
             ucs4 = kJISX0201KatakanaTable_Halfwidth[index];
         }
@@ -1222,7 +1226,7 @@ bool DecoderImpl::HandleGLGR(const uint8_t* data, size_t remain_bytes, size_t* b
             uint32_t index = ku * 94 + ten;
             ucs4 = kKanjiTable[index];
             // If [ucs4 is Fullwidth alphanumeric] && [request replace] && [under MSZ mode]
-            if (replace_msz_fullwidth_ascii_ &&
+            if (replace_msz_fullwidth_ja_ &&
                 char_horizontal_scale_ * 2 == char_vertical_scale_) {
                 // Replace Fullwidth alphanumerics with Halfwidth alphanumerics
                 if (ucs4 == 0x3000 || (ucs4 >= 0xFF01 && ucs4 <= 0xFF5E)) {

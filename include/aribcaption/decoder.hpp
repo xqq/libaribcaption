@@ -160,6 +160,12 @@ public:
     ARIBCC_API void SetReplaceMSZFullWidthAlphanumeric(bool replace);
 
     /**
+     * Set whether to replace MSZ (Middle Size, half width) fullwidth Japanese characters into halfwidth (if possible)
+     * @param replace bool
+     */
+    ARIBCC_API void SetReplaceMSZFullwidthJapanese(bool replace);
+
+    /**
      * Query ISO639-2 Language Code for specific language id
      * @param language_id See @LanguageId
      * @return uint32_t, e.g. "jpn" => 6A 70 6E => 0x006A706E. May be 0 if language is unknown.

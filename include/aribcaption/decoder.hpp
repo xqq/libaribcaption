@@ -163,7 +163,7 @@ public:
      * Set whether to replace MSZ (Middle Size, half width) fullwidth Japanese characters into halfwidth (if possible)
      * @param replace bool
      */
-    ARIBCC_API void SetReplaceMSZFullwidthJapanese(bool replace);
+    ARIBCC_API void SetReplaceMSZFullWidthJapanese(bool replace);
 
     /**
      * Query ISO639-2 Language Code for specific language id

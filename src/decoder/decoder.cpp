@@ -53,8 +53,8 @@ void Decoder::SetReplaceMSZFullWidthAlphanumeric(bool replace) {
     pimpl_->SetReplaceMSZFullWidthAlphanumeric(replace);
 }
 
-void Decoder::SetReplaceMSZFullwidthJapanese(bool replace) {
-    pimpl_->SetReplaceMSZFullwidthJapanese(replace);
+void Decoder::SetReplaceMSZFullWidthJapanese(bool replace) {
+    pimpl_->SetReplaceMSZFullWidthJapanese(replace);
 }
 
 uint32_t Decoder::QueryISO6392LanguageCode(LanguageId language_id) const {

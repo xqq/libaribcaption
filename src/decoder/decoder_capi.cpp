@@ -77,7 +77,7 @@ void aribcc_decoder_set_replace_msz_fullwidth_ascii(aribcc_decoder_t* decoder, b
 
 void aribcc_decoder_set_replace_msz_fullwidth_japanese(aribcc_decoder_t* decoder, bool replace) {
     auto impl = reinterpret_cast<DecoderImpl*>(decoder);
-    impl->SetReplaceMSZFullwidthJapanese(replace);
+    impl->SetReplaceMSZFullWidthJapanese(replace);
 }
 
 uint32_t aribcc_decoder_query_iso6392_language_code(aribcc_decoder_t* decoder, aribcc_languageid_t language_id) {

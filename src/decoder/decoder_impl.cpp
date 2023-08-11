@@ -83,7 +83,7 @@ void DecoderImpl::SetReplaceMSZFullWidthAlphanumeric(bool replace) {
     replace_msz_fullwidth_ascii_ = replace;
 }
 
-void DecoderImpl::SetReplaceMSZFullwidthJapanese(bool replace) {
+void DecoderImpl::SetReplaceMSZFullWidthJapanese(bool replace) {
     replace_msz_fullwidth_ja_ = replace;
 }
 

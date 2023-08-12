@@ -19,6 +19,8 @@
 #include <cassert>
 #include <cmath>
 #include <functional>
+#include "base/floating_helper.hpp"
+#include "base/unicode_helper.hpp"
 #include "base/utf_helper.hpp"
 #include "base/wchar_helper.hpp"
 #include "renderer/alphablend.hpp"
@@ -341,9 +343,8 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
         stroke_width = 0.0f;
     }
 
-    // Handle space characters
-    if (ucs4 == 0x0009 || ucs4 == 0x0020 || ucs4 == 0x00A0 || ucs4 == 0x1680 ||
-        ucs4 == 0x3000 || ucs4 == 0x202F || ucs4 == 0x205F || (ucs4 >= 0x2000 && ucs4 <= 0x200A)) {
+    // Skip space characters
+    if (unicode::IsSpaceCharacter(ucs4)) {
         return TextRenderStatus::kOK;
     }
 
@@ -442,9 +443,12 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
     [[maybe_unused]]
     int descent = MulDiv(font_metrics.descent, char_height, font_metrics.designUnitsPerEm);
 
+    bool is_requesting_halfwidth = floating::AlmostEquals((double)char_width / (double)char_height, 0.5, 0.02);
+    bool needless_horizontal_scaling = is_requesting_halfwidth && unicode::IsHalfwidthCharacter(ucs4);
+
     // Calculate horizontal scale factor
     float horizontal_scale = 1.0f;
-    if (char_width != char_height) {
+    if (char_width != char_height && !needless_horizontal_scaling) {
         horizontal_scale = static_cast<float>(char_width) / static_cast<float>(char_height);
     }
 

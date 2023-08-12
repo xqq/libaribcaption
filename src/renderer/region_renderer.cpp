@@ -93,15 +93,6 @@ void RegionRenderer::SetForceNoBackground(bool force_no_background) {
     force_no_background_ = force_no_background;
 }
 
-static inline bool IsHalfwidthCharacter(uint32_t codepoint) {
-    if ((codepoint != 0 && (codepoint & 0xFFFFFF00) == 0) ||
-            (codepoint >= 0xFF61 && codepoint <= 0xFF9F) ||
-            (codepoint >= 0xFFE8 && codepoint <= 0xFFEE)) {
-        return true;
-    }
-    return false;
-}
-
 auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
                                          const std::unordered_map<uint32_t, DRCS>& drcs_map)
                                          -> Result<Image, RegionRenderError> {
@@ -177,10 +168,6 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
         int char_y = ScaleY((float)(ch.y - region.y) + (float)ch.char_vertical_spacing * ch.char_vertical_scale / 2);
         int char_width = ScaleWidth((float)ch.char_width * ch.char_horizontal_scale);
         int char_height = ScaleHeight((float)ch.char_height * ch.char_vertical_scale);
-
-        if (ch.char_horizontal_scale * 2 == ch.char_vertical_scale && IsHalfwidthCharacter(ch.codepoint)) {
-            char_width = ScaleWidth((float)ch.char_width * ch.char_horizontal_scale * 2);
-        }
 
         if (char_width < 2 || char_height < 2) {
             continue;  // Too small, skip

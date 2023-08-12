@@ -20,7 +20,9 @@
 #include <cstring>
 #include <cstdint>
 #include <cmath>
+#include "base/floating_helper.hpp"
 #include "base/scoped_holder.hpp"
+#include "base/unicode_helper.hpp"
 #include "base/utf_helper.hpp"
 #include "renderer/alphablend.hpp"
 #include "renderer/canvas.hpp"
@@ -91,9 +93,8 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
         stroke_width = 0.0f;
     }
 
-    // Handle space characters
-    if (ucs4 == 0x0009 || ucs4 == 0x0020 || ucs4 == 0x00A0 || ucs4 == 0x1680 ||
-        ucs4 == 0x3000 || ucs4 == 0x202F || ucs4 == 0x205F || (ucs4 >= 0x2000 && ucs4 <= 0x200A)) {
+    // Skip space characters
+    if (unicode::IsSpaceCharacter(ucs4)) {
         return TextRenderStatus::kOK;
     }
 
@@ -145,6 +146,13 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
                 return TextRenderStatus::kCodePointNotFound;
             }
         }
+    }
+
+    // If char_width is a half of char_height, this should be MSZ (Middle size)
+    bool is_requesting_halfwidth = floating::AlmostEquals((double)char_width / (double)char_height, 0.5, 0.02);
+    if (is_requesting_halfwidth && unicode::IsHalfwidthCharacter(ucs4)) {
+        // Do not do horizontal scaling since the character is halfwidth already
+        char_width = char_height;
     }
 
     if (FT_Set_Pixel_Sizes(face, static_cast<FT_UInt>(char_width), static_cast<FT_UInt>(char_height))) {

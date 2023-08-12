@@ -20,6 +20,8 @@
 #include <cmath>
 #include <utility>
 #include "base/cfstr_helper.hpp"
+#include "base/floating_helper.hpp"
+#include "base/unicode_helper.hpp"
 #include "base/utf_helper.hpp"
 #include "renderer/font_provider_coretext.hpp"
 #include "renderer/text_renderer_coretext.hpp"
@@ -107,9 +109,8 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
         stroke_width = 0.0f;
     }
 
-    // Handle space characters
-    if (ucs4 == 0x0009 || ucs4 == 0x0020 || ucs4 == 0x00A0 || ucs4 == 0x1680 ||
-        ucs4 == 0x3000 || ucs4 == 0x202F || ucs4 == 0x205F || (ucs4 >= 0x2000 && ucs4 <= 0x200A)) {
+    // Skip space characters
+    if (unicode::IsSpaceCharacter(ucs4)) {
         return TextRenderStatus::kOK;
     }
 
@@ -227,8 +228,13 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
 
     CGPoint origin = CGPointMake(target_x, baseline_y);
 
+    // Check if it is MSZ (Middle Size)
+    bool is_requesting_halfwidth = floating::AlmostEquals((double)char_width / (double)char_height, 0.5, 0.02);
+    bool needless_horizontal_scaling = is_requesting_halfwidth && unicode::IsHalfwidthCharacter(ucs4);
+
     // Scale character correctly if char_width is different from char_height
-    if (char_width != char_height) {
+    // Do not do horizontal scaling if the character is halfwidth already
+    if (char_width != char_height && !needless_horizontal_scaling) {
         CGFloat horizontal_scale = static_cast<CGFloat>(char_width) / static_cast<CGFloat>(char_height);
         CGContextTranslateCTM(ctx.get(), origin.x, origin.y);
         CGContextScaleCTM(ctx.get(), horizontal_scale, 1.0f);

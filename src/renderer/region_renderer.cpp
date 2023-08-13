@@ -168,6 +168,8 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
         int char_y = ScaleY((float)(ch.y - region.y) + (float)ch.char_vertical_spacing * ch.char_vertical_scale / 2);
         int char_width = ScaleWidth((float)ch.char_width * ch.char_horizontal_scale);
         int char_height = ScaleHeight((float)ch.char_height * ch.char_vertical_scale);
+        float aspect_ratio = ((float)ch.char_width * ch.char_horizontal_scale) /
+                             ((float)ch.char_height * ch.char_vertical_scale);
 
         if (char_width < 2 || char_height < 2) {
             continue;  // Too small, skip
@@ -196,7 +198,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
             }
             TextRenderStatus status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
                                                                ch.codepoint, style, ch.text_color, stroke_color,
-                                                               stroke_width, char_width, char_height,
+                                                               stroke_width, char_width, char_height, aspect_ratio,
                                                                underline_info, fallback_policy);
             if (status == TextRenderStatus::kOK) {
                 succeed++;
@@ -205,13 +207,13 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
                 // Try fallback rendering with pua_codepoint
                 status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
                                                   ch.pua_codepoint, style, ch.text_color, stroke_color,
-                                                  stroke_width, char_width, char_height,
+                                                  stroke_width, char_width, char_height, aspect_ratio,
                                                   underline_info, TextRenderFallbackPolicy::kAutoFallback);
                 if (status == TextRenderStatus::kCodePointNotFound) {
                     // If failed, try fallback rendering with Unicode codepoint again
                     status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
                                                       ch.codepoint, style, ch.text_color, stroke_color,
-                                                      stroke_width, char_width, char_height,
+                                                      stroke_width, char_width, char_height, aspect_ratio,
                                                       underline_info, TextRenderFallbackPolicy::kAutoFallback);
                 }
             }
@@ -230,7 +232,7 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
             // Draw replaced DRCS (alternative ucs4)
             TextRenderStatus status = text_renderer_->DrawChar(text_render_ctx, char_x, char_y,
                                                                ch.codepoint, style, ch.text_color, stroke_color,
-                                                               stroke_width, char_width, char_height,
+                                                               stroke_width, char_width, char_height, aspect_ratio,
                                                                underline_info, TextRenderFallbackPolicy::kAutoFallback);
             if (status == TextRenderStatus::kOK) {
                 succeed++;

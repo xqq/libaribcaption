@@ -330,7 +330,7 @@ void TextRendererDirectWrite::EndDraw(TextRenderContext& context) {
 
 auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target_x, int target_y,
                                        uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
-                                       float stroke_width, int char_width, int char_height,
+                                       float stroke_width, int char_width, int char_height, float aspect_ratio,
                                        std::optional<UnderlineInfo> underline_info,
                                        TextRenderFallbackPolicy fallback_policy) -> TextRenderStatus {
     if (!render_ctx.GetPrivate()) {
@@ -443,7 +443,7 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
     [[maybe_unused]]
     int descent = MulDiv(font_metrics.descent, char_height, font_metrics.designUnitsPerEm);
 
-    bool is_requesting_halfwidth = floating::AlmostEquals((double)char_width / (double)char_height, 0.5, 0.02);
+    bool is_requesting_halfwidth = floating::AlmostEquals(aspect_ratio, 0.5f, 0.05f);
     bool needless_horizontal_scaling = is_requesting_halfwidth && unicode::IsHalfwidthCharacter(ucs4);
 
     // Calculate horizontal scale factor

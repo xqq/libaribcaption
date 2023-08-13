@@ -51,7 +51,7 @@ public:
     void EndDraw(TextRenderContext& context) override;
     auto DrawChar(TextRenderContext& render_ctx, int x, int y,
                   uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
-                  float stroke_width, int char_width, int char_height,
+                  float stroke_width, int char_width, int char_height, float aspect_ratio,
                   std::optional<UnderlineInfo> underline_info,
                   TextRenderFallbackPolicy fallback_policy) -> TextRenderStatus override;
 private:

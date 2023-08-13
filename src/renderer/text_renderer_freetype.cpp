@@ -85,7 +85,7 @@ void TextRendererFreetype::EndDraw(TextRenderContext& context) {
 
 auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x, int target_y,
                                     uint32_t ucs4, CharStyle style, ColorRGBA color, ColorRGBA stroke_color,
-                                    float stroke_width, int char_width, int char_height,
+                                    float stroke_width, int char_width, int char_height, float aspect_ratio,
                                     std::optional<UnderlineInfo> underline_info,
                                     TextRenderFallbackPolicy fallback_policy) -> TextRenderStatus {
     assert(char_height > 0);
@@ -148,8 +148,8 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
         }
     }
 
-    // If char_width is a half of char_height, this should be MSZ (Middle size)
-    bool is_requesting_halfwidth = floating::AlmostEquals((double)char_width / (double)char_height, 0.5, 0.02);
+    // If aspect_ratio is 0.5 (1:2), this should be MSZ (Middle size)
+    bool is_requesting_halfwidth = floating::AlmostEquals(aspect_ratio, 0.5f, 0.05f);
     if (is_requesting_halfwidth && unicode::IsHalfwidthCharacter(ucs4)) {
         // Do not do horizontal scaling since the character is halfwidth already
         char_width = char_height;

@@ -107,8 +107,8 @@ private:
     Profile profile_ = Profile::kDefault;
     LanguageId language_id_ = LanguageId::kDefault;
 
-    bool replace_msz_fullwidth_ascii_ = false;
-    bool replace_msz_fullwidth_ja_ = false;
+    bool replace_msz_fullwidth_ascii_ = true;
+    bool replace_msz_fullwidth_ja_ = true;
 
     std::vector<LanguageInfo> language_infos_;
     uint32_t current_iso6392_language_code_ = 0;

@@ -155,12 +155,14 @@ public:
 
     /**
      * Set whether to replace MSZ (Middle Size, half width) fullwidth alphanumerics with halfwidth alphanumerics
+     * Default is true
      * @param replace bool
      */
     ARIBCC_API void SetReplaceMSZFullWidthAlphanumeric(bool replace);
 
     /**
      * Set whether to replace MSZ (Middle Size, half width) fullwidth Japanese characters into halfwidth (if possible)
+     * Default is true
      * @param replace bool
      */
     ARIBCC_API void SetReplaceMSZFullWidthJapanese(bool replace);

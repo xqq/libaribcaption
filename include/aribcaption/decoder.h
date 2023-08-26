@@ -163,6 +163,7 @@ ARIBCC_API void aribcc_decoder_switch_language(aribcc_decoder_t* decoder, aribcc
 
 /**
  * Set whether to replace MSZ (Middle Size, half width) fullwidth alphanumerics with halfwidth alphanumerics
+ * Default is true
  * @param decoder  @aribcc_decoder_t
  * @param replace  bool
  */
@@ -170,6 +171,7 @@ ARIBCC_API void aribcc_decoder_set_replace_msz_fullwidth_ascii(aribcc_decoder_t*
 
 /**
  * Set whether to replace MSZ (Middle Size, half width) fullwidth Japanese characters into halfwidth (if possible)
+ * Default is true
  * @param decoder  @aribcc_decoder_t
  * @param replace  bool
  */

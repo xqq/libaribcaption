@@ -166,6 +166,11 @@ bool aribcc_renderer_set_language_specific_font_family(aribcc_renderer_t* render
     return impl->SetLanguageSpecificFontFamily(language_code, font_families);
 }
 
+void aribcc_renderer_set_replace_msz_halfwidth_glyph(aribcc_renderer_t* renderer, bool replace) {
+    auto impl = reinterpret_cast<RendererImpl*>(renderer);
+    impl->SetReplaceMSZHalfWidthGlyph(replace);
+}
+
 bool aribcc_renderer_set_frame_size(aribcc_renderer_t* renderer, int frame_width, int frame_height) {
     auto impl = reinterpret_cast<RendererImpl*>(renderer);
     return impl->SetFrameSize(frame_width, frame_height);

@@ -93,6 +93,11 @@ void RegionRenderer::SetForceNoBackground(bool force_no_background) {
     force_no_background_ = force_no_background;
 }
 
+void RegionRenderer::SetReplaceMSZHalfWidthGlyph(bool replace) {
+    assert(text_renderer_);
+    text_renderer_->SetReplaceMSZHalfWidthGlyph(replace);
+}
+
 auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
                                          const std::unordered_map<uint32_t, DRCS>& drcs_map)
                                          -> Result<Image, RegionRenderError> {

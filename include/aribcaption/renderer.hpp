@@ -246,6 +246,21 @@ public:
     ARIBCC_API bool SetLanguageSpecificFontFamily(uint32_t language_code, const std::vector<std::string>& font_family);
 
     /**
+     * Set whether to replace MSZ (Middle Size, halfwidth) characters with halfwidth glyphs if the font supports it
+     *
+     * The font should be Adobe-Japan1 compliant.
+     * If the font has Std, Pr5, Pr6, or Pro in the name, it is likely to be compliant.
+     * Fonts such as IBM Plex Sans JP, Morisawa BIZ UDGothic, Morisawa BIZ UDMincho,
+     * Yu Gothic, Yu Mincho, and Meiryo are also supported.
+     * It is only effective when using the FreeType or DirectWrite renderer,
+     * and is enabled by default for these renderers.
+     *
+     * @param replace If true is specified, Captions that use halfwidth kana, halfwidth symbol and
+     *                halfwidth alphanumeric characters will look better.
+     */
+    ARIBCC_API void SetReplaceMSZHalfWidthGlyph(bool replace);
+
+    /**
      * Set the renderer frame size in pixels, include margins. This function must be called before any @Render() call.
      *
      * Usually rendered images will be inside this frame area, unless negative margin values are specified.

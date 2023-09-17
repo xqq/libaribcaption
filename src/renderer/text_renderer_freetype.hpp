@@ -45,6 +45,7 @@ public:
     bool Initialize() override;
     void SetLanguage(uint32_t iso6392_language_code) override;
     bool SetFontFamily(const std::vector<std::string>& font_family) override;
+    void SetReplaceMSZHalfWidthGlyph(bool replace) override;
     auto BeginDraw(Bitmap& target_bmp) -> TextRenderContext override;
     void EndDraw(TextRenderContext& context) override;
     auto DrawChar(TextRenderContext& render_ctx, int x, int y,
@@ -69,7 +70,11 @@ private:
     ScopedHolder<FT_Face> fallback_face_;
     std::vector<uint8_t> main_face_data_;
     std::vector<uint8_t> fallback_face_data_;
+    std::optional<std::unordered_map<uint32_t, uint32_t>> main_halfwidth_subst_map_;
+    std::optional<std::unordered_map<uint32_t, uint32_t>> fallback_halfwidth_subst_map_;
     size_t main_face_index_ = 0;
+
+    bool replace_msz_halfwidth_glyph_ = true;
 };
 
 }  // namespace aribcaption

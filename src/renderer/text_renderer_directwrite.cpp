@@ -275,6 +275,10 @@ bool TextRendererDirectWrite::SetFontFamily(const std::vector<std::string>& font
     return false;
 }
 
+void TextRendererDirectWrite::SetReplaceMSZHalfWidthGlyph(bool replace) {
+    replace_msz_halfwidth_glyph_ = replace;
+}
+
 struct TextRenderContextPrivateDirectWrite : public TextRenderContext::ContextPrivate {
 public:
     TextRenderContextPrivateDirectWrite() = default;
@@ -465,6 +469,31 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
     if (FAILED(hr)) {
         log_->e("TextRendererDirectWrite: GetMetrics() failed");
         return TextRenderStatus::kOtherError;
+    }
+
+    // Check if the font has a half width glyph for this character.
+    if (replace_msz_halfwidth_glyph_ && is_requesting_halfwidth) {
+        ComPtr<IDWriteTypography> typography;
+        DWRITE_TEXT_METRICS full_width_text_metrics = metrics;
+        DWRITE_FONT_FEATURE feature = {DWRITE_FONT_FEATURE_TAG_HALF_WIDTH, 1};
+        if (SUCCEEDED(dwrite_factory_->CreateTypography(&typography)) &&
+            SUCCEEDED(typography->AddFontFeature(feature)) &&
+            SUCCEEDED(text_layout->SetTypography(typography.Get(), DWRITE_TEXT_RANGE{0, 1}))) {
+            hr = text_layout->GetMetrics(&metrics);
+            if (FAILED(hr)) {
+                log_->e("TextRendererDirectWrite: GetMetrics() failed");
+                return TextRenderStatus::kOtherError;
+            }
+            // Avoid scaling because it has a half width glyph.
+            if (full_width_text_metrics.width / 2 == metrics.width) {
+                char_width = char_height;
+                horizontal_scale = 1.0f;
+            } else {
+                if (SUCCEEDED(dwrite_factory_->CreateTypography(&typography))) {
+                    text_layout->SetTypography(typography.Get(), DWRITE_TEXT_RANGE{0, 1});
+                }
+            }
+        }
     }
 
     // Calculate charbox size

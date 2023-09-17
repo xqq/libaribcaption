@@ -41,6 +41,7 @@ public:
     bool Initialize() override;
     void SetLanguage(uint32_t iso6392_language_code) override;
     bool SetFontFamily(const std::vector<std::string>& font_family) override;
+    void SetReplaceMSZHalfWidthGlyph(bool replace) override;
     auto BeginDraw(Bitmap& target_bmp) -> TextRenderContext override;
     void EndDraw(TextRenderContext& context) override;
     auto DrawChar(TextRenderContext& render_ctx, int x, int y,
@@ -82,6 +83,8 @@ private:
 
     ComPtr<IDWriteTextFormat> main_text_format_;
     ComPtr<IDWriteTextFormat> fallback_text_format_;
+
+    bool replace_msz_halfwidth_glyph_ = true;
 };
 
 }  // namespace aribcaption

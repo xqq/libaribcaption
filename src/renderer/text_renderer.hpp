@@ -92,6 +92,7 @@ public:
     virtual bool Initialize() = 0;
     virtual void SetLanguage(uint32_t iso6392_language_code) = 0;
     virtual bool SetFontFamily(const std::vector<std::string>& font_family) = 0;
+    virtual void SetReplaceMSZHalfWidthGlyph(bool replace);
     virtual auto BeginDraw(Bitmap& target_bmp) -> TextRenderContext = 0;
     virtual void EndDraw(TextRenderContext& context) = 0;
     virtual auto DrawChar(TextRenderContext& render_ctx, int x, int y,

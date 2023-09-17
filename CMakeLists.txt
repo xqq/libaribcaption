@@ -20,7 +20,7 @@ cmake_minimum_required(VERSION 3.11)
 
 project(libaribcaption
     VERSION
-        1.0.1
+        1.1.0
     DESCRIPTION
         "Portable ARIB STD-B24 Caption Decoder/Renderer"
     HOMEPAGE_URL

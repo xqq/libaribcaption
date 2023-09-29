@@ -53,12 +53,12 @@ std::unique_ptr<TextRenderer> TextRenderer::Create(TextRendererType type, Contex
 
         case TextRendererType::kAuto:
         default:
-#if defined(_WIN32) && defined(ARIBCC_USE_DIRECTWRITE)
+#if defined(ARIBCC_USE_FREETYPE)
+            return std::make_unique<TextRendererFreetype>(context, font_provider);
+#elif defined(_WIN32) && defined(ARIBCC_USE_DIRECTWRITE)
             return std::make_unique<TextRendererDirectWrite>(context, font_provider);
 #elif defined(__APPLE__) && defined(ARIBCC_USE_CORETEXT)
             return std::make_unique<TextRendererCoreText>(context, font_provider);
-#elif defined(ARIBCC_USE_FREETYPE)
-            return std::make_unique<TextRendererFreetype>(context, font_provider);
 #else
             static_assert(false, "No available auto-select TextRenderer!");
 #endif

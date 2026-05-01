@@ -19,6 +19,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <new>
+#include <stdlib.h>
 #include "aribcaption/caption.h"
 #include "aribcaption/caption.hpp"
 #include "base/utf_helper.hpp"

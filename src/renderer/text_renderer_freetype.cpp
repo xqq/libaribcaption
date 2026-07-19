@@ -28,6 +28,7 @@
 #include "renderer/canvas.hpp"
 #include "renderer/open_type_gsub.hpp"
 #include "renderer/text_renderer_freetype.hpp"
+#include FT_GLYPH_H
 #include FT_STROKER_H
 #include FT_SFNT_NAMES_H
 #include FT_TRUETYPE_IDS_H
@@ -69,6 +70,8 @@ bool TextRendererFreetype::SetFontFamily(const std::vector<std::string>& font_fa
         fallback_face_.Reset();
         main_face_data_.clear();
         fallback_face_data_.clear();
+        main_baseline_cache_.clear();
+        fallback_baseline_cache_.clear();
         main_face_index_ = 0;
     }
 
@@ -99,6 +102,55 @@ static auto LoadSFNTTable(FT_Face face, FT_Tag tag) -> std::vector<uint8_t> {
         return {};
     }
     return gsub;
+}
+
+static auto CalculateBaselineFromGlyphBounds(FT_Face face, FT_UInt glyph_index, int char_height)
+        -> std::optional<int> {
+    if (glyph_index == 0 || FT_Load_Glyph(face, glyph_index, FT_LOAD_NO_BITMAP)) {
+        return std::nullopt;
+    }
+
+    ScopedHolder<FT_Glyph> glyph(nullptr, FT_Done_Glyph);
+    if (FT_Get_Glyph(face->glyph, &glyph)) {
+        return std::nullopt;
+    }
+
+    FT_BBox bounds{};
+    FT_Glyph_Get_CBox(glyph, FT_GLYPH_BBOX_PIXELS, &bounds);
+    int glyph_height = static_cast<int>(bounds.yMax - bounds.yMin);
+    if (glyph_height <= 0) {
+        return std::nullopt;
+    }
+
+    // Center the glyph's ink bounds in the ARIB character box and return the
+    // corresponding baseline position measured from the top of that box.
+    return (char_height - glyph_height) / 2 + static_cast<int>(bounds.yMax);
+}
+
+static auto CalculateIdeographicCharacterFaceBaseline(FT_Face face, int char_height) -> std::optional<int> {
+    // OpenType calls the approximate bounds shared by full-width ideographic
+    // and kana glyphs the Ideographic Character Face (ICF). If a font does not
+    // provide ICF values in its BASE table, the OpenType specification permits
+    // estimating them from representative ideographic and kana glyph bounds.
+    // Until this renderer parses the BASE table, use that recommended fallback.
+    static constexpr uint32_t kReferenceChars[] = {
+            0x6C38,  // CJK ideograph "永"
+            0x56FD,  // CJK ideograph "国"
+            0x3042,  // Hiragana "あ"
+    };
+
+    for (uint32_t ch : kReferenceChars) {
+        auto baseline = CalculateBaselineFromGlyphBounds(face, FT_Get_Char_Index(face, ch), char_height);
+        if (baseline) {
+            return baseline;
+        }
+    }
+    return std::nullopt;
+}
+
+static uint64_t MakePixelSizeKey(int char_width, int char_height) {
+    return (static_cast<uint64_t>(static_cast<uint32_t>(char_width)) << 32) |
+           static_cast<uint32_t>(char_height);
 }
 
 auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x, int target_y,
@@ -155,6 +207,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
             }
             std::pair<FT_Face, size_t>& pair = result.value();
             fallback_face_ = ScopedHolder<FT_Face>(pair.first, FT_Done_Face);
+            fallback_baseline_cache_.clear();
 
             // Use this fallback fontface for rendering this time
             face = fallback_face_;
@@ -210,6 +263,18 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
 
     int em_height = ascender + std::abs(descender);
     int em_adjust_y = (char_height - em_height) / 2;
+    baseline += em_adjust_y;
+
+    auto& baseline_cache = face == main_face_ ? main_baseline_cache_ : fallback_baseline_cache_;
+    uint64_t pixel_size_key = MakePixelSizeKey(char_width, char_height);
+    auto baseline_iter = baseline_cache.find(pixel_size_key);
+    if (baseline_iter == baseline_cache.end()) {
+        baseline_iter = baseline_cache.emplace(
+                pixel_size_key, CalculateIdeographicCharacterFaceBaseline(face, char_height)).first;
+    }
+    if (baseline_iter->second) {
+        baseline = *baseline_iter->second;
+    }
 
     if (FT_Load_Glyph(face, glyph_index, FT_LOAD_NO_BITMAP)) {
         log_->e("Freetype: FT_Load_Glyph failed");
@@ -261,7 +326,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
 
     // Draw Underline if required
     if ((style & kCharStyleUnderline) && underline_info && underline_thickness > 0) {
-        int underline_y = target_y + baseline + em_adjust_y + std::abs(underline);
+        int underline_y = target_y + baseline + std::abs(underline);
         Rect underline_rect(underline_info->start_x,
                             underline_y,
                             underline_info->start_x + underline_info->width,
@@ -284,7 +349,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
     if (border_glyph_image) {
         auto border_bitmap_glyph = reinterpret_cast<FT_BitmapGlyph>(border_glyph_image.Get());
         int start_x = target_x + border_bitmap_glyph->left;
-        int start_y = target_y + baseline + em_adjust_y - border_bitmap_glyph->top;
+        int start_y = target_y + baseline - border_bitmap_glyph->top;
 
         Bitmap bmp = FTBitmapToColoredBitmap(border_bitmap_glyph->bitmap, stroke_color);
         canvas.DrawBitmap(bmp, start_x, start_y);
@@ -294,7 +359,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
     if (glyph_image) {
         auto bitmap_glyph = reinterpret_cast<FT_BitmapGlyph>(glyph_image.Get());
         int start_x = target_x + bitmap_glyph->left;
-        int start_y = target_y + baseline + em_adjust_y - bitmap_glyph->top;
+        int start_y = target_y + baseline - bitmap_glyph->top;
 
         Bitmap bmp = FTBitmapToColoredBitmap(bitmap_glyph->bitmap, color);
         canvas.DrawBitmap(bmp, start_x, start_y);

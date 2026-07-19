@@ -21,9 +21,11 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include <cstdint>
 #include <vector>
 #include <string>
 #include <optional>
+#include <unordered_map>
 #include <utility>
 #include "aribcaption/caption.hpp"
 #include "aribcaption/color.hpp"
@@ -72,6 +74,8 @@ private:
     std::vector<uint8_t> fallback_face_data_;
     std::optional<std::unordered_map<uint32_t, uint32_t>> main_halfwidth_subst_map_;
     std::optional<std::unordered_map<uint32_t, uint32_t>> fallback_halfwidth_subst_map_;
+    std::unordered_map<uint64_t, std::optional<int>> main_baseline_cache_;
+    std::unordered_map<uint64_t, std::optional<int>> fallback_baseline_cache_;
     size_t main_face_index_ = 0;
 
     bool replace_msz_halfwidth_glyph_ = true;

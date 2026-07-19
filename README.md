@@ -47,7 +47,7 @@ libaribcaption is a cross-platform library that works on various platforms, incl
 - Built-in DRCS converting table for replacing / rendering known DRCS characters into / by alternative Unicode
 
 ## Build
-CMake 3.11+ and a C++17 compatible compiler will be necessary for building. Usually you just have to:
+CMake 3.28+ and a C++17 compatible compiler will be necessary for building. Usually you just have to:
 ```bash
 cd libaribcaption
 mkdir build
@@ -96,7 +96,7 @@ This option will automatically fetch and compile a static-linked FreeType librar
 ## Usage
 libaribcaption could be imported through `find_package()` if you have installed it into system:
 ```cmake
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.28)
 project(testarib LANGUAGES C CXX)
 
 find_package(aribcaption REQUIRED)
@@ -122,7 +122,7 @@ target_link_libraries(testarib
 Or using `add_subdirectory()` to import source folder directly:
 
 ```cmake
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.28)
 project(testarib2 LANGUAGES C CXX)
 
 set(ARIBCC_USE_FREETYPE ON CACHE BOOL "Enable FreeType")    # Indicate options here (optional)

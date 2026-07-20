@@ -21,6 +21,10 @@
 #include "base/scoped_holder.hpp"
 #include "renderer/font_provider_fontconfig.hpp"
 
+#ifndef FC_POSTSCRIPT_NAME
+    #define FC_POSTSCRIPT_NAME "postscriptname"
+#endif
+
 namespace aribcaption {
 
 FontProviderFontconfig::FontProviderFontconfig(Context& context) :

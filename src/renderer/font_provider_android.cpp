@@ -317,7 +317,7 @@ bool FontProviderAndroid::HandleFamilySetLMP(XMLElement* root) {
 }
 
 bool FontProviderAndroid::LMPHandleFamily(XMLElement* element) {
-    FontFamily& current_family = font_families_.emplace_back();
+    FontFamily current_family;
 
     if (const char* name = element->Attribute("name")) {
         current_family.names.emplace_back(name);
@@ -346,12 +346,19 @@ bool FontProviderAndroid::LMPHandleFamily(XMLElement* element) {
         element = element->NextSiblingElement();
     }
 
+    font_families_.push_back(std::move(current_family));
+
     return true;
 }
 
 bool FontProviderAndroid::LMPHandleFont(XMLElement* element, internal::FontFamily& family) {
+    const char* filename = element->GetText();
+    if (!filename) {
+        return false;
+    }
+
     FontFile font;
-    font.filename = element->GetText();
+    font.filename = filename;
     font.weight = element->IntAttribute("weight", 400);
     font.collection_index = element->IntAttribute("index", 0);
 
@@ -366,6 +373,10 @@ bool FontProviderAndroid::LMPHandleFont(XMLElement* element, internal::FontFamil
     }
 
     if (const char* fallback_for = element->Attribute("fallbackFor")) {
+        if (family.languages.empty()) {
+            return false;
+        }
+
         FontFamily* fallback_family =
                 FindFallbackFamilyByLanguageAndFallbackFor(family.languages[0].c_str(),
                                                            fallback_for);

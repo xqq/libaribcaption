@@ -116,7 +116,6 @@ function(import_embedded_freetype)
 
     set(FREETYPE_INCLUDE_DIRS "${freetype_BINARY_DIR}/include;${freetype_SOURCE_DIR}/include" PARENT_SCOPE)
     set(FREETYPE_LIBRARIES freetype PARENT_SCOPE)
-
 endfunction()
 
 if(ARIBCC_USE_FREETYPE AND (NOT ARIBCC_USE_EMBEDDED_FREETYPE))

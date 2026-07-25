@@ -136,9 +136,9 @@ static auto CalculateIdeographicCharacterFaceBaseline(FT_Face face, int char_hei
     // estimating them from representative ideographic and kana glyph bounds.
     // Until this renderer parses the BASE table, use that recommended fallback.
     static constexpr uint32_t kReferenceChars[] = {
-            0x6C38,  // CJK ideograph "永"
-            0x56FD,  // CJK ideograph "国"
-            0x3042,  // Hiragana "あ"
+        0x6C38,  // CJK ideograph "永"
+        0x56FD,  // CJK ideograph "国"
+        0x3042,  // Hiragana "あ"
     };
 
     for (uint32_t ch : kReferenceChars) {

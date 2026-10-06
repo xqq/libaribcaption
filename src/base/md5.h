@@ -1,4 +1,6 @@
 /*
+ * Modified with function name changing for avoiding duplicated symbol link error.
+ *
  * This is an OpenSSL-compatible implementation of the RSA Data Security, Inc.
  * MD5 Message-Digest Algorithm (RFC 1321).
  *
@@ -23,10 +25,8 @@
  * See md5.c for more information.
  */
 
-#ifdef HAVE_OPENSSL
-#include <openssl/md5.h>
-#elif !defined(_MD5_H)
-#define _MD5_H
+#ifndef ARIBCAPTION_MD5_H
+#define ARIBCAPTION_MD5_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,15 +41,15 @@ typedef struct {
     MD5_u32plus a, b, c, d;
     unsigned char buffer[64];
     MD5_u32plus block[16];
-} MD5_CTX;
+} aribcc_md5_ctx_t;
 
-extern void MD5_Init(MD5_CTX *ctx);
-extern void MD5_Update(MD5_CTX *ctx, const void *data, unsigned long size);
-extern void MD5_Final(unsigned char *result, MD5_CTX *ctx);
+void aribcc_md5_init(aribcc_md5_ctx_t *ctx);
+void aribcc_md5_update(aribcc_md5_ctx_t *ctx, const void *data, unsigned long size);
+void aribcc_md5_final(unsigned char *result, aribcc_md5_ctx_t *ctx);
 
 
 #ifdef __cplusplus
 }  // extern "C"
 #endif
 
-#endif
+#endif  // ARIBCAPTION_MD5_H

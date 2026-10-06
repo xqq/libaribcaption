@@ -29,23 +29,23 @@ namespace aribcaption::md5 {
 
 inline std::string GetDigest(const uint8_t* buffer, size_t length) {
     const uint8_t* ptr = buffer;
-    MD5_CTX ctx;
-    MD5_Init(&ctx);
+    aribcc_md5_ctx_t ctx;
+    aribcc_md5_init(&ctx);
 
     while (length) {
         if (length > 64) {
-            MD5_Update(&ctx, ptr, 64);
+            aribcc_md5_update(&ctx, ptr, 64);
             length -= 64;
             ptr += 64;
         } else {
-            MD5_Update(&ctx, ptr, static_cast<unsigned long>(length));
+            aribcc_md5_update(&ctx, ptr, static_cast<unsigned long>(length));
             length -= length;
             ptr += length;
         }
     }
 
     std::vector<uint8_t> digest(16, 0);
-    MD5_Final(&digest[0], &ctx);
+    aribcc_md5_final(&digest[0], &ctx);
 
     std::string digest_str(32, '\0');
     for (size_t i = 0; i < 16; i++) {

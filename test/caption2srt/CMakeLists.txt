@@ -36,6 +36,8 @@ target_compile_features(test_caption2srt
 
 target_include_directories(test_caption2srt
     PRIVATE
+        ../../include
+        ../../src
         ${AVCODEC_INCLUDE_DIR}
         ${AVFORMAT_INCLUDE_DIR}
 )

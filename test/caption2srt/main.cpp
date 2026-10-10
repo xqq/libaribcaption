@@ -18,6 +18,8 @@
 
 #ifdef _WIN32
     #include <windows.h>
+    #include <shellapi.h>
+    #include "base/wchar_helper.hpp"
 #endif
 
 extern "C" {
@@ -26,14 +28,19 @@ extern "C" {
 }
 
 #include <cinttypes>
+#include <cerrno>
 #include <cstdlib>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <memory>
+#include <vector>
+#include <string>
 #include <deque>
 #include <iomanip>
 #include <fstream>
 #include <sstream>
+#include <filesystem>
 #include "aribcaption/decoder.hpp"
 
 using namespace aribcaption;
@@ -66,7 +73,19 @@ public:
     }
 public:
     bool Open(const char* input_filename, const char* output_filename) {
+        // On Windows, convert UTF-8 path to native Unicode (UTF-16 std::wstring) for constructing
+        errno = 0;
+#ifdef _WIN32
+        ofs_.open(std::filesystem::path(wchar::UTF8ToWideString(output_filename)));
+#else
         ofs_.open(output_filename);
+#endif
+        if (!ofs_) {
+            const int error = errno;
+            fprintf(stderr, "Open SRT output failed: %s, output: %s\n",
+                    error ? std::strerror(error) : "I/O error", output_filename);
+            return false;
+        }
 
         InitCaptionDecoder();
 
@@ -112,7 +131,7 @@ public:
         return true;
     }
 
-    void RunLoop() {
+    bool RunLoop() {
         int ret = 0;
         bool first_video_found = false;
         int64_t first_video_pts = 0;
@@ -143,6 +162,13 @@ public:
             DumpToSRT(caption);
             caption_queue_.pop_front();
         }
+
+        ofs_.close();
+        if (!ofs_) {
+            fprintf(stderr, "Write or close SRT output failed\n");
+            return false;
+        }
+        return true;
     }
 private:
     void InitCaptionDecoder() {
@@ -243,6 +269,27 @@ private:
     int srt_index_ = 1;
 };
 
+#ifdef _WIN32
+std::vector<std::string> ParseWin32CommandLineToUTF8() {
+    std::vector<std::string> argv_utf8;
+
+    int argc = 0;
+    wchar_t** wide_argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (!wide_argv) {
+        fprintf(stderr, "Parse Win32 command line failed\n");
+        return {};
+    }
+
+    for (int i = 0; i < argc; i++) {
+        std::string argument = wchar::WideStringToUTF8(wide_argv[i]);
+        argv_utf8.push_back(std::move(argument));
+    }
+
+    LocalFree(wide_argv);
+    return argv_utf8;
+}
+#endif  // _WIN32
+
 int main(int argc, const char* argv[]) {
 #ifdef _WIN32
     UTF8CodePage enable_utf8_console;
@@ -253,13 +300,31 @@ int main(int argc, const char* argv[]) {
         return -1;
     }
 
-    CaptionConverter converter;
+    const char* input_filename = argv[1];
+    const char* output_filename = argv[2];
 
-    if (!converter.Open(argv[1], argv[2])) {
-        fprintf(stderr, "Open input MPEG-TS failed\n");
+#ifdef _WIN32
+    std::vector<std::string> argv_utf8 = ParseWin32CommandLineToUTF8();
+    if (argv_utf8.size() < 3) {
         return -1;
     }
 
-    converter.RunLoop();
+    const std::string& input_filename_utf8 = argv_utf8[1];
+    const std::string& output_filename_utf8 = argv_utf8[2];
+
+    input_filename = input_filename_utf8.c_str();
+    output_filename = output_filename_utf8.c_str();
+#endif  // _WIN32
+
+    CaptionConverter converter;
+
+    if (!converter.Open(input_filename, output_filename)) {
+        fprintf(stderr, "Open input or output failed\n");
+        return -1;
+    }
+
+    if (!converter.RunLoop()) {
+        return -1;
+    }
     return 0;
 }

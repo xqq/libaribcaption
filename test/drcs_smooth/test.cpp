@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-// Renders synthetic DRCS patterns enlarged 2x / 4x and checks that the result is smoothed,
+// Renders synthetic pixel-doubled DRCS patterns at their own size and at 2x, and checks that the result is smoothed,
 // i.e. that diagonal strokes don't turn into large staircases.
 
 #include <cstdint>
@@ -74,7 +74,7 @@ static Bitmap RenderDRCS(const DRCS& drcs, int size) {
     return bitmap;
 }
 
-int main(int argc, const char* argv[]) {
+int main() {
     DRCS diagonal = MakePixelDoubledDRCS([](int x, int y) { return x == y; });
     DRCS ring = MakePixelDoubledDRCS([](int x, int y) {
         int dx = 2 * x + 1 - glyph_size;
@@ -133,19 +133,16 @@ int main(int argc, const char* argv[]) {
     CHECK(block.GetPixelAt(target_size / 2, target_size / 2)->a >= 250);
     CHECK(block.GetPixelAt(target_size - 1, target_size - 1)->a >= 250);
 
-    // Rendering at the pattern size keeps the edges of an axis-aligned box sharp, apart from a 1px anti-aliased
-    // border. Scale2x rounds off convex corners, so the corners themselves are not checked.
+    // Drawing a pixel-doubled pattern at its own size gives the Scale2x result, so an axis-aligned box is not
+    // blurred. Scale2x rounds off convex corners, so only the four corner pixels may differ.
     Bitmap same_size = RenderDRCS(box, pattern_size);
     for (int y = 0; y < pattern_size; y++) {
         for (int x = 0; x < pattern_size; x++) {
-            bool inside = x >= 9 && x < 27 && y >= 9 && y < 27;
-            bool corner = (x < 11 || x >= 25) && (y < 11 || y >= 25);
-            bool outside = x < 7 || x >= 29 || y < 7 || y >= 29;
+            bool inside = x >= 8 && x < 28 && y >= 8 && y < 28;
+            bool corner = (x == 8 || x == 27) && (y == 8 || y == 27);
             uint8_t alpha = same_size.GetPixelAt(x, y)->a;
-            if (inside && !corner) {
-                CHECK(alpha >= 250);
-            } else if (outside) {
-                CHECK(alpha == 0);
+            if (!corner) {
+                CHECK(inside ? alpha >= 250 : alpha == 0);
             }
         }
     }

@@ -16,10 +16,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <algorithm>
 #include <utility>
 #include <vector>
 #include "renderer/alphablend.hpp"

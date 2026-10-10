@@ -24,6 +24,9 @@ find_library(AVCODEC_LIBRARY avcodec)
 find_path(AVFORMAT_INCLUDE_DIR libavformat/avformat.h)
 find_library(AVFORMAT_LIBRARY avformat)
 
+find_path(AVUTIL_INCLUDE_DIR libavutil/error.h)
+find_library(AVUTIL_LIBRARY avutil)
+
 add_executable(test_ffmpeg
     EXCLUDE_FROM_ALL
         test.cpp
@@ -42,6 +45,7 @@ target_include_directories(test_ffmpeg
         ../stopwatch/include
         ${AVCODEC_INCLUDE_DIR}
         ${AVFORMAT_INCLUDE_DIR}
+        ${AVUTIL_INCLUDE_DIR}
 )
 
 target_link_libraries(test_ffmpeg
@@ -50,7 +54,12 @@ target_link_libraries(test_ffmpeg
         png_writer
         ${AVCODEC_LIBRARY}
         ${AVFORMAT_LIBRARY}
+        ${AVUTIL_LIBRARY}
 )
+
+if(WIN32)
+    target_link_libraries(test_ffmpeg PRIVATE shell32)
+endif()
 
 set_target_properties(test_ffmpeg
     PROPERTIES

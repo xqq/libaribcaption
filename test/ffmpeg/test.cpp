@@ -18,11 +18,14 @@
 
 #ifdef _WIN32
     #include <windows.h>
+    #include <shellapi.h>
+    #include "base/wchar_helper.hpp"
 #endif
 
 extern "C" {
     #include <libavformat/avformat.h>
     #include <libavcodec/avcodec.h>
+    #include <libavutil/error.h>
 }
 
 #include <cinttypes>
@@ -30,6 +33,8 @@ extern "C" {
 #include <cstdint>
 #include <cstdio>
 #include <memory>
+#include <vector>
+#include <string>
 #include "aribcaption/aribcaption.hpp"
 #include "renderer/bitmap.hpp"
 #include "renderer/canvas.hpp"
@@ -78,7 +83,9 @@ public:
         int ret = 0;
 
         if ((ret = avformat_open_input(&format_context_, input_filename, nullptr, nullptr)) < 0) {
-            fprintf(stderr, "avformat_open_input failed\n");
+            char error[AV_ERROR_MAX_STRING_SIZE]{};
+            av_strerror(ret, error, sizeof(error));
+            fprintf(stderr, "avformat_open_input failed: %s (%d), input: %s\n", error, ret, input_filename);
             return false;
         }
 
@@ -232,6 +239,27 @@ private:
     std::unique_ptr<StopWatch> stop_watch_;
 };
 
+#ifdef _WIN32
+std::vector<std::string> ParseWin32CommandLineToUTF8() {
+    std::vector<std::string> argv_utf8;
+
+    int argc = 0;
+    wchar_t** wide_argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (!wide_argv) {
+        fprintf(stderr, "Parse Win32 command line failed\n");
+        return {};
+    }
+
+    for (int i = 0; i < argc; i++) {
+        std::string argument = wchar::WideStringToUTF8(wide_argv[i]);
+        argv_utf8.push_back(std::move(argument));
+    }
+
+    LocalFree(wide_argv);
+    return argv_utf8;
+}
+#endif  // _WIN32
+
 int main(int argc, const char* argv[]) {
 #ifdef _WIN32
     UTF8CodePage enable_utf8_console;
@@ -242,9 +270,21 @@ int main(int argc, const char* argv[]) {
         return -1;
     }
 
+    const char* input_filename = argv[1];
+
+#ifdef _WIN32
+    // FFmpeg expects UTF-8 string for file-opening path on Windows. Retrieve from Win32 API (Unicode version)
+    std::vector<std::string> argv_utf8 = ParseWin32CommandLineToUTF8();
+    if (argv_utf8.size() < 2) {
+        return -1;
+    }
+    const std::string& input_filename_utf8 = argv_utf8[1];
+    input_filename = input_filename_utf8.c_str();
+#endif  // _WIN32
+
     CaptionDecodeRendererFFmpeg decode_renderer;
 
-    if (!decode_renderer.Open(argv[1])) {
+    if (!decode_renderer.Open(input_filename)) {
         fprintf(stderr, "Open() failed\n");
         return -1;
     }

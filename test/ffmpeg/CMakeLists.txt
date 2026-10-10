@@ -57,10 +57,6 @@ target_link_libraries(test_ffmpeg
         ${AVUTIL_LIBRARY}
 )
 
-if(WIN32)
-    target_link_libraries(test_ffmpeg PRIVATE shell32)
-endif()
-
 set_target_properties(test_ffmpeg
     PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}

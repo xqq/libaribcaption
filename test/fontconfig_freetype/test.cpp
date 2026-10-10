@@ -105,6 +105,7 @@ int main(int argc, const char* argv[]) {
                                              3,
                                              0,  // char_width * scale_factor,
                                              char_height * scale_factor,
+                                             1.0f,
                                              UnderlineInfo{section_x, section_width * scale_factor},
                                              TextRenderFallbackPolicy::kAutoFallback);
         if (status != TextRenderStatus::kOK) {
@@ -141,6 +142,7 @@ int main(int argc, const char* argv[]) {
                            3,
                            char_width * scale_factor,
                            char_height * scale_factor,
+                           (float)char_width / (float)char_height,
                            std::nullopt,
                            TextRenderFallbackPolicy::kAutoFallback);
     text_renderer.EndDraw(text_render_ctx);

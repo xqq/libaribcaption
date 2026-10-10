@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2021 magicxqq <xqq@xqq.im>. All rights reserved.
+# Copyright (C) 2026 Ruk Doe <info@doany.io>. All rights reserved.
 #
 # This file is part of libaribcaption.
 #
@@ -16,16 +16,32 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
 
-if(BUILD_SHARED_LIBS)
-    set(BUILD_SHARED_LIBS OFF)
-endif()
+cmake_minimum_required(VERSION 3.28)
 
-add_subdirectory(alphablend)
-add_subdirectory(capi)
-add_subdirectory(caption2srt)
-add_subdirectory(png_writer)
-add_subdirectory(decode)
-add_subdirectory(drcs)
-add_subdirectory(drcs_smooth)
-add_subdirectory(ffmpeg)
-add_subdirectory(fontconfig_freetype)
+add_executable(test_drcs_smooth
+    EXCLUDE_FROM_ALL
+        test.cpp
+)
+
+target_compile_features(test_drcs_smooth
+    PRIVATE
+        cxx_std_17
+)
+
+target_include_directories(test_drcs_smooth
+    PRIVATE
+        ../../include
+        ../../src
+        ../png_writer/include
+)
+
+target_link_libraries(test_drcs_smooth
+    PRIVATE
+        aribcaption
+        png_writer
+)
+
+set_target_properties(test_drcs_smooth
+    PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)

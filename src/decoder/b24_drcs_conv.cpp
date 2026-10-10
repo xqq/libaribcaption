@@ -42,6 +42,7 @@ extern const std::unordered_map<std::string, uint32_t> kDRCSReplacementMap = {
     {"2eb49bd25d7eeada006afc0864350da4", 0xff5f},
     {"a341ee7fe8a368c9737a3341f016ac70", 0xff5f},
     {"f47048d669ac8d84eeb62477e8420f89", 0xff5f},
+    {"c988da4adf9958a4c66bcb24114f527a", 0xff5f},
     {"38566b372f4c5a1aead4efa20decd079", 0xff60},
     {"d84fc83615b75802ed422eda4ba39465", 0xff60},
     {"5bb8b7731d9473ebd7c842334dfa24f2", 0xff60},
@@ -56,6 +57,9 @@ extern const std::unordered_map<std::string, uint32_t> kDRCSReplacementMap = {
     {"2a74d4ad7292c858dc2bb559de67f2d9", 0xff60},
     {"8c810b8cbe6159e837a88575bb4e6033", 0xff60},
     {"dc66317cd6fff4f4221069a20f321fce", 0xff60},
+    {"94d501567395c14e37fbacc282f646fb", 0xff60},
+    {"c7b93e8e27f686cbeeb88e871c17327c", 0x300a},
+    {"4eb14b82b3a870763de244c3c21e210b", 0x300b},
     {"563e1633d226c10ef4ec80638997e4a9", 0x300e},
     {"0993d5cdf910f481eeefa19e4f09d77c", 0x300e},
     {"7b80a8345c16e2d4f8ff2691e245c2b1", 0x300e},
@@ -312,6 +316,7 @@ extern const std::unordered_map<std::string, uint32_t> kDRCSReplacementMap = {
     {"e28d4c57d97fbe4a0d67aec2cc92e7c8", 0x6365},
     {"9374173a2e4b7f1dcac75eccd5ee7e7f", 0x698a},
     {"ec7b2c805a5ba3d52c281ee2296b94d7", 0x8523},
+    {"dedbee40c06e17b51932431dc8cd8334", 0x8fc2},
 };
 
 }  // namespace aribcaption

@@ -31,7 +31,7 @@ namespace aribcaption {
 
 namespace {
 
-// 8-bit grey-scale copy of a DRCS pattern, used as the source for upscaling
+// 8-bit grey-scale copy of a DRCS pattern, used as the source for resampling
 struct GreyPattern {
     int width = 0;
     int height = 0;
@@ -125,20 +125,20 @@ static GreyPattern Scale2x(const GreyPattern& src) {
 // Box-filtered (area-averaged) sampling of target pixel (x, y), approximated with 4x4 sub-samples.
 // Used when the pattern is at least as large as the target, so that shrinking it anti-aliases the edges.
 static uint8_t SampleArea(const GreyPattern& pattern, int x, int y, int target_width, int target_height) {
-    constexpr int kSubSamples = 4;
+    constexpr int sub_samples = 4;
     uint32_t sum = 0;
 
-    for (int j = 0; j < kSubSamples; j++) {
-        float fy = (static_cast<float>(y) + (static_cast<float>(j) + 0.5f) / kSubSamples) *
+    for (int j = 0; j < sub_samples; j++) {
+        float fy = (static_cast<float>(y) + (static_cast<float>(j) + 0.5f) / sub_samples) *
                    static_cast<float>(pattern.height) / static_cast<float>(target_height);
-        for (int i = 0; i < kSubSamples; i++) {
-            float fx = (static_cast<float>(x) + (static_cast<float>(i) + 0.5f) / kSubSamples) *
+        for (int i = 0; i < sub_samples; i++) {
+            float fx = (static_cast<float>(x) + (static_cast<float>(i) + 0.5f) / sub_samples) *
                        static_cast<float>(pattern.width) / static_cast<float>(target_width);
             sum += pattern.At(static_cast<int>(fx), static_cast<int>(fy));
         }
     }
 
-    constexpr uint32_t count = kSubSamples * kSubSamples;
+    constexpr uint32_t count = sub_samples * sub_samples;
     return static_cast<uint8_t>((sum + count / 2) / count);
 }
 

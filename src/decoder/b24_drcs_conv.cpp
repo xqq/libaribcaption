@@ -36,6 +36,7 @@ extern const std::unordered_map<std::string, uint32_t> kDRCSReplacementMap = {
     {"7160f7419cba7acdacd23cbeb4834dbe", 0xff5f},
     {"3c49616fb9bf0b9052b30e118f8857ea", 0xff5f},
     {"f47048d669ac8d84eeb62477e8420f89", 0xff5f},
+    {"c988da4adf9958a4c66bcb24114f527a", 0xff5f},
     {"38566b372f4c5a1aead4efa20decd079", 0xff60},
     {"d84fc83615b75802ed422eda4ba39465", 0xff60},
     {"5bb8b7731d9473ebd7c842334dfa24f2", 0xff60},
@@ -46,6 +47,7 @@ extern const std::unordered_map<std::string, uint32_t> kDRCSReplacementMap = {
     {"e214599903c94c532684bdf54b62df61", 0xff60},
     {"2a83209f8a7489081890c277397df425", 0xff60},
     {"0b808509e4d89a2b9d02252ca85f2e34", 0xff60},
+    {"94d501567395c14e37fbacc282f646fb", 0xff60},
     {"563e1633d226c10ef4ec80638997e4a9", 0x300e},
     {"0993d5cdf910f481eeefa19e4f09d77c", 0x300e},
     {"7b80a8345c16e2d4f8ff2691e245c2b1", 0x300e},
@@ -351,6 +353,9 @@ extern const std::unordered_map<std::string, uint32_t> kDRCSReplacementMap = {
     {"5806b94e1ffe394a98c5aa124ce35b6e", 0x98f4},
     {"e65cfe6b252c3348c770236568fc3815", 0x98f4},
     {"dc1b2607dd00dd7948f28ff94d5e678d", 0x647a},
+    {"c7b93e8e27f686cbeeb88e871c17327c", 0x300a},
+    {"4eb14b82b3a870763de244c3c21e210b", 0x300b},
+    {"dedbee40c06e17b51932431dc8cd8334", 0x8fc2},
 };
 
 }  // namespace aribcaption

@@ -135,7 +135,7 @@ extern const ColorRGBA kB24ColorCLUT[][16] = {
         ColorRGBA( 85, 170,  85, 128),
         ColorRGBA( 85, 170, 170, 128),
         ColorRGBA( 85, 170, 255, 128),
-        ColorRGBA( 85, 255,   9, 128),
+        ColorRGBA( 85, 255,   0, 128),
         ColorRGBA( 85, 255,  85, 128),
         ColorRGBA( 85, 255, 170, 128),
         ColorRGBA( 85, 255, 255, 128),

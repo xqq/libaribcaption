@@ -156,7 +156,7 @@ DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t
     }
 
     uint8_t dgi_id = data_group_id & 0x0F;
-    int dgi_group = (data_group_id & 0xF0) >> 8;
+    int dgi_group = (data_group_id >> 5) & 1;
 
     bool ret = false;
 
@@ -172,8 +172,11 @@ DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t
             return DecodeStatus::kNoCaption;
         } else {
             // Handle caption management data
-            prev_dgi_group_ = dgi_group;
             ret = ParseCaptionManagementData(data + data_group_begin + 5, data_group_size);
+            if (ret) {
+                // Only acknowledge a new group if the parsing was successful
+                prev_dgi_group_ = dgi_group;
+            }
         }
     } else {
         // Caption statement data
@@ -214,6 +217,8 @@ DecodeStatus DecoderImpl::Decode(const uint8_t* pes_data, size_t length, int64_t
 
 void DecoderImpl::Flush() {
     ResetInternalState();
+    // We need to accept caption management data again, if we are about to face a seek or discontinuity
+    prev_dgi_group_ = -1;
 }
 
 auto DecoderImpl::DetectEncodingScheme() -> EncodingScheme {

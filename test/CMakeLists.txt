@@ -20,7 +20,7 @@ if(BUILD_SHARED_LIBS)
     set(BUILD_SHARED_LIBS OFF)
 endif()
 
-add_subdirectory(alphablend)
+add_subdirectory(alphablend_benchmark)
 add_subdirectory(capi)
 add_subdirectory(caption2srt)
 add_subdirectory(png_writer)

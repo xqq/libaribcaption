@@ -18,29 +18,29 @@
 
 cmake_minimum_required(VERSION 3.28)
 
-add_executable(test_alphablend
+add_executable(test_alphablend_benchmark
     EXCLUDE_FROM_ALL
         test.cpp
 )
 
-target_compile_features(test_alphablend
+target_compile_features(test_alphablend_benchmark
     PRIVATE
         cxx_std_17
 )
 
-target_include_directories(test_alphablend
+target_include_directories(test_alphablend_benchmark
     PRIVATE
         ../../include
         ../../src
         ../stopwatch/include
 )
 
-target_link_libraries(test_alphablend
+target_link_libraries(test_alphablend_benchmark
     PRIVATE
         aribcaption
 )
 
-set_target_properties(test_alphablend
+set_target_properties(test_alphablend_benchmark
     PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )

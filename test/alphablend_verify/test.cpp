@@ -68,6 +68,16 @@ private:
     uint64_t state_;
 };
 
+struct FormattedColor {
+    char text[24];
+};
+
+FormattedColor Format(ColorRGBA color) {
+    FormattedColor formatted{};
+    snprintf(formatted.text, sizeof(formatted.text), "(%u,%u,%u,%u)", color.r, color.g, color.b, color.a);
+    return formatted;
+}
+
 class Checker {
 public:
     explicit Checker(const char* name) : name_(name) {}
@@ -100,22 +110,39 @@ public:
         return mismatches_ == 0;
     }
 private:
-    struct FormattedColor {
-        char text[24];
-    };
-
-    static FormattedColor Format(ColorRGBA color) {
-        FormattedColor formatted{};
-        snprintf(formatted.text, sizeof(formatted.text), "(%u,%u,%u,%u)", color.r, color.g, color.b, color.a);
-        return formatted;
-    }
-
     static constexpr uint64_t kMaxPrintedMismatches = 5;
 
     const char* name_;
     uint64_t digest_ = 0xCBF29CE484222325ull;
     uint64_t pixels_ = 0;
     uint64_t mismatches_ = 0;
+};
+
+class InvariantChecker {
+public:
+    explicit InvariantChecker(const char* name) : name_(name) {}
+
+    void Expect(bool condition, const char* invariant, ColorRGBA dest, ColorRGBA input, ColorRGBA output) {
+        checks_++;
+        if (condition) {
+            return;
+        }
+        if (++failures_ <= kMaxPrintedFailures) {
+            printf("  %s violates \"%s\": dest=%s input=%s output=%s\n",
+                   name_, invariant, Format(dest).text, Format(input).text, Format(output).text);
+        }
+    }
+
+    bool Report() const {
+        printf("%-28s checks=%-10" PRIu64 " failures=%-10" PRIu64 "\n", name_, checks_, failures_);
+        return failures_ == 0;
+    }
+private:
+    static constexpr uint64_t kMaxPrintedFailures = 5;
+
+    const char* name_;
+    uint64_t checks_ = 0;
+    uint64_t failures_ = 0;
 };
 
 // Runs the generic and the dispatched implementation on copies of the same destination line.
@@ -339,6 +366,111 @@ bool VerifyBlendLinePremultipliedSrc() {
     return checker.Report();
 }
 
+constexpr uint8_t kSampledValues[] = {0, 1, 127, 128, 254, 255};
+
+bool IsValidPremultiplied(ColorRGBA color) {
+    return color.r <= color.a && color.g <= color.a && color.b <= color.a;
+}
+
+bool VerifyFillLineWithAlphasInvariants() {
+    InvariantChecker checker("FillLineWithAlphas");
+    const uint8_t alphas[] = {0, 255};
+    ColorRGBA dest[2];
+
+    for (uint32_t alpha = 0; alpha < 256; alpha++) {
+        for (uint8_t value : kSampledValues) {
+            ColorRGBA color(value, static_cast<uint8_t>(255 - value), static_cast<uint8_t>(value / 2),
+                            static_cast<uint8_t>(alpha));
+            alphablend::FillLineWithAlphas(dest, alphas, color, 2);
+            checker.Expect(dest[0].a == 0, "zero coverage is transparent", ColorRGBA(), color, dest[0]);
+            checker.Expect(dest[1].a == color.a, "full coverage keeps color alpha", ColorRGBA(), color, dest[1]);
+        }
+    }
+
+    return checker.Report();
+}
+
+// Checks a blend of `src` over every valid premultiplied destination pixel.
+// `src_rgb_out` is what an opaque src contributes to the output.
+template <typename BlendFunc>
+void CheckBlendInvariants(InvariantChecker& checker, ColorRGBA src, ColorRGBA src_rgb_out, BlendFunc blend_func) {
+    ColorRGBA dest[kLineWidth];
+    ColorRGBA output[kLineWidth];
+
+    for (uint32_t dest_alpha = 0; dest_alpha < 256; dest_alpha++) {
+        FillPremultipliedDestLine(dest, static_cast<uint8_t>(dest_alpha));
+        memcpy(output, dest, sizeof(dest));
+        blend_func(output, src, kLineWidth);
+
+        for (size_t i = 0; i < kLineWidth; i++) {
+            if (src.a == 0) {
+                checker.Expect(output[i].u32 == dest[i].u32, "transparent src keeps dest", dest[i], src, output[i]);
+            } else if (src.a == 255) {
+                checker.Expect(output[i].u32 == ColorRGBA(src_rgb_out, 255).u32, "opaque src replaces dest",
+                               dest[i], src, output[i]);
+            }
+            checker.Expect(IsValidPremultiplied(output[i]), "output stays premultiplied", dest[i], src, output[i]);
+        }
+    }
+}
+
+bool VerifyBlendColorToLineInvariants() {
+    InvariantChecker checker("BlendColorToLine");
+
+    for (uint32_t alpha = 0; alpha < 256; alpha++) {
+        for (uint8_t value : kSampledValues) {
+            ColorRGBA src(value, static_cast<uint8_t>(255 - value), static_cast<uint8_t>(value / 2),
+                          static_cast<uint8_t>(alpha));
+            CheckBlendInvariants(checker, src, src, [](ColorRGBA* line, ColorRGBA color, size_t width) {
+                alphablend::BlendColorToLine(line, color, width);
+            });
+        }
+    }
+
+    return checker.Report();
+}
+
+bool VerifyBlendLineInvariants() {
+    InvariantChecker checker("BlendLine");
+    ColorRGBA src_line[kLineWidth];
+
+    for (uint32_t alpha = 0; alpha < 256; alpha++) {
+        for (uint8_t value : kSampledValues) {
+            ColorRGBA src(value, static_cast<uint8_t>(255 - value), static_cast<uint8_t>(value / 2),
+                          static_cast<uint8_t>(alpha));
+            CheckBlendInvariants(checker, src, src, [&](ColorRGBA* line, ColorRGBA color, size_t width) {
+                for (size_t i = 0; i < width; i++) {
+                    src_line[i] = color;
+                }
+                alphablend::BlendLine(line, src_line, width);
+            });
+        }
+    }
+
+    return checker.Report();
+}
+
+bool VerifyBlendLinePremultipliedSrcInvariants() {
+    InvariantChecker checker("BlendLine_PremultipliedSrc");
+    ColorRGBA src_line[kLineWidth];
+
+    for (uint32_t alpha = 0; alpha < 256; alpha++) {
+        for (uint8_t value : kSampledValues) {
+            auto premultiplied = static_cast<uint8_t>(value * alpha / 255);
+            ColorRGBA src(premultiplied, static_cast<uint8_t>(alpha - premultiplied),
+                          static_cast<uint8_t>(premultiplied / 2), static_cast<uint8_t>(alpha));
+            CheckBlendInvariants(checker, src, src, [&](ColorRGBA* line, ColorRGBA color, size_t width) {
+                for (size_t i = 0; i < width; i++) {
+                    src_line[i] = color;
+                }
+                alphablend::BlendLine_PremultipliedSrc(line, src_line, width);
+            });
+        }
+    }
+
+    return checker.Report();
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -350,6 +482,12 @@ int main(int argc, char** argv) {
     passed &= VerifyBlendColorToLine();
     passed &= VerifyBlendLine();
     passed &= VerifyBlendLinePremultipliedSrc();
+
+    printf("Checking invariants of %s kernels\n", kDispatchedPath);
+    passed &= VerifyFillLineWithAlphasInvariants();
+    passed &= VerifyBlendColorToLineInvariants();
+    passed &= VerifyBlendLineInvariants();
+    passed &= VerifyBlendLinePremultipliedSrcInvariants();
 
     printf("%s\n", passed ? "PASSED" : "FAILED");
     return passed ? 0 : 1;

@@ -37,7 +37,12 @@ ALWAYS_INLINE uint8_t Clamp255(uint32_t x) {
     return static_cast<uint8_t>(x);
 }
 
-// Alpha blend
+// Fast approximation of alpha / 255 * 256, exact at both ends (0 -> 0, 255 -> 256)
+ALWAYS_INLINE uint32_t WeightOf(uint32_t alpha) {
+    return alpha + (alpha >> 7);
+}
+
+// Alpha blend for straight src(foreground) over premultiplied dst(background)
 // alpha is within range [0, 1] in the formula
 // out_alpha = foreground_alpha + background_alpha * (1 - foreground_alpha)
 // out_rgb = foreground_rgb * foreground_alpha + background_rgb * (1 - foreground_alpha)
@@ -46,18 +51,20 @@ ALWAYS_INLINE ColorRGBA BlendColor(ColorRGBA bg_color, ColorRGBA fg_color) {
     constexpr uint32_t mask_b_r   = 0x00FF00FF;
     constexpr uint32_t mask_g     = 0x0000FF00;
     constexpr uint32_t mask_a_g   = 0xFF00FF00;
-    constexpr uint32_t alpha_1    = 0x01000000;
+    constexpr uint32_t alpha_255  = 0x00FF0000;
 
-    uint32_t fg_a = fg_color.a;
-    uint32_t ff_minus_fg_a = 255 - fg_a;
+    uint32_t fg_weight = WeightOf(fg_color.a);
+    uint32_t bg_weight = 256 - fg_weight;
 
-    uint32_t b_r = ((fg_color.u32 & mask_b_r) * fg_a + ((bg_color.u32 & mask_b_r) * ff_minus_fg_a)) >> 8;
-    uint32_t a_g = ((alpha_1 | ((fg_color.u32 & mask_g) >> 8)) * fg_a) + (((bg_color.u32 & mask_a_g) >> 8) * ff_minus_fg_a);
+    // Alpha is weighted like a color channel of 255, which keeps out_rgb <= out_alpha
+    uint32_t b_r = ((fg_color.u32 & mask_b_r) * fg_weight + (bg_color.u32 & mask_b_r) * bg_weight) >> 8;
+    uint32_t a_g = ((alpha_255 | ((fg_color.u32 & mask_g) >> 8)) * fg_weight) +
+                   (((bg_color.u32 & mask_a_g) >> 8) * bg_weight);
 
     return ColorRGBA((b_r & mask_b_r) | (a_g & mask_a_g));
 }
 
-// Alpha blend for premultiplied src(foreground)
+// Alpha blend for premultiplied src(foreground) over premultiplied dst(background)
 // alpha is within range [0, 1] in the formula
 // out_alpha = foreground_alpha + background_alpha * (1 - foreground_alpha)
 // out_rgb = foreground_rgb + background_rgb * (1 - foreground_alpha)
@@ -66,10 +73,10 @@ ALWAYS_INLINE ColorRGBA BlendColor_PremultipliedSrc(ColorRGBA bg_color, ColorRGB
     constexpr uint32_t mask_b_r   = 0x00FF00FF;
     constexpr uint32_t mask_a_g   = 0xFF00FF00;
 
-    uint32_t ff_minus_fg_a = 255 - fg_color.a;
+    uint32_t bg_weight = 256 - WeightOf(fg_color.a);
 
-    uint32_t b_r = (fg_color.u32 & mask_b_r) + (((bg_color.u32 & mask_b_r) * ff_minus_fg_a) >> 8);
-    uint32_t a_g = (fg_color.u32 & mask_a_g) + (((bg_color.u32 & mask_a_g) >> 8) * ff_minus_fg_a);
+    uint32_t b_r = (fg_color.u32 & mask_b_r) + (((bg_color.u32 & mask_b_r) * bg_weight) >> 8);
+    uint32_t a_g = (fg_color.u32 & mask_a_g) + (((bg_color.u32 & mask_a_g) >> 8) * bg_weight);
 
     return ColorRGBA((b_r & mask_b_r) | (a_g & mask_a_g));
 }
@@ -86,7 +93,7 @@ ALWAYS_INLINE void FillLine_Generic(ColorRGBA* __restrict dest, ColorRGBA color,
 ALWAYS_INLINE void FillLineWithAlphas_Generic(ColorRGBA* __restrict dest,
                                               const uint8_t* __restrict src_alphas, ColorRGBA color, size_t width) {
     for (size_t i = 0; i < width; i++) {
-        uint8_t alpha = (static_cast<uint32_t>(src_alphas[i]) * color.a) >> 8;
+        uint8_t alpha = (WeightOf(src_alphas[i]) * color.a) >> 8;
         dest[i] = ColorRGBA(color, alpha);
     }
 }

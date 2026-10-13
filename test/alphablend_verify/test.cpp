@@ -366,6 +366,33 @@ bool VerifyBlendLinePremultipliedSrc() {
     return checker.Report();
 }
 
+bool VerifyUnpremultiplyLine() {
+    Checker checker("UnpremultiplyLine");
+    SplitMix64 rng(6);
+    ColorRGBA dest[kLineWidth];
+
+    for (uint32_t alpha = 0; alpha < 256; alpha++) {
+        FillDestLine(dest, static_cast<uint8_t>(alpha));
+        RunLine(checker, dest, dest, kLineWidth,
+                [](ColorRGBA* line, size_t w) { alphablend::internal::UnpremultiplyLine_Generic(line, w); },
+                [](ColorRGBA* line, size_t w) { alphablend::UnpremultiplyLine(line, w); });
+    }
+
+    for (uint64_t pixels = 0; pixels < kFuzzPixels; ) {
+        size_t width = rng.Next() % kMaxFuzzWidth;
+        size_t misalignment = rng.Next() % kMaxMisalignment;
+        for (size_t i = 0; i < width; i++) {
+            dest[i] = rng.NextColor();
+        }
+        RunLine(checker, dest, dest, width, misalignment,
+                [](ColorRGBA* line, size_t w) { alphablend::internal::UnpremultiplyLine_Generic(line, w); },
+                [](ColorRGBA* line, size_t w) { alphablend::UnpremultiplyLine(line, w); });
+        pixels += width;
+    }
+
+    return checker.Report();
+}
+
 constexpr uint8_t kSampledValues[] = {0, 1, 127, 128, 254, 255};
 
 bool IsValidPremultiplied(ColorRGBA color) {
@@ -471,6 +498,41 @@ bool VerifyBlendLinePremultipliedSrcInvariants() {
     return checker.Report();
 }
 
+bool VerifyUnpremultiplyLineInvariants() {
+    InvariantChecker checker("UnpremultiplyLine");
+    ColorRGBA line[kLineWidth];
+
+    for (uint32_t alpha = 0; alpha < 256; alpha++) {
+        for (uint32_t value = 0; value <= alpha; value++) {
+            line[value] = ColorRGBA(static_cast<uint8_t>(value), static_cast<uint8_t>(alpha - value),
+                                    static_cast<uint8_t>(value / 2), static_cast<uint8_t>(alpha));
+        }
+        size_t width = alpha + 1;
+        ColorRGBA premultiplied[kLineWidth];
+        memcpy(premultiplied, line, width * sizeof(ColorRGBA));
+        alphablend::UnpremultiplyLine(line, width);
+
+        for (size_t i = 0; i < width; i++) {
+            ColorRGBA input = premultiplied[i];
+            ColorRGBA output = line[i];
+            checker.Expect(output.a == input.a, "alpha is kept", ColorRGBA(), input, output);
+            if (alpha == 0) {
+                checker.Expect(output.u32 == 0, "transparent stays zero", ColorRGBA(), input, output);
+            }
+
+            const uint8_t input_channels[] = {input.r, input.g, input.b};
+            const uint8_t output_channels[] = {output.r, output.g, output.b};
+            for (size_t c = 0; c < 3; c++) {
+                uint32_t exact = alpha ? (input_channels[c] * 255 + alpha / 2) / alpha : 0;
+                uint32_t error = output_channels[c] > exact ? output_channels[c] - exact : exact - output_channels[c];
+                checker.Expect(error <= 1, "within 1 of exact", ColorRGBA(), input, output);
+            }
+        }
+    }
+
+    return checker.Report();
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -482,12 +544,14 @@ int main(int argc, char** argv) {
     passed &= VerifyBlendColorToLine();
     passed &= VerifyBlendLine();
     passed &= VerifyBlendLinePremultipliedSrc();
+    passed &= VerifyUnpremultiplyLine();
 
     printf("Checking invariants of %s kernels\n", kDispatchedPath);
     passed &= VerifyFillLineWithAlphasInvariants();
     passed &= VerifyBlendColorToLineInvariants();
     passed &= VerifyBlendLineInvariants();
     passed &= VerifyBlendLinePremultipliedSrcInvariants();
+    passed &= VerifyUnpremultiplyLineInvariants();
 
     printf("%s\n", passed ? "PASSED" : "FAILED");
     return passed ? 0 : 1;

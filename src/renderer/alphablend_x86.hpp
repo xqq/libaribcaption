@@ -256,7 +256,8 @@ ALWAYS_INLINE void BlendLine_PremultipliedSrc_SSE2(ColorRGBA* __restrict dest,
                                                    const ColorRGBA* __restrict source, size_t width) {
     //            RGBA_0xAABBGGRR
     const __m128i mask_0xffffffff = _mm_cmpeq_epi8(_mm_setzero_si128(), _mm_setzero_si128());
-    const __m128i mask_0x01000100 = _mm_slli_epi16(_mm_srli_epi16(mask_0xffffffff, 15), 8);
+    const __m128i mask_0x00010001 = _mm_srli_epi16(mask_0xffffffff, 15);
+    const __m128i mask_0x01000100 = _mm_slli_epi16(mask_0x00010001, 8);
     const __m128i mask_0x00ff00ff = _mm_srli_epi16(mask_0xffffffff, 8);
     const __m128i mask_0xff00ff00 = _mm_slli_epi16(mask_0xffffffff, 8);
 
@@ -270,7 +271,8 @@ ALWAYS_INLINE void BlendLine_PremultipliedSrc_SSE2(ColorRGBA* __restrict dest,
         __m128i src_000000aa = _mm_srli_epi32(src, 24);
         __m128i src_00aa0000 = _mm_slli_epi32(src_000000aa, 16);
         __m128i src_alpha = _mm_or_si128(src_000000aa, src_00aa0000);
-        __m128i dst_weight = _mm_sub_epi16(mask_0x01000100, _mm_add_epi16(src_alpha, _mm_srli_epi16(src_alpha, 7)));
+        __m128i src_opaque = _mm_srli_epi16(_mm_add_epi16(src_alpha, mask_0x00010001), 8);  // 1 if alpha is 255
+        __m128i dst_weight = _mm_sub_epi16(_mm_sub_epi16(mask_0x01000100, src_alpha), src_opaque);
 
         __m128i dst = _mm_loadu_si128(reinterpret_cast<__m128i*>(dest));
 
@@ -292,7 +294,8 @@ ALWAYS_INLINE void BlendLine_PremultipliedSrc_SSE2(ColorRGBA* __restrict dest,
         __m128i src_000000aa = _mm_srli_epi32(src, 24);
         __m128i src_00aa0000 = _mm_slli_epi32(src_000000aa, 16);
         __m128i src_alpha = _mm_or_si128(src_000000aa, src_00aa0000);
-        __m128i dst_weight = _mm_sub_epi16(mask_0x01000100, _mm_add_epi16(src_alpha, _mm_srli_epi16(src_alpha, 7)));
+        __m128i src_opaque = _mm_srli_epi16(_mm_add_epi16(src_alpha, mask_0x00010001), 8);  // 1 if alpha is 255
+        __m128i dst_weight = _mm_sub_epi16(_mm_sub_epi16(mask_0x01000100, src_alpha), src_opaque);
 
         __m128i dst = _mm_cvtsi32_si128(static_cast<int>(dest[i].u32));
 

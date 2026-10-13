@@ -28,16 +28,24 @@ namespace aribcaption {
 
 class Bitmap;
 
+// The target bitmap holds premultiplied colors.
 class Canvas {
 public:
     explicit Canvas(Bitmap& target_bitmap);
     ~Canvas();
 public:
+    // Writes the given color as is, so pass a premultiplied color
     void ClearColor(ColorRGBA color);
+    // Writes the given color as is, so pass a premultiplied color
     void ClearRect(ColorRGBA color, const Rect& rect);
+    // Takes a straight color
     void DrawRect(ColorRGBA color, const Rect& rect);
+    // Takes a bitmap of straight colors
     void DrawBitmap(const Bitmap& bmp, const Rect& rect);
     void DrawBitmap(const Bitmap& bmp, int target_x, int target_y);
+    // Takes a bitmap of premultiplied colors
+    void DrawPremultipliedBitmap(const Bitmap& bmp, const Rect& rect);
+    void DrawPremultipliedBitmap(const Bitmap& bmp, int target_x, int target_y);
 public:
     // Disallow copy and assign
     Canvas(const Canvas&) = delete;

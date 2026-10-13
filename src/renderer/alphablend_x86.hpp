@@ -310,6 +310,47 @@ ALWAYS_INLINE void BlendLine_PremultipliedSrc_SSE2(ColorRGBA* __restrict dest,
     }
 }
 
+ALWAYS_INLINE __m128i LoadUnpremultiplyFactors_SSE2(uint8_t alpha_0, uint8_t alpha_1) {
+    __m128i factors_0 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(kUnpremultiplyFactors[alpha_0].rgba));
+    __m128i factors_1 = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(kUnpremultiplyFactors[alpha_1].rgba));
+    return _mm_unpacklo_epi64(factors_0, factors_1);
+}
+
+ALWAYS_INLINE void UnpremultiplyLine_SSE2(ColorRGBA* __restrict dest, size_t width) {
+    const __m128i zero = _mm_setzero_si128();
+    const __m128i rounding_epi16 = _mm_slli_epi16(_mm_srli_epi16(_mm_cmpeq_epi8(zero, zero), 15), 7);  // 128
+
+    uint32_t trailing_remain_pixels = 0;
+    if ((trailing_remain_pixels = width % 4) != 0) {
+        width -= trailing_remain_pixels;
+    }
+
+    for (size_t i = 0; i < width; i += 4, dest += 4) {
+        __m128i pixels = _mm_loadu_si128(reinterpret_cast<const __m128i*>(dest));
+
+        // Clamp channels to alpha, which also keeps channel * factor + 128 within 16 bits
+        __m128i alpha = _mm_srli_epi32(pixels, 24);                       // 0x000000AA
+        alpha = _mm_or_si128(alpha, _mm_slli_epi32(alpha, 8));            // 0x0000AAAA
+        alpha = _mm_or_si128(alpha, _mm_slli_epi32(alpha, 16));           // 0xAAAAAAAA
+        pixels = _mm_min_epu8(pixels, alpha);
+
+        __m128i factors_01 = LoadUnpremultiplyFactors_SSE2(dest[0].a, dest[1].a);
+        __m128i factors_23 = LoadUnpremultiplyFactors_SSE2(dest[2].a, dest[3].a);
+
+        __m128i pixels_01 = _mm_mullo_epi16(_mm_unpacklo_epi8(pixels, zero), factors_01);
+        __m128i pixels_23 = _mm_mullo_epi16(_mm_unpackhi_epi8(pixels, zero), factors_23);
+
+        pixels_01 = _mm_srli_epi16(_mm_add_epi16(pixels_01, rounding_epi16), 8);
+        pixels_23 = _mm_srli_epi16(_mm_add_epi16(pixels_23, rounding_epi16), 8);
+
+        _mm_storeu_si128(reinterpret_cast<__m128i*>(dest), _mm_packus_epi16(pixels_01, pixels_23));
+    }
+
+    if (trailing_remain_pixels) {
+        UnpremultiplyLine_Generic(dest, trailing_remain_pixels);
+    }
+}
+
 #endif  // defined(__SSE2__) || defined(_MSC_VER)
 
 }  // namespace x86
@@ -354,6 +395,14 @@ ALWAYS_INLINE void BlendLine_PremultipliedSrc_x86(ColorRGBA* __restrict dest,
     x86::BlendLine_PremultipliedSrc_SSE2(dest, src, width);
 #else
     BlendLine_PremultipliedSrc_Generic(dest, src, width);
+#endif
+}
+
+ALWAYS_INLINE void UnpremultiplyLine_x86(ColorRGBA* __restrict dest, size_t width) {
+#if defined(__SSE2__) || defined(_MSC_VER)
+    x86::UnpremultiplyLine_SSE2(dest, width);
+#else
+    UnpremultiplyLine_Generic(dest, width);
 #endif
 }
 

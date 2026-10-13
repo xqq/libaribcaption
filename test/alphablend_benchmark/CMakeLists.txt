@@ -32,6 +32,7 @@ target_include_directories(test_alphablend_benchmark
     PRIVATE
         ../../include
         ../../src
+        ../sample_data/include
         ../stopwatch/include
 )
 

@@ -57,6 +57,12 @@ ALWAYS_INLINE uint32_t WeightOf(uint32_t alpha) {
     return alpha + (alpha >> 7);
 }
 
+// Background weight under a premultiplied foreground: 256 - alpha, or 0 for an opaque foreground.
+// Unlike 256 - WeightOf(alpha), this keeps an opaque background opaque.
+ALWAYS_INLINE uint32_t BackgroundWeightOf(uint32_t alpha) {
+    return 256 - alpha - ((alpha + 1) >> 8);
+}
+
 // Alpha blend for straight src(foreground) over premultiplied dst(background)
 // alpha is within range [0, 1] in the formula
 // out_alpha = foreground_alpha + background_alpha * (1 - foreground_alpha)
@@ -88,7 +94,7 @@ ALWAYS_INLINE ColorRGBA BlendColor_PremultipliedSrc(ColorRGBA bg_color, ColorRGB
     constexpr uint32_t mask_b_r   = 0x00FF00FF;
     constexpr uint32_t mask_a_g   = 0xFF00FF00;
 
-    uint32_t bg_weight = 256 - WeightOf(fg_color.a);
+    uint32_t bg_weight = BackgroundWeightOf(fg_color.a);
 
     uint32_t b_r = (fg_color.u32 & mask_b_r) + (((bg_color.u32 & mask_b_r) * bg_weight) >> 8);
     uint32_t a_g = (fg_color.u32 & mask_a_g) + (((bg_color.u32 & mask_a_g) >> 8) * bg_weight);

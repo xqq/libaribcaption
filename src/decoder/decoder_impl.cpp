@@ -579,8 +579,7 @@ bool DecoderImpl::ParseStatementBody(const uint8_t* data, size_t length) {
     return true;
 }
 
-std::string DecoderImpl::GetDRCSDigest(const DRCS& drcs, int variation)
-{
+std::string DecoderImpl::GetDRCSDigest(const DRCS& drcs, int variation) {
     if (variation == 0) {
         return md5::GetDigest(drcs.pixels.data(), drcs.pixels.size());
     } else if (variation >= 1 && variation <= 3 &&

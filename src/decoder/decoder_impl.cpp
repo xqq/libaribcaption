@@ -579,6 +579,79 @@ bool DecoderImpl::ParseStatementBody(const uint8_t* data, size_t length) {
     return true;
 }
 
+std::string DecoderImpl::GetDRCSDigest(const DRCS& drcs, int variation)
+{
+    if (variation == 0) {
+        return md5::GetDigest(drcs.pixels.data(), drcs.pixels.size());
+    } else if (variation >= 1 && variation <= 3 &&
+               drcs.depth == 2 &&
+               drcs.width == 16 && drcs.height == 18) {
+        // For TR-B14 C-profile
+        // variation 1: Twice the size, then place on the left side of 36x36 image
+        // variation 2: Twice the size, then place on the center
+        // variation 3: Twice the size, then place on the right
+        uint8_t buffer[36 * 36 / 4] = {};
+        for (int y = 0; y < 18; y++) {
+            for (int x = 0, i = 36 * y + variation - 1; x < 16; x++, i++) {
+                uint8_t pixel = (drcs.pixels[2 * y + (x >> 3)] >> (7 - (x & 7))) & 1;
+                int pos_bytes = i >> 1;
+                if ((i & 1) == 0) {
+                    buffer[pos_bytes] = (pixel * 15) << 4;
+                } else {
+                    buffer[pos_bytes] |= pixel * 15;
+                }
+                buffer[9 + pos_bytes] = buffer[pos_bytes];
+            }
+        }
+        return md5::GetDigest(buffer, sizeof(buffer));
+    } else if (variation >= 1 && variation <= 2 &&
+               drcs.depth == 4 &&
+               drcs.width >= 4 && drcs.width <= 36 && drcs.width % 2 == 0 &&
+               drcs.height >= 1 && drcs.height <= 36) {
+        // For TR-B14 A-profile
+        // variation 1: Move 2 pixels to the right, or return variation 0 (rare case)
+        // variation 2: Move 2 pixels to the left
+        int w = drcs.width / 2;
+        int n = w * drcs.height;
+        uint8_t buffer[36 * 36 / 4];
+        buffer[0] = 0;
+        buffer[(n - 1) / 2] = 0;
+        for (int i = 0, j = (variation == 1 ? 1 : -1); i < n; i++, j++) {
+            uint8_t two_pixels = (drcs.pixels[i >> 1] >> (4 - (i & 1) * 4)) & 15;
+            if (variation == 1) {
+                if (j % w == 0) {
+                    if (two_pixels != 0) {
+                        // The right edge is not black
+                        return GetDRCSDigest(drcs, 0);
+                    }
+                    if (j == n) {
+                        continue;
+                    }
+                }
+            } else {
+                if (i % w == 0) {
+                    if (two_pixels != 0) {
+                        // The left edge is not black
+                        return "";
+                    }
+                    if (i == 0) {
+                        continue;
+                    }
+                }
+            }
+            int pos_bytes = j >> 1;
+            if ((j & 1) == 0) {
+                buffer[pos_bytes] = two_pixels << 4;
+            } else {
+                buffer[pos_bytes] |= two_pixels;
+            }
+        }
+        return md5::GetDigest(buffer, (n + 1) / 2);
+    }
+
+    return "";
+}
+
 bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_count) {
     if (length == 0) {
         log_->e("DecoderImpl: Data not enough for parsing DRCS");
@@ -637,10 +710,17 @@ bool DecoderImpl::ParseDRCS(const uint8_t* data, size_t length, size_t byte_coun
                 drcs.pixels.assign(data + offset, data + offset + bitmap_size);
                 offset += bitmap_size;
 
-                drcs.md5 = md5::GetDigest(drcs.pixels.data(), bitmap_size);
+                drcs.md5 = GetDRCSDigest(drcs, 0);
 
                 // Find alternative replacement
                 auto iter = kDRCSReplacementMap.find(drcs.md5);
+                if (iter == kDRCSReplacementMap.end()) {
+                    std::string md5;
+                    int variation = 0;
+                    do {
+                        md5 = GetDRCSDigest(drcs, ++variation);
+                    } while (!md5.empty() && (iter = kDRCSReplacementMap.find(md5)) == kDRCSReplacementMap.end());
+                }
                 if (iter != kDRCSReplacementMap.end()) {
                     drcs.alternative_ucs4 = iter->second;
                     utf::UTF8AppendCodePoint(drcs.alternative_text, iter->second);

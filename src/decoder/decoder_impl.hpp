@@ -61,6 +61,7 @@ private:
     bool ParseCaptionStatementData(const uint8_t* data, size_t length);
     bool ParseDataUnit(const uint8_t* data, size_t length);
     bool ParseStatementBody(const uint8_t* data, size_t length);
+    static std::string GetDRCSDigest(const DRCS& drcs, int variation);
     bool ParseDRCS(const uint8_t* data, size_t length, size_t byte_count);
     bool HandleC0(const uint8_t* data, size_t remain_bytes, size_t* bytes_processed);
     bool HandleESC(const uint8_t* data, size_t remain_bytes, size_t* bytes_processed);

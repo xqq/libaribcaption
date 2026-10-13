@@ -39,6 +39,19 @@ ALWAYS_INLINE uint8_t Clamp255(uint32_t x) {
     return static_cast<uint8_t>(x);
 }
 
+// Rounded x * y / 255, for x and y within [0, 255]
+ALWAYS_INLINE uint32_t MultiplyDiv255(uint32_t x, uint32_t y) {
+    uint32_t product = x * y + 128;
+    return (product + (product >> 8)) >> 8;
+}
+
+ALWAYS_INLINE ColorRGBA Premultiply(ColorRGBA color) {
+    return ColorRGBA(static_cast<uint8_t>(MultiplyDiv255(color.r, color.a)),
+                     static_cast<uint8_t>(MultiplyDiv255(color.g, color.a)),
+                     static_cast<uint8_t>(MultiplyDiv255(color.b, color.a)),
+                     color.a);
+}
+
 // Fast approximation of alpha / 255 * 256, exact at both ends (0 -> 0, 255 -> 256)
 ALWAYS_INLINE uint32_t WeightOf(uint32_t alpha) {
     return alpha + (alpha >> 7);

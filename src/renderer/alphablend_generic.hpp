@@ -21,6 +21,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <algorithm>
+#include <array>
 #include "aribcaption/color.hpp"
 #include "base/always_inline.hpp"
 
@@ -81,6 +83,36 @@ ALWAYS_INLINE ColorRGBA BlendColor_PremultipliedSrc(ColorRGBA bg_color, ColorRGB
     return ColorRGBA((b_r & mask_b_r) | (a_g & mask_a_g));
 }
 
+struct alignas(8) UnpremultiplyFactors {
+    uint16_t rgba[4];
+};
+
+// {255 / alpha, 255 / alpha, 255 / alpha, 1} in 8.8 fixed point
+inline constexpr std::array<UnpremultiplyFactors, 256> kUnpremultiplyFactors = [] {
+    std::array<UnpremultiplyFactors, 256> table{};
+    table[0] = {{0, 0, 0, 256}};
+    for (uint32_t alpha = 1; alpha < table.size(); alpha++) {
+        auto factor = static_cast<uint16_t>((65280 + alpha / 2) / alpha);
+        table[alpha] = {{factor, factor, factor, 256}};
+    }
+    return table;
+}();
+
+// Channels are clamped to alpha first, which also keeps channel * factor + 128 within 16 bits
+ALWAYS_INLINE uint32_t UnpremultiplyChannel(uint32_t channel, uint32_t alpha, uint32_t factor) {
+    return (std::min(channel, alpha) * factor + 128) >> 8;
+}
+
+ALWAYS_INLINE uint32_t UnpremultiplyPixel(uint32_t pixel) {
+    uint32_t alpha = pixel >> 24;
+    uint32_t factor = kUnpremultiplyFactors[alpha].rgba[0];
+
+    return UnpremultiplyChannel(pixel & 0xFF, alpha, factor) |
+           (UnpremultiplyChannel((pixel >> 8) & 0xFF, alpha, factor) << 8) |
+           (UnpremultiplyChannel((pixel >> 16) & 0xFF, alpha, factor) << 16) |
+           (pixel & 0xFF000000);
+}
+
 
 namespace internal {
 
@@ -114,6 +146,13 @@ ALWAYS_INLINE void BlendLine_PremultipliedSrc_Generic(ColorRGBA* __restrict dest
                                                       const ColorRGBA* __restrict src, size_t width) {
     for (size_t i = 0; i < width; i++) {
         dest[i] = BlendColor_PremultipliedSrc(dest[i], src[i]);
+    }
+}
+
+ALWAYS_INLINE void UnpremultiplyLine_Generic(ColorRGBA* __restrict dest, size_t width) {
+    uint32_t* __restrict pixels = reinterpret_cast<uint32_t*>(dest);
+    for (size_t i = 0; i < width; i++) {
+        pixels[i] = UnpremultiplyPixel(pixels[i]);
     }
 }
 

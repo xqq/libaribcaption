@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <iterator>
 #include "aribcaption/context.hpp"
+#include "renderer/alphablend.hpp"
 #include "renderer/bitmap.hpp"
 #include "renderer/canvas.hpp"
 #include "renderer/renderer_impl.hpp"
@@ -415,6 +416,11 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
         images.push_back(std::move(merged));
     }
 
+    // Regions are rendered and merged with premultiplied alpha, but output images are straight alpha
+    for (Image& image : images) {
+        UnpremultiplyImage(image);
+    }
+
     has_prev_rendered_caption_ = true;
     prev_rendered_caption_pts_ = caption.pts;
     prev_rendered_caption_duration_ = caption.wait_duration;
@@ -443,13 +449,20 @@ Image RendererImpl::MergeImages(std::vector<Image>& images) {
         int x = image.dst_x - rect.left;
         int y = image.dst_y - rect.top;
         Bitmap bmp = Bitmap::FromImage(std::move(image));
-        canvas.DrawBitmap(bmp, x, y);
+        canvas.DrawPremultipliedBitmap(bmp, x, y);
     }
 
     Image merged = Bitmap::ToImage(std::move(bitmap));
     merged.dst_x = rect.left;
     merged.dst_y = rect.top;
     return merged;
+}
+
+void RendererImpl::UnpremultiplyImage(Image& image) {
+    for (int y = 0; y < image.height; y++) {
+        auto line = reinterpret_cast<ColorRGBA*>(image.bitmap.data() + static_cast<size_t>(y) * image.stride);
+        alphablend::UnpremultiplyLine(line, static_cast<size_t>(image.width));
+    }
 }
 
 void RendererImpl::AdjustCaptionArea(int origin_plane_width, int origin_plane_height) {

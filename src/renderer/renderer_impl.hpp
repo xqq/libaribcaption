@@ -67,6 +67,7 @@ private:
     void InvalidatePrevRenderedImages();
 private:
     static Image MergeImages(std::vector<Image>& images);
+    static void UnpremultiplyImage(Image& image);
 public:
     RendererImpl(const RendererImpl&) = delete;
     RendererImpl& operator=(const RendererImpl&) = delete;

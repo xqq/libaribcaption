@@ -26,6 +26,15 @@
 #include "aribcaption/color.hpp"
 #include "base/always_inline.hpp"
 
+// Workaround Windows.h (minwindef.h) max/min macro definitions
+#ifdef max
+    #undef max
+#endif
+
+#ifdef min
+    #undef min
+#endif
+
 namespace aribcaption::alphablend {
 
 // Fast divide by 255 algorithm

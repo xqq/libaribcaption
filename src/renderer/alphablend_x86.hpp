@@ -39,11 +39,6 @@ namespace x86 {
 
 #if defined(__SSE2__) || defined(_MSC_VER)
 
-union alignas(16) Vec128i {
-    uint8_t u8[16];
-    __m128i m128i;
-};
-
 ALWAYS_INLINE void FillLine_SSE2(ColorRGBA* __restrict dest, ColorRGBA color, size_t width) {
     if (uint32_t unaligned_prefix_pixels = (reinterpret_cast<uintptr_t>(dest) % 16) / 4) {
         uint32_t unaligned_pixels = std::min(static_cast<uint32_t>(width), 4 - unaligned_prefix_pixels);

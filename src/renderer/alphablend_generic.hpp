@@ -76,39 +76,39 @@ ALWAYS_INLINE uint32_t BackgroundWeightOf(uint32_t alpha) {
 // alpha is within range [0, 1] in the formula
 // out_alpha = foreground_alpha + background_alpha * (1 - foreground_alpha)
 // out_rgb = foreground_rgb * foreground_alpha + background_rgb * (1 - foreground_alpha)
-ALWAYS_INLINE ColorRGBA BlendColor(ColorRGBA bg_color, ColorRGBA fg_color) {
+ALWAYS_INLINE uint32_t BlendColor(uint32_t bg_color, uint32_t fg_color) {
     //        memory_order_RGBA   = 0xAABBGGRR
     constexpr uint32_t mask_b_r   = 0x00FF00FF;
     constexpr uint32_t mask_g     = 0x0000FF00;
     constexpr uint32_t mask_a_g   = 0xFF00FF00;
     constexpr uint32_t alpha_255  = 0x00FF0000;
 
-    uint32_t fg_weight = WeightOf(fg_color.a);
+    uint32_t fg_weight = WeightOf(fg_color >> 24);
     uint32_t bg_weight = 256 - fg_weight;
 
     // Alpha is weighted like a color channel of 255, which keeps out_rgb <= out_alpha
-    uint32_t b_r = ((fg_color.u32 & mask_b_r) * fg_weight + (bg_color.u32 & mask_b_r) * bg_weight) >> 8;
-    uint32_t a_g = ((alpha_255 | ((fg_color.u32 & mask_g) >> 8)) * fg_weight) +
-                   (((bg_color.u32 & mask_a_g) >> 8) * bg_weight);
+    uint32_t b_r = ((fg_color & mask_b_r) * fg_weight + (bg_color & mask_b_r) * bg_weight) >> 8;
+    uint32_t a_g = ((alpha_255 | ((fg_color & mask_g) >> 8)) * fg_weight) +
+                   (((bg_color & mask_a_g) >> 8) * bg_weight);
 
-    return ColorRGBA((b_r & mask_b_r) | (a_g & mask_a_g));
+    return (b_r & mask_b_r) | (a_g & mask_a_g);
 }
 
 // Alpha blend for premultiplied src(foreground) over premultiplied dst(background)
 // alpha is within range [0, 1] in the formula
 // out_alpha = foreground_alpha + background_alpha * (1 - foreground_alpha)
 // out_rgb = foreground_rgb + background_rgb * (1 - foreground_alpha)
-ALWAYS_INLINE ColorRGBA BlendColor_PremultipliedSrc(ColorRGBA bg_color, ColorRGBA fg_color) {
+ALWAYS_INLINE uint32_t BlendColor_PremultipliedSrc(uint32_t bg_color, uint32_t fg_color) {
     //        memory_order_RGBA   = 0xAABBGGRR
     constexpr uint32_t mask_b_r   = 0x00FF00FF;
     constexpr uint32_t mask_a_g   = 0xFF00FF00;
 
-    uint32_t bg_weight = BackgroundWeightOf(fg_color.a);
+    uint32_t bg_weight = BackgroundWeightOf(fg_color >> 24);
 
-    uint32_t b_r = (fg_color.u32 & mask_b_r) + (((bg_color.u32 & mask_b_r) * bg_weight) >> 8);
-    uint32_t a_g = (fg_color.u32 & mask_a_g) + (((bg_color.u32 & mask_a_g) >> 8) * bg_weight);
+    uint32_t b_r = (fg_color & mask_b_r) + (((bg_color & mask_b_r) * bg_weight) >> 8);
+    uint32_t a_g = (fg_color & mask_a_g) + (((bg_color & mask_a_g) >> 8) * bg_weight);
 
-    return ColorRGBA((b_r & mask_b_r) | (a_g & mask_a_g));
+    return (b_r & mask_b_r) | (a_g & mask_a_g);
 }
 
 struct alignas(8) UnpremultiplyFactors {
@@ -158,22 +158,28 @@ ALWAYS_INLINE void FillLineWithAlphas_Generic(ColorRGBA* __restrict dest,
     }
 }
 
+// Pixels are accessed as uint32_t: GCC doesn't vectorize in-place access through the ColorRGBA union
 ALWAYS_INLINE void BlendColorToLine_Generic(ColorRGBA* __restrict dest, ColorRGBA color, size_t width) {
+    uint32_t* __restrict pixels = reinterpret_cast<uint32_t*>(dest);
     for (size_t i = 0; i < width; i++) {
-        dest[i] = BlendColor(dest[i], color);
+        pixels[i] = BlendColor(pixels[i], color.u32);
     }
 }
 
 ALWAYS_INLINE void BlendLine_Generic(ColorRGBA* __restrict dest, const ColorRGBA* __restrict src, size_t width) {
+    uint32_t* __restrict dest_pixels = reinterpret_cast<uint32_t*>(dest);
+    const uint32_t* __restrict src_pixels = reinterpret_cast<const uint32_t*>(src);
     for (size_t i = 0; i < width; i++) {
-        dest[i] = BlendColor(dest[i], src[i]);
+        dest_pixels[i] = BlendColor(dest_pixels[i], src_pixels[i]);
     }
 }
 
 ALWAYS_INLINE void BlendLine_PremultipliedSrc_Generic(ColorRGBA* __restrict dest,
                                                       const ColorRGBA* __restrict src, size_t width) {
+    uint32_t* __restrict dest_pixels = reinterpret_cast<uint32_t*>(dest);
+    const uint32_t* __restrict src_pixels = reinterpret_cast<const uint32_t*>(src);
     for (size_t i = 0; i < width; i++) {
-        dest[i] = BlendColor_PremultipliedSrc(dest[i], src[i]);
+        dest_pixels[i] = BlendColor_PremultipliedSrc(dest_pixels[i], src_pixels[i]);
     }
 }
 

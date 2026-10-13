@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2021 magicxqq <xqq@xqq.im>. All rights reserved.
+# Copyright (C) 2026 magicxqq <xqq@xqq.im>. All rights reserved.
 #
 # This file is part of libaribcaption.
 #
@@ -18,29 +18,27 @@
 
 cmake_minimum_required(VERSION 3.28)
 
-add_executable(test_alphablend
+add_executable(test_render_alpha
     EXCLUDE_FROM_ALL
         test.cpp
 )
 
-target_compile_features(test_alphablend
+target_compile_features(test_render_alpha
     PRIVATE
         cxx_std_17
 )
 
-target_include_directories(test_alphablend
+target_include_directories(test_render_alpha
     PRIVATE
         ../../include
-        ../../src
-        ../stopwatch/include
 )
 
-target_link_libraries(test_alphablend
+target_link_libraries(test_render_alpha
     PRIVATE
         aribcaption
 )
 
-set_target_properties(test_alphablend
+set_target_properties(test_render_alpha
     PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )

@@ -33,7 +33,7 @@ extern "C" {
  * Only @ARIBCC_PIXELFORMAT_RGBA8888 is used for now.
  */
 typedef enum aribcc_pixelformat_t {
-    ARIBCC_PIXELFORMAT_RGBA8888 = 0,
+    ARIBCC_PIXELFORMAT_RGBA8888 = 0,    ///< 4 bytes per pixel in R, G, B, A order, with straight (non-premultiplied) alpha
     ARIBCC_PIXELFORMAT_DEFAULT = ARIBCC_PIXELFORMAT_RGBA8888
 } aribcc_pixelformat_t;
 
@@ -53,6 +53,9 @@ typedef struct aribcc_image_t {
 
     /**
      * Pointer pointed to the bitmap area. The buffer size is indicated in bitmap_size field.
+     *
+     * Pixels are in @pixel_format. Colors have straight (non-premultiplied) alpha,
+     * so blend the image over a frame with: dst = src * src_alpha + dst * (1 - src_alpha)
      *
      * Do not manually free this pointer if you received this image from the renderer.
      * Call @aribcc_image_cleanup() instead.

@@ -31,7 +31,7 @@ namespace aribcaption {
  * Only @kRGBA8888 is used for now.
  */
 enum class PixelFormat {
-    kRGBA8888 = 0,
+    kRGBA8888 = 0,    ///< 4 bytes per pixel in R, G, B, A order, with straight (non-premultiplied) alpha
     kDefault = kRGBA8888,
 };
 
@@ -51,6 +51,12 @@ public:
 
     PixelFormat pixel_format = PixelFormat::kDefault;    ///< pixel format, always be kRGBA8888
 
+    /**
+     * Pixels in @pixel_format.
+     *
+     * Colors have straight (non-premultiplied) alpha,
+     * so blend the image over a frame with: dst = src * src_alpha + dst * (1 - src_alpha)
+     */
     std::vector<uint8_t, AlignedAllocator<uint8_t, kAlignedTo>> bitmap;
 public:
     Image() = default;

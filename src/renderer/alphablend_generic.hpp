@@ -21,8 +21,19 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <algorithm>
+#include <array>
 #include "aribcaption/color.hpp"
 #include "base/always_inline.hpp"
+
+// Workaround Windows.h (minwindef.h) max/min macro definitions
+#ifdef max
+    #undef max
+#endif
+
+#ifdef min
+    #undef min
+#endif
 
 namespace aribcaption::alphablend {
 
@@ -37,7 +48,31 @@ ALWAYS_INLINE uint8_t Clamp255(uint32_t x) {
     return static_cast<uint8_t>(x);
 }
 
-// Alpha blend
+// Rounded x * y / 255, for x and y within [0, 255]
+ALWAYS_INLINE uint32_t MultiplyDiv255(uint32_t x, uint32_t y) {
+    uint32_t product = x * y + 128;
+    return (product + (product >> 8)) >> 8;
+}
+
+ALWAYS_INLINE ColorRGBA Premultiply(ColorRGBA color) {
+    return ColorRGBA(static_cast<uint8_t>(MultiplyDiv255(color.r, color.a)),
+                     static_cast<uint8_t>(MultiplyDiv255(color.g, color.a)),
+                     static_cast<uint8_t>(MultiplyDiv255(color.b, color.a)),
+                     color.a);
+}
+
+// Fast approximation of alpha / 255 * 256, exact at both ends (0 -> 0, 255 -> 256)
+ALWAYS_INLINE uint32_t WeightOf(uint32_t alpha) {
+    return alpha + (alpha >> 7);
+}
+
+// Background weight under a premultiplied foreground: 256 - alpha, or 0 for an opaque foreground.
+// Unlike 256 - WeightOf(alpha), this keeps an opaque background opaque.
+ALWAYS_INLINE uint32_t BackgroundWeightOf(uint32_t alpha) {
+    return 256 - alpha - ((alpha + 1) >> 8);
+}
+
+// Alpha blend for straight src(foreground) over premultiplied dst(background)
 // alpha is within range [0, 1] in the formula
 // out_alpha = foreground_alpha + background_alpha * (1 - foreground_alpha)
 // out_rgb = foreground_rgb * foreground_alpha + background_rgb * (1 - foreground_alpha)
@@ -46,18 +81,20 @@ ALWAYS_INLINE ColorRGBA BlendColor(ColorRGBA bg_color, ColorRGBA fg_color) {
     constexpr uint32_t mask_b_r   = 0x00FF00FF;
     constexpr uint32_t mask_g     = 0x0000FF00;
     constexpr uint32_t mask_a_g   = 0xFF00FF00;
-    constexpr uint32_t alpha_1    = 0x01000000;
+    constexpr uint32_t alpha_255  = 0x00FF0000;
 
-    uint32_t fg_a = fg_color.a;
-    uint32_t ff_minus_fg_a = 255 - fg_a;
+    uint32_t fg_weight = WeightOf(fg_color.a);
+    uint32_t bg_weight = 256 - fg_weight;
 
-    uint32_t b_r = ((fg_color.u32 & mask_b_r) * fg_a + ((bg_color.u32 & mask_b_r) * ff_minus_fg_a)) >> 8;
-    uint32_t a_g = ((alpha_1 | ((fg_color.u32 & mask_g) >> 8)) * fg_a) + (((bg_color.u32 & mask_a_g) >> 8) * ff_minus_fg_a);
+    // Alpha is weighted like a color channel of 255, which keeps out_rgb <= out_alpha
+    uint32_t b_r = ((fg_color.u32 & mask_b_r) * fg_weight + (bg_color.u32 & mask_b_r) * bg_weight) >> 8;
+    uint32_t a_g = ((alpha_255 | ((fg_color.u32 & mask_g) >> 8)) * fg_weight) +
+                   (((bg_color.u32 & mask_a_g) >> 8) * bg_weight);
 
     return ColorRGBA((b_r & mask_b_r) | (a_g & mask_a_g));
 }
 
-// Alpha blend for premultiplied src(foreground)
+// Alpha blend for premultiplied src(foreground) over premultiplied dst(background)
 // alpha is within range [0, 1] in the formula
 // out_alpha = foreground_alpha + background_alpha * (1 - foreground_alpha)
 // out_rgb = foreground_rgb + background_rgb * (1 - foreground_alpha)
@@ -66,12 +103,42 @@ ALWAYS_INLINE ColorRGBA BlendColor_PremultipliedSrc(ColorRGBA bg_color, ColorRGB
     constexpr uint32_t mask_b_r   = 0x00FF00FF;
     constexpr uint32_t mask_a_g   = 0xFF00FF00;
 
-    uint32_t ff_minus_fg_a = 255 - fg_color.a;
+    uint32_t bg_weight = BackgroundWeightOf(fg_color.a);
 
-    uint32_t b_r = (fg_color.u32 & mask_b_r) + (((bg_color.u32 & mask_b_r) * ff_minus_fg_a) >> 8);
-    uint32_t a_g = (fg_color.u32 & mask_a_g) + (((bg_color.u32 & mask_a_g) >> 8) * ff_minus_fg_a);
+    uint32_t b_r = (fg_color.u32 & mask_b_r) + (((bg_color.u32 & mask_b_r) * bg_weight) >> 8);
+    uint32_t a_g = (fg_color.u32 & mask_a_g) + (((bg_color.u32 & mask_a_g) >> 8) * bg_weight);
 
     return ColorRGBA((b_r & mask_b_r) | (a_g & mask_a_g));
+}
+
+struct alignas(8) UnpremultiplyFactors {
+    uint16_t rgba[4];
+};
+
+// {255 / alpha, 255 / alpha, 255 / alpha, 1} in 8.8 fixed point
+inline constexpr std::array<UnpremultiplyFactors, 256> kUnpremultiplyFactors = [] {
+    std::array<UnpremultiplyFactors, 256> table{};
+    table[0] = {{0, 0, 0, 256}};
+    for (uint32_t alpha = 1; alpha < table.size(); alpha++) {
+        auto factor = static_cast<uint16_t>((65280 + alpha / 2) / alpha);
+        table[alpha] = {{factor, factor, factor, 256}};
+    }
+    return table;
+}();
+
+// Channels are clamped to alpha first, which also keeps channel * factor + 128 within 16 bits
+ALWAYS_INLINE uint32_t UnpremultiplyChannel(uint32_t channel, uint32_t alpha, uint32_t factor) {
+    return (std::min(channel, alpha) * factor + 128) >> 8;
+}
+
+ALWAYS_INLINE uint32_t UnpremultiplyPixel(uint32_t pixel) {
+    uint32_t alpha = pixel >> 24;
+    uint32_t factor = kUnpremultiplyFactors[alpha].rgba[0];
+
+    return UnpremultiplyChannel(pixel & 0xFF, alpha, factor) |
+           (UnpremultiplyChannel((pixel >> 8) & 0xFF, alpha, factor) << 8) |
+           (UnpremultiplyChannel((pixel >> 16) & 0xFF, alpha, factor) << 16) |
+           (pixel & 0xFF000000);
 }
 
 
@@ -86,7 +153,7 @@ ALWAYS_INLINE void FillLine_Generic(ColorRGBA* __restrict dest, ColorRGBA color,
 ALWAYS_INLINE void FillLineWithAlphas_Generic(ColorRGBA* __restrict dest,
                                               const uint8_t* __restrict src_alphas, ColorRGBA color, size_t width) {
     for (size_t i = 0; i < width; i++) {
-        uint8_t alpha = (static_cast<uint32_t>(src_alphas[i]) * color.a) >> 8;
+        uint8_t alpha = (WeightOf(src_alphas[i]) * color.a) >> 8;
         dest[i] = ColorRGBA(color, alpha);
     }
 }
@@ -107,6 +174,13 @@ ALWAYS_INLINE void BlendLine_PremultipliedSrc_Generic(ColorRGBA* __restrict dest
                                                       const ColorRGBA* __restrict src, size_t width) {
     for (size_t i = 0; i < width; i++) {
         dest[i] = BlendColor_PremultipliedSrc(dest[i], src[i]);
+    }
+}
+
+ALWAYS_INLINE void UnpremultiplyLine_Generic(ColorRGBA* __restrict dest, size_t width) {
+    uint32_t* __restrict pixels = reinterpret_cast<uint32_t*>(dest);
+    for (size_t i = 0; i < width; i++) {
+        pixels[i] = UnpremultiplyPixel(pixels[i]);
     }
 }
 

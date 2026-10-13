@@ -70,7 +70,7 @@ Bitmap DRCSRenderer::DRCSToColoredBitmap(const DRCS& drcs, int target_width, int
             uint8_t grey = alphablend::Clamp255((uint32_t)255 * value / (drcs.depth - 1));
 
             if (grey) {
-                uint8_t alpha = (static_cast<uint32_t>(grey) * color.a) >> 8;
+                uint8_t alpha = (alphablend::WeightOf(grey) * color.a) >> 8;
                 dest[x] = ColorRGBA(color, alpha);
             } else {
                 dest[x] = ColorRGBA(0);

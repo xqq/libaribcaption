@@ -73,6 +73,14 @@ ALWAYS_INLINE void BlendLine_PremultipliedSrc(ColorRGBA* __restrict dest,
 #endif
 }
 
+ALWAYS_INLINE void UnpremultiplyLine(ColorRGBA* __restrict dest, size_t width) {
+#if defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
+    internal::UnpremultiplyLine_x86(dest, width);
+#else
+    internal::UnpremultiplyLine_Generic(dest, width);
+#endif
+}
+
 }  // namespace aribcaption::alphablend
 
 #endif  // ARIBCAPTION_ALPHA_BLEND_HPP

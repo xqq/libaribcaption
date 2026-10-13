@@ -436,6 +436,9 @@ void CheckBlendInvariants(InvariantChecker& checker, ColorRGBA src, ColorRGBA sr
                 checker.Expect(output[i].u32 == ColorRGBA(src_rgb_out, 255).u32, "opaque src replaces dest",
                                dest[i], src, output[i]);
             }
+            if (dest[i].a == 255) {
+                checker.Expect(output[i].a == 255, "opaque dest stays opaque", dest[i], src, output[i]);
+            }
             checker.Expect(IsValidPremultiplied(output[i]), "output stays premultiplied", dest[i], src, output[i]);
         }
     }

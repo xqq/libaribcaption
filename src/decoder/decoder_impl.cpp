@@ -346,6 +346,7 @@ void DecoderImpl::ResetInternalState() {
     active_pos_inited_ = false;
     active_pos_x_ = 0;
     active_pos_y_ = 0;
+    active_pos_pending_wrap_ = false;
 
     if (active_encoding_ == EncodingScheme::kABNT_NBR_15606_1_Latin) {
         // Latin language: Use 1/2 x 1 middle size (MSZ) as default
@@ -1423,6 +1424,8 @@ void DecoderImpl::PushCharacter(uint32_t ucs4, uint32_t pua) {
     caption_char.codepoint = ucs4;
     caption_char.pua_codepoint = pua;
 
+    ApplyPendingWrap();
+
     size_t u8count = utf::UTF8AppendCodePoint(caption_char.u8str, ucs4);
     caption_char.u8str[u8count] = '\0';
 
@@ -1436,6 +1439,8 @@ void DecoderImpl::PushCharacter(uint32_t ucs4, uint32_t pua) {
 
 void DecoderImpl::PushDRCSCharacter(uint32_t code, DRCS& drcs) {
     CaptionChar caption_char;
+
+    ApplyPendingWrap();
 
     if (drcs.alternative_text.empty()) {
         caption_char.type = CaptionCharType::kDRCS;
@@ -1559,12 +1564,14 @@ int DecoderImpl::section_height() const {
 
 void DecoderImpl::SetAbsoluteActivePos(int x, int y) {
     active_pos_inited_ = true;
+    active_pos_pending_wrap_ = false;
     active_pos_x_ = display_area_start_x_ + x * section_width();
     active_pos_y_ = display_area_start_y_ + (y + 1) * section_height();
 }
 
 void DecoderImpl::SetAbsoluteActiveCoordinateDot(int x, int y) {
     active_pos_inited_ = true;
+    active_pos_pending_wrap_ = false;
     active_pos_x_ = x;
     active_pos_y_ = y;
 }
@@ -1575,6 +1582,7 @@ void DecoderImpl::MoveRelativeActivePos(int x, int y) {
     }
 
     active_pos_inited_ = true;
+    ApplyPendingWrap();
 
     while (x < 0) {
         active_pos_x_ -= section_width();
@@ -1589,6 +1597,11 @@ void DecoderImpl::MoveRelativeActivePos(int x, int y) {
         active_pos_x_ += section_width();
         x--;
         if (active_pos_x_ >= display_area_start_x_ + display_area_width_) {
+            if (x == 0) {
+                // Reached the end of line, defer wrapping until the next character or movement
+                active_pos_pending_wrap_ = true;
+                break;
+            }
             active_pos_x_ = display_area_start_x_;
             y++;
         }
@@ -1617,8 +1630,21 @@ void DecoderImpl::MoveActivePosToNewline() {
     }
 
     active_pos_inited_ = true;
+    // APR: Active position down (APD) with moving to the first position of the line
+    // A pending wrap is consumed here, so a full line followed by APR moves down only once
+    active_pos_pending_wrap_ = false;
     active_pos_x_ = display_area_start_x_;
-    active_pos_y_ += section_height();
+    MoveRelativeActivePos(0, 1);
+}
+
+void DecoderImpl::ApplyPendingWrap() {
+    if (!active_pos_pending_wrap_) {
+        return;
+    }
+
+    active_pos_pending_wrap_ = false;
+    active_pos_x_ = display_area_start_x_;
+    MoveRelativeActivePos(0, 1);
 }
 
 

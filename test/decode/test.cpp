@@ -71,5 +71,18 @@ int main(int argc, const char* argv[]) {
         printf("%s\n", result.caption->text.c_str());
     }
 
+    aribcaption::Decoder latin_decoder(context);
+    latin_decoder.Initialize(aribcaption::EncodingScheme::kABNT_NBR_15606_1_Latin);
+
+    // Expected region y: 411, 437, 463 (https://github.com/xqq/libaribcaption/issues/27)
+    status = latin_decoder.Decode(sample_data_latin_1, sizeof(sample_data_latin_1), 0, result);
+    printf("DecodeStatus: %d\n", status);
+    if (status == aribcaption::DecodeStatus::kGotCaption) {
+        printf("%s\n", result.caption->text.c_str());
+        for (aribcaption::CaptionRegion& region : result.caption->regions) {
+            printf("Region: x=%d y=%d width=%d height=%d\n", region.x, region.y, region.width, region.height);
+        }
+    }
+
     return 0;
 }

@@ -271,8 +271,19 @@ bool TextRendererDirectWrite::SetFontFamily(const std::vector<std::string>& font
         return false;
     }
 
+    if (!font_family_.empty() && font_family_ != font_family) {
+        // Reset loaded DirectWrite fonts & text formats
+        main_face_index_ = 0;
+        main_faceinfo_.reset();
+        fallback_faceinfo_.reset();
+        main_text_format_.Reset();
+        fallback_text_format_.Reset();
+        main_text_format_pixel_height_ = 0;
+        fallback_text_format_pixel_height_ = 0;
+    }
+
     font_family_ = font_family;
-    return false;
+    return true;
 }
 
 void TextRendererDirectWrite::SetReplaceMSZHalfWidthGlyph(bool replace) {

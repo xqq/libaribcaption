@@ -61,10 +61,12 @@ private:
                       std::optional<uint32_t> codepoint = std::nullopt,
                       std::optional<size_t> begin_index = std::nullopt)
         -> Result<std::pair<FT_Face, size_t>, FontProviderError>;  // Result<Pair<face, font_index>, error>
+    void ResetFontFaces();
 private:
     std::shared_ptr<Logger> log_;
 
     FontProvider& font_provider_;
+    uint32_t iso6392_language_code_ = 0;
     std::vector<std::string> font_family_;
 
     ScopedHolder<FT_Library> library_;

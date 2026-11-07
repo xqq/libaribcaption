@@ -55,8 +55,11 @@ bool TextRendererFreetype::Initialize() {
 }
 
 void TextRendererFreetype::SetLanguage(uint32_t iso6392_language_code) {
-    (void)iso6392_language_code;
-    // No-OP
+    if (iso6392_language_code_ != iso6392_language_code) {
+        // Font provider resolves font families (e.g. sans-serif) per language, reset loaded faces
+        ResetFontFaces();
+    }
+    iso6392_language_code_ = iso6392_language_code;
 }
 
 bool TextRendererFreetype::SetFontFamily(const std::vector<std::string>& font_family) {
@@ -65,20 +68,23 @@ bool TextRendererFreetype::SetFontFamily(const std::vector<std::string>& font_fa
     }
 
     if (!font_family_.empty() && font_family_ != font_family) {
-        // Reset Freetype faces
-        main_face_.Reset();
-        fallback_face_.Reset();
-        main_face_data_.clear();
-        fallback_face_data_.clear();
-        main_baseline_cache_.clear();
-        fallback_baseline_cache_.clear();
-        main_halfwidth_subst_map_.reset();
-        fallback_halfwidth_subst_map_.reset();
-        main_face_index_ = 0;
+        ResetFontFaces();
     }
 
     font_family_ = font_family;
     return true;
+}
+
+void TextRendererFreetype::ResetFontFaces() {
+    main_face_.Reset();
+    fallback_face_.Reset();
+    main_face_data_.clear();
+    fallback_face_data_.clear();
+    main_baseline_cache_.clear();
+    fallback_baseline_cache_.clear();
+    main_halfwidth_subst_map_.reset();
+    fallback_halfwidth_subst_map_.reset();
+    main_face_index_ = 0;
 }
 
 void TextRendererFreetype::SetReplaceMSZHalfWidthGlyph(bool replace) {

@@ -57,6 +57,7 @@ private:
     auto CreateWICRenderTarget(IWICBitmap* target) -> ComPtr<ID2D1RenderTarget>;
     bool BlendWICBitmapToBitmap(IWICBitmap* wic_bitmap, Bitmap& target_bmp,
                                 int target_x, int target_y);
+    void ResetFontFaces();
 private:
     static D2D1_COLOR_F RGBAToD2DColor(ColorRGBA color);
     static bool FontfaceHasCharacter(FontfaceInfo& fontface, uint32_t ucs4);

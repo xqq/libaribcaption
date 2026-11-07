@@ -58,6 +58,7 @@ private:
     auto LoadCTFont(std::optional<uint32_t> codepoint = std::nullopt,
                     std::optional<size_t> begin_index = std::nullopt)
                     -> Result<std::pair<ScopedCFRef<CTFontRef>, size_t>, FontProviderError>;
+    void ResetFontFaces();
 private:
     static auto RGBAToCGColor(ColorRGBA rgba) -> ScopedCFRef<CGColorRef>;
     static auto CreateBitmapTargetCGContext(Bitmap& bitmap) -> ScopedCFRef<CGContextRef>;
@@ -66,6 +67,7 @@ private:
     std::shared_ptr<Logger> log_;
 
     FontProvider& font_provider_;
+    uint32_t iso6392_language_code_ = 0;
     std::vector<std::string> font_family_;
 
     size_t main_face_index_ = 0;

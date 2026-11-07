@@ -263,6 +263,11 @@ bool TextRendererDirectWrite::Initialize() {
 }
 
 void TextRendererDirectWrite::SetLanguage(uint32_t iso6392_language_code) {
+    if (iso6392_language_code_ != iso6392_language_code) {
+        // Font provider resolves font families (e.g. sans-serif) per language,
+        // and IDWriteTextFormat carries the locale name. Reset loaded fonts & text formats.
+        ResetFontFaces();
+    }
     iso6392_language_code_ = iso6392_language_code;
 }
 
@@ -272,18 +277,21 @@ bool TextRendererDirectWrite::SetFontFamily(const std::vector<std::string>& font
     }
 
     if (!font_family_.empty() && font_family_ != font_family) {
-        // Reset loaded DirectWrite fonts & text formats
-        main_face_index_ = 0;
-        main_faceinfo_.reset();
-        fallback_faceinfo_.reset();
-        main_text_format_.Reset();
-        fallback_text_format_.Reset();
-        main_text_format_pixel_height_ = 0;
-        fallback_text_format_pixel_height_ = 0;
+        ResetFontFaces();
     }
 
     font_family_ = font_family;
     return true;
+}
+
+void TextRendererDirectWrite::ResetFontFaces() {
+    main_face_index_ = 0;
+    main_faceinfo_.reset();
+    fallback_faceinfo_.reset();
+    main_text_format_.Reset();
+    fallback_text_format_.Reset();
+    main_text_format_pixel_height_ = 0;
+    fallback_text_format_pixel_height_ = 0;
 }
 
 void TextRendererDirectWrite::SetReplaceMSZHalfWidthGlyph(bool replace) {

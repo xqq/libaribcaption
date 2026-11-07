@@ -38,8 +38,11 @@ bool TextRendererCoreText::Initialize() {
 }
 
 void TextRendererCoreText::SetLanguage(uint32_t iso6392_language_code) {
-    (void)iso6392_language_code;
-    // No-OP
+    if (iso6392_language_code_ != iso6392_language_code) {
+        // Font provider resolves font families (e.g. sans-serif) per language, reset loaded fonts
+        ResetFontFaces();
+    }
+    iso6392_language_code_ = iso6392_language_code;
 }
 
 bool TextRendererCoreText::SetFontFamily(const std::vector<std::string>& font_family) {
@@ -48,18 +51,21 @@ bool TextRendererCoreText::SetFontFamily(const std::vector<std::string>& font_fa
     }
 
     if (!font_family_.empty() && font_family_ != font_family) {
-        // Reset CoreText fonts
-        main_ctfont_pixel_height_ = 0;
-        fallback_ctfont_pixel_height_ = 0;
-        main_face_index_ = 0;
-        main_ctfont_sized_.reset();
-        main_ctfont_.reset();
-        fallback_ctfont_sized_.reset();
-        fallback_ctfont_.reset();
+        ResetFontFaces();
     }
 
     font_family_ = font_family;
     return true;
+}
+
+void TextRendererCoreText::ResetFontFaces() {
+    main_ctfont_pixel_height_ = 0;
+    fallback_ctfont_pixel_height_ = 0;
+    main_face_index_ = 0;
+    main_ctfont_sized_.reset();
+    main_ctfont_.reset();
+    fallback_ctfont_sized_.reset();
+    fallback_ctfont_.reset();
 }
 
 struct TextRenderContextPrivateCoreText : public TextRenderContext::ContextPrivate {

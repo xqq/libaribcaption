@@ -168,11 +168,18 @@ auto FontProviderGDI::GetFontFace(const std::string& font_name, std::optional<ui
     info.provider_type = FontProviderType::kGDI;
 
     ScopedHolder<HFONT> hfont(CreateFontIndirectW(&lf), [](HFONT obj) { DeleteObject(obj); });
-    SelectObject(hdc_, hfont);
+    if (!hfont) {
+        log_->e("FontProviderGDI: CreateFontIndirectW() failed");
+        return Err(FontProviderError::kOtherError);
+    }
+
+    // Restore the previously selected font before hfont is deleted,
+    // a font must not be deleted while it's still selected into a DC
+    HGDIOBJ prev_font = SelectObject(hdc_, hfont);
 
     if (ucs4.has_value()) {
         if (!CheckCodePointExists(hdc_, ucs4.value())) {
-            SelectObject(hdc_, nullptr);
+            SelectObject(hdc_, prev_font);
             return Err(FontProviderError::kCodePointNotFound);
         }
     }
@@ -180,7 +187,7 @@ auto FontProviderGDI::GetFontFace(const std::string& font_name, std::optional<ui
     bool is_ttc = false;
     bool succ = RetrieveFontData(hdc_, info.font_data, is_ttc);
     if (!succ || info.font_data.empty()) {
-        SelectObject(hdc_, nullptr);
+        SelectObject(hdc_, prev_font);
         return Err(FontProviderError::kOtherError);
     }
 
@@ -188,7 +195,7 @@ auto FontProviderGDI::GetFontFace(const std::string& font_name, std::optional<ui
         info.face_index = -1;
     }  // else: face_index = 0
 
-    SelectObject(hdc_, nullptr);
+    SelectObject(hdc_, prev_font);
     return Ok(std::move(info));
 }
 

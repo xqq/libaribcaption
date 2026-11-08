@@ -46,6 +46,7 @@ void RendererImpl::LoadDefaultFontFamilies() {
 #if defined(_WIN32)
     jpn_font_family = {
         "Windows TV MaruGothic",
+        "Noto Sans JP",
         "MS Gothic",
     };
 #elif defined(__APPLE__)

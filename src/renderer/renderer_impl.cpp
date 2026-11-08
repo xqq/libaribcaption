@@ -41,39 +41,39 @@ bool RendererImpl::Initialize(CaptionType caption_type,
 }
 
 void RendererImpl::LoadDefaultFontFamilies() {
-    // Font face for default language (0)
-    language_font_family_[0] = { "sans-serif" };
-
-    // Default fonts for Japanese (jpn)
-    std::vector<std::string> jpn_default_font_family;
+    // Japanese fonts, also used as fallback for symbols (e.g. music symbols) that latin fonts usually lack
+    std::vector<std::string> jpn_font_family;
 #if defined(_WIN32)
-    jpn_default_font_family = {
+    jpn_font_family = {
         "Windows TV MaruGothic",
         "MS Gothic",
-        "sans-serif",
     };
 #elif defined(__APPLE__)
-    jpn_default_font_family = {
+    jpn_font_family = {
         "Hiragino Maru Gothic ProN",
         "Hiragino Sans",
-        "sans-serif",
     };
 #elif defined(__ANDROID__)
-    jpn_default_font_family = {
-        "sans-serif"
-    };
+    // FontProviderAndroid resolves "sans-serif" to the Japanese font for jpn
 #else  // Linux, or other platforms
-    jpn_default_font_family = {
+    jpn_font_family = {
         "Noto Sans CJK JP",
         "Noto Sans CJK",
         "Source Han Sans JP",
-        "sans-serif",
     };
 #endif
+
+    // Default fonts for Japanese (jpn)
+    std::vector<std::string> jpn_default_font_family = jpn_font_family;
+    jpn_default_font_family.emplace_back("sans-serif");
     language_font_family_[ThreeCC("jpn")] = std::move(jpn_default_font_family);
 
-    // Default fonts for latin languages (Portuguese / Spanish)
+    // Default fonts for latin languages, fallback to Japanese fonts for missing symbols
     std::vector<std::string> latin_default_font_family = { "sans-serif" };
+    latin_default_font_family.insert(latin_default_font_family.end(),
+                                     jpn_font_family.begin(), jpn_font_family.end());
+    language_font_family_[0] = latin_default_font_family;  // Default language (0)
+    language_font_family_[ThreeCC("eng")] = latin_default_font_family;  // English
     language_font_family_[ThreeCC("por")] = latin_default_font_family;  // Portuguese
     language_font_family_[ThreeCC("spa")] = latin_default_font_family;  // Spanish
 }
@@ -402,6 +402,10 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
             images.push_back(std::move(result.value()));
         } else if (result.error() == RegionRenderError::kImageTooSmall) {
             // Skip image which is too small
+            continue;
+        } else if (result.error() == RegionRenderError::kCodePointNotFound) {
+            // None of the region's characters exist in the fonts, skip this region rather than the whole caption
+            log_->w("RendererImpl: Skip region since none of its characters can be found in fonts");
             continue;
         } else {
             log_->e("RendererImpl: RenderCaptionRegion() failed with error: %d", static_cast<int>(result.error()));

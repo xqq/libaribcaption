@@ -18,6 +18,7 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <TargetConditionals.h>
+#include <string_view>
 #if TARGET_OS_IPHONE
     #include <CoreText/CoreText.h>
 #else
@@ -45,8 +46,9 @@ void FontProviderCoreText::SetLanguage(uint32_t iso6392_language_code) {
     iso6392_language_code_ = iso6392_language_code;
 }
 
-static std::string ConvertFamilyName(const std::string& family_name, uint32_t iso6392_language_code) {
-    std::string font_name = family_name;
+// The returned view refers to either family_name or a string literal
+static std::string_view ConvertFamilyName(std::string_view family_name, uint32_t iso6392_language_code) {
+    std::string_view font_name = family_name;
 
     if (family_name == "sans-serif") {
         if (iso6392_language_code == ThreeCC("jpn")) {
@@ -81,7 +83,7 @@ static std::string ConvertFamilyName(const std::string& family_name, uint32_t is
 
 auto FontProviderCoreText::GetFontFace(const std::string& font_name,
                                        std::optional<uint32_t> ucs4) -> Result<FontfaceInfo, FontProviderError> {
-    std::string converted_font = ConvertFamilyName(font_name, iso6392_language_code_);
+    std::string_view converted_font = ConvertFamilyName(font_name, iso6392_language_code_);
     ScopedCFRef<CFStringRef> fontname_request(cfstr::StdStringToCFString(converted_font));
     if (!fontname_request)
         return Err(FontProviderError::kOtherError);
@@ -130,7 +132,8 @@ auto FontProviderCoreText::GetFontFace(const std::string& font_name,
                                                 glyphs,
                                                 static_cast<CFIndex>(count));
         if (!ret) {
-            log_->w("CoreText: Font %s doesn't contain U+%04X", converted_font.c_str(), ucs4.value());
+            log_->w("CoreText: Font %.*s doesn't contain U+%04X",
+                    static_cast<int>(converted_font.size()), converted_font.data(), ucs4.value());
             return Err(FontProviderError::kCodePointNotFound);
         }
     }

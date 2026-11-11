@@ -17,6 +17,7 @@
  */
 
 #include <windows.h>
+#include <string_view>
 #include <vector>
 #include "base/utf_helper.hpp"
 #include "base/wchar_helper.hpp"
@@ -44,8 +45,9 @@ void FontProviderGDI::SetLanguage(uint32_t iso6392_language_code) {
     iso6392_language_code_ = iso6392_language_code;
 }
 
-static std::string ConvertFamilyName(const std::string& family_name, uint32_t iso6392_language_code) {
-    std::string font_name = family_name;
+// The returned view refers to either family_name or a string literal
+static std::string_view ConvertFamilyName(std::string_view family_name, uint32_t iso6392_language_code) {
+    std::string_view font_name = family_name;
 
     if (family_name == "sans-serif") {
         if (iso6392_language_code == ThreeCC("jpn")) {
@@ -134,7 +136,7 @@ static bool CheckCodePointExists(HDC hdc, uint32_t ucs4) {
 
 auto FontProviderGDI::GetFontFace(const std::string& font_name, std::optional<uint32_t> ucs4)
         -> Result<FontfaceInfo, FontProviderError> {
-    std::string converted_family_name = ConvertFamilyName(font_name, iso6392_language_code_);
+    std::string_view converted_family_name = ConvertFamilyName(font_name, iso6392_language_code_);
     std::wstring wide_font_name = wchar::UTF8ToWideString(converted_family_name);
 
     LOGFONTW lf{};

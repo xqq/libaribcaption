@@ -21,6 +21,7 @@
 
 #include <CoreFoundation/CFBase.h>
 #include <string>
+#include <string_view>
 #include "base/scoped_cfref.hpp"
 
 namespace aribcaption::cfstr {
@@ -47,10 +48,12 @@ inline std::string CFStringToStdString(CFStringRef cfstr) {
     return str;
 }
 
-inline ScopedCFRef<CFStringRef> StdStringToCFString(const std::string& str) {
-    ScopedCFRef<CFStringRef> cfstr(CFStringCreateWithCString(nullptr,
-                                                             str.c_str(),
-                                                             kCFStringEncodingUTF8));
+inline ScopedCFRef<CFStringRef> StdStringToCFString(std::string_view str) {
+    ScopedCFRef<CFStringRef> cfstr(CFStringCreateWithBytes(nullptr,
+                                                           reinterpret_cast<const UInt8*>(str.data()),
+                                                           static_cast<CFIndex>(str.size()),
+                                                           kCFStringEncodingUTF8,
+                                                           false));
     return cfstr;
 }
 

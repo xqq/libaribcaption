@@ -21,6 +21,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "aribcaption/context.hpp"
 #include "base/logger.hpp"
@@ -69,9 +70,9 @@ public:
     auto GetFontFace(const std::string& font_name,
                      std::optional<uint32_t> ucs4) -> Result<FontfaceInfo, FontProviderError> override;
 private:
-    internal::FontFamily* FindFamilyByName(const char* name);
-    internal::FontFamily* FindFallbackFamilyByLanguageAndFallbackFor(const char* lang,
-                                                                     const char* fallback_for);
+    internal::FontFamily* FindFamilyByName(std::string_view name);
+    internal::FontFamily* FindFallbackFamilyByLanguageAndFallbackFor(std::string_view lang,
+                                                                     std::string_view fallback_for);
     bool ParseAndroidSystemFonts();
     bool ParseFontsXML(const char* xml_path);
     bool PrepareFontsForGingerbread();

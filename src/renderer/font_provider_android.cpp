@@ -75,12 +75,12 @@ auto FontProviderAndroid::GetFontFace(const std::string &font_name,
     FontFamily* family = nullptr;
 
     if (iso6392_language_code_ == ThreeCC("jpn") || iso6392_language_code_ == 0) {
-        family = FindFallbackFamilyByLanguageAndFallbackFor("ja", font_name.c_str());
+        family = FindFallbackFamilyByLanguageAndFallbackFor("ja", font_name);
         if (!family) {
             family = FindFallbackFamilyByLanguageAndFallbackFor("ja", "sans-serif");
         }
     } else {
-        family = FindFamilyByName(font_name.c_str());
+        family = FindFamilyByName(font_name);
     }
 
     if (!family) {
@@ -103,7 +103,7 @@ auto FontProviderAndroid::GetFontFace(const std::string &font_name,
     return Ok(std::move(info));
 }
 
-FontFamily* FontProviderAndroid::FindFamilyByName(const char *search_name) {
+FontFamily* FontProviderAndroid::FindFamilyByName(std::string_view search_name) {
     for (auto& family : font_families_) {
         for (auto& name : family.names) {
             if (name == search_name) {
@@ -115,8 +115,8 @@ FontFamily* FontProviderAndroid::FindFamilyByName(const char *search_name) {
     return nullptr;
 }
 
-FontFamily* FontProviderAndroid::FindFallbackFamilyByLanguageAndFallbackFor(const char* lang,
-                                                                            const char *fallback_for) {
+FontFamily* FontProviderAndroid::FindFallbackFamilyByLanguageAndFallbackFor(std::string_view lang,
+                                                                            std::string_view fallback_for) {
     for (auto& family : font_families_) {
         if (!family.is_fallback) {
             continue;
@@ -220,7 +220,7 @@ bool FontProviderAndroid::PrepareFontsForGingerbread() {
     return true;
 }
 
-static bool AnnotateJAForSpecificFontFile(std::vector<FontFamily>& font_families, const char* font_filename) {
+static bool AnnotateJAForSpecificFontFile(std::vector<FontFamily>& font_families, std::string_view font_filename) {
     bool detected_filename = false;
 
     for (auto& family : font_families) {
@@ -392,8 +392,7 @@ bool FontProviderAndroid::LMPHandleFont(XMLElement* element, internal::FontFamil
         }
 
         FontFamily* fallback_family =
-                FindFallbackFamilyByLanguageAndFallbackFor(family.languages[0].c_str(),
-                                                           fallback_for);
+                FindFallbackFamilyByLanguageAndFallbackFor(family.languages[0], fallback_for);
         if (!fallback_family) {
             FontFamily& new_fallback_family = font_families_.emplace_back();
             new_fallback_family.languages = family.languages;

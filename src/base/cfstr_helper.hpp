@@ -38,9 +38,14 @@ inline std::string CFStringToStdString(CFStringRef cfstr) {
     if (cstring_ptr) {
         str = cstring_ptr;
     } else {  // cstring_ptr == nullptr
-        CFIndex buf_size = CFStringGetMaximumSizeForEncoding(CFStringGetLength(cfstr), kCFStringEncodingUTF8);
+        // +1 for the NUL terminator written by CFStringGetCString(), which is not counted
+        // by CFStringGetMaximumSizeForEncoding()
+        CFIndex buf_size = CFStringGetMaximumSizeForEncoding(CFStringGetLength(cfstr), kCFStringEncodingUTF8) + 1;
         str.resize(buf_size);
-        CFStringGetCString(cfstr, str.data(), buf_size, kCFStringEncodingUTF8);
+        if (!CFStringGetCString(cfstr, str.data(), buf_size, kCFStringEncodingUTF8)) {
+            str.clear();
+            return str;
+        }
         size_t len = strlen(str.data());
         str.resize(len);
     }

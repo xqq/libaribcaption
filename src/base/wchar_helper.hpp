@@ -22,6 +22,7 @@
 #include <windows.h>
 #include <cstring>
 #include <string>
+#include <string_view>
 #include "base/always_inline.hpp"
 
 namespace aribcaption::wchar {
@@ -74,22 +75,12 @@ ALWAYS_INLINE std::string wide_to_u8(const wchar_t* wide, size_t len) {
 
 }  // namespace internal
 
-inline std::wstring UTF8ToWideString(const char* u8) {
-    size_t input_length = strlen(u8);
-    return internal::u8_to_wide(u8, input_length);
+inline std::wstring UTF8ToWideString(std::string_view u8) {
+    return internal::u8_to_wide(u8.data(), u8.length());
 }
 
-inline std::wstring UTF8ToWideString(const std::string& u8) {
-    return internal::u8_to_wide(u8.c_str(), u8.length());
-}
-
-inline std::string WideStringToUTF8(const wchar_t* wide) {
-    size_t input_length = wcslen(wide);
-    return internal::wide_to_u8(wide, input_length);
-}
-
-inline std::string WideStringToUTF8(const std::wstring& wide) {
-    return internal::wide_to_u8(wide.c_str(), wide.length());
+inline std::string WideStringToUTF8(std::wstring_view wide) {
+    return internal::wide_to_u8(wide.data(), wide.length());
 }
 
 }  // namespace aribcaption::wchar

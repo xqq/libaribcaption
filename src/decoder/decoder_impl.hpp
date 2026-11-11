@@ -78,6 +78,10 @@ private:
     [[nodiscard]]
     bool IsRubyMode() const;
     [[nodiscard]]
+    bool IsMiddleSizeMode() const;
+    [[nodiscard]]
+    bool IsSmallSizeMode() const;
+    [[nodiscard]]
     int section_width() const;
     [[nodiscard]]
     int section_height() const;

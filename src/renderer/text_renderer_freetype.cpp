@@ -20,6 +20,7 @@
 #include <cstring>
 #include <cstdint>
 #include <cmath>
+#include <string_view>
 #include "base/floating_helper.hpp"
 #include "base/scoped_holder.hpp"
 #include "base/unicode_helper.hpp"
@@ -391,7 +392,7 @@ Bitmap TextRendererFreetype::FTBitmapToColoredBitmap(const FT_Bitmap& ft_bmp, Co
     return bitmap;
 }
 
-static bool MatchFontFamilyName(FT_Face face, const std::string& family_name) {
+static bool MatchFontFamilyName(FT_Face face, std::string_view family_name) {
     FT_UInt sfnt_name_count = FT_Get_Sfnt_Name_Count(face);
 
     for (FT_UInt i = 0; i < sfnt_name_count; i++) {
@@ -402,15 +403,17 @@ static bool MatchFontFamilyName(FT_Face face, const std::string& family_name) {
         }
 
         if (sfnt_name.name_id == TT_NAME_ID_FONT_FAMILY || sfnt_name.name_id == TT_NAME_ID_FULL_NAME) {
-            std::string name_str;
             if (sfnt_name.platform_id == TT_PLATFORM_MICROSOFT) {
-                name_str = utf::ConvertUTF16BEToUTF8(reinterpret_cast<uint16_t*>(sfnt_name.string),
-                                                     sfnt_name.string_len / 2);
+                std::string name_str = utf::ConvertUTF16BEToUTF8(reinterpret_cast<uint16_t*>(sfnt_name.string),
+                                                                 sfnt_name.string_len / 2);
+                if (name_str == family_name) {
+                    return true;
+                }
             } else {
-                name_str = std::string(sfnt_name.string, sfnt_name.string + sfnt_name.string_len);
-            }
-            if (name_str == family_name) {
-                return true;
+                std::string_view name_str(reinterpret_cast<const char*>(sfnt_name.string), sfnt_name.string_len);
+                if (name_str == family_name) {
+                    return true;
+                }
             }
         }
     }

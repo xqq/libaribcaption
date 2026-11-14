@@ -20,38 +20,38 @@
 #define ARIBCAPTION_RESULT_HPP
 
 #include <cassert>
-#include <variant>
+#include <cstddef>
+#include <tuple>
 #include <type_traits>
+#include <utility>
+#include <variant>
 
 namespace aribcaption {
 
 namespace internal {
 
-template <typename T>
+// Holds references only: consume within the same full-expression, i.e. `return Ok(...);`
+template <typename... Args>
 struct Ok {
-    static_assert(!std::is_same<T, void>::value);
-public:
-    T val;
+    std::tuple<Args&&...> args;
 };
 
 template <typename E>
 struct Err {
-    static_assert(!std::is_same<E, void>::value);
-public:
-    E val;
+    E&& val;
 };
 
 }  // namespace internal
 
 
-template <typename T, typename CleanT = std::decay_t<T>>
-constexpr internal::Ok<CleanT> Ok(T&& val) {
-    return internal::Ok<CleanT>{std::forward<T>(val)};
+template <typename... Args>
+constexpr internal::Ok<Args...> Ok(Args&&... args) noexcept {
+    return internal::Ok<Args...>{std::forward_as_tuple(std::forward<Args>(args)...)};
 }
 
-template <typename E, typename CleanE = std::decay_t<E>>
-constexpr internal::Err<CleanE> Err(E&& val) {
-    return internal::Err<CleanE>{std::forward<E>(val)};
+template <typename E>
+constexpr internal::Err<E> Err(E&& val) noexcept {
+    return internal::Err<E>{std::forward<E>(val)};
 }
 
 
@@ -63,11 +63,13 @@ public:
     Result() = delete;
     ~Result() = default;
 
-    constexpr Result(internal::Ok<T>&& ok) noexcept : variant_(std::in_place_index<0>, std::move(ok.val)) {}
-    constexpr Result(const internal::Ok<T>& ok) : variant_(std::in_place_index<0>, ok.val) {}
+    template <typename... Args, std::enable_if_t<std::is_constructible_v<T, Args&&...>, int> = 0>
+    constexpr Result(internal::Ok<Args...>&& ok) noexcept(std::is_nothrow_constructible_v<T, Args&&...>)
+        : Result(std::move(ok), std::index_sequence_for<Args...>{}) {}
 
-    constexpr Result(internal::Err<E>&& err) noexcept : variant_(std::in_place_index<1>, std::move(err.val)) {}
-    constexpr Result(const internal::Err<E>& err) : variant_(std::in_place_index<1>, err.val) {}
+    template <typename U, std::enable_if_t<std::is_constructible_v<E, U&&>, int> = 0>
+    constexpr Result(internal::Err<U>&& err) noexcept(std::is_nothrow_constructible_v<E, U&&>)
+        : variant_(std::in_place_index<1>, std::forward<U>(err.val)) {}
 
     constexpr Result(Result&&) noexcept = default;
     constexpr Result(const Result&) = default;
@@ -108,7 +110,7 @@ public:
         return std::move(*val);
     }
 
-    constexpr T& operator*() const& noexcept {
+    constexpr const T& operator*() const& noexcept {
         assert(is_ok());
         const T* val = std::get_if<0>(&variant_);
         return *val;
@@ -126,7 +128,7 @@ public:
         return std::move(*val);
     }
 
-    constexpr T* operator->() const noexcept {
+    constexpr const T* operator->() const noexcept {
         assert(is_ok());
         return std::get_if<0>(&variant_);
     }
@@ -158,22 +160,6 @@ public:
         E* err = std::get_if<1>(&variant_);
         return std::move(*err);
     }
-
-    constexpr bool operator==(const internal::Ok<T>& ok) const {
-        return is_ok() && value() == ok.val;
-    }
-
-    constexpr bool operator!=(const internal::Ok<T>& ok) const {
-        return !operator==(ok);
-    }
-
-    constexpr bool operator==(const internal::Err<E>& err) const {
-        return is_err() && error() == err.val;
-    }
-
-    constexpr bool operator!=(const internal::Err<E>& err) const {
-        return !operator==(err);
-    }
 public:
     friend constexpr bool operator==(const Result<T, E>& lhs, const Result<T, E>& rhs) {
         return lhs.variant_ == rhs.variant_;
@@ -182,6 +168,10 @@ public:
     friend constexpr bool operator!=(const Result<T, E>& lhs, const Result<T, E>& rhs) {
         return lhs.variant_ != rhs.variant_;
     }
+private:
+    template <typename... Args, size_t... I>
+    constexpr Result(internal::Ok<Args...>&& ok, std::index_sequence<I...>)
+        : variant_(std::in_place_index<0>, std::get<I>(std::move(ok.args))...) {}
 private:
     std::variant<T, E> variant_;
 };

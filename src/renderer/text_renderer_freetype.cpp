@@ -479,7 +479,7 @@ auto TextRendererFreetype::LoadFontFace(bool is_fallback,
     }
 
     if (info.face_index >= 0) {
-        return Ok(std::make_pair(face, font_index));
+        return Ok(face, font_index);
     } else {
         // face_index is negative, e.g. -1, means face index is unknown
         // Find exact font face by PostScript name or Family name
@@ -507,10 +507,10 @@ auto TextRendererFreetype::LoadFontFace(bool is_fallback,
 
             // Find by comparing PostScript name
             if (!info.postscript_name.empty() && info.postscript_name == FT_Get_Postscript_Name(face)) {
-                return Ok(std::make_pair(face, font_index));
+                return Ok(face, font_index);
             } else if (!info.family_name.empty() && MatchFontFamilyName(face, info.family_name)) {
                 // Find by matching family name
-                return Ok(std::make_pair(face, font_index));
+                return Ok(face, font_index);
             }
         }
         return Err(FontProviderError::kFontNotFound);

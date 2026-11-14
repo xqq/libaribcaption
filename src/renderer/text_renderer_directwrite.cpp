@@ -599,7 +599,7 @@ auto TextRendererDirectWrite::LoadDWriteFont(std::optional<uint32_t> codepoint,
         return Err(FontProviderError::kOtherError);
     }
 
-    return Ok(std::make_pair(std::move(info), font_index));
+    return Ok(std::move(info), font_index);
 }
 
 static const wchar_t* ISO6392ToWindowsLocaleName(uint32_t iso6392_language_code) {

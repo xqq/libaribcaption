@@ -301,7 +301,7 @@ auto TextRendererCoreText::LoadCTFont(std::optional<uint32_t> codepoint, std::op
 
     auto priv = static_cast<FontfaceInfoPrivateCoreText*>(info.provider_priv.get());
 
-    return Ok(std::make_pair(std::move(priv->ct_font), font_index));
+    return Ok(std::move(priv->ct_font), font_index);
 }
 
 auto TextRendererCoreText::RGBAToCGColor(ColorRGBA rgba) -> ScopedCFRef<CGColorRef> {

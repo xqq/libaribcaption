@@ -102,13 +102,14 @@ void TextRendererFreetype::EndDraw(TextRenderContext& context) {
 }
 
 static auto LoadSFNTTable(FT_Face face, FT_Tag tag) -> std::vector<uint8_t> {
+    std::vector<uint8_t> gsub;
     FT_ULong gsub_size = 0;
     if (FT_Load_Sfnt_Table(face, tag, 0, nullptr, &gsub_size)) {
-        return {};
+        return gsub;
     }
-    std::vector<uint8_t> gsub(static_cast<size_t>(gsub_size));
+    gsub.resize(static_cast<size_t>(gsub_size));
     if (FT_Load_Sfnt_Table(face, tag, 0, reinterpret_cast<FT_Byte*>(gsub.data()), &gsub_size)) {
-        return {};
+        gsub.clear();
     }
     return gsub;
 }

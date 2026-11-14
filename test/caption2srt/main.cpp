@@ -277,7 +277,7 @@ std::vector<std::string> ParseWin32CommandLineToUTF8() {
     wchar_t** wide_argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     if (!wide_argv) {
         fprintf(stderr, "Parse Win32 command line failed\n");
-        return {};
+        return argv_utf8;
     }
 
     for (int i = 0; i < argc; i++) {

@@ -631,7 +631,8 @@ auto TextRendererDirectWrite::CreateDWriteTextFormat(FontfaceInfo& face_info, in
                                                    &text_format);
     if (FAILED(hr) || !text_format) {
         log_->e("TextRendererDirectWrite: IDWriteFactory::CreateTextFormat() failed");
-        return nullptr;
+        text_format.Reset();
+        return text_format;
     }
 
     text_format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);

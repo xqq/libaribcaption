@@ -111,13 +111,13 @@ static auto ReadCoverageTable(const std::vector<uint8_t>& gsub, size_t offset) -
     return std::nullopt;
 }
 
-static auto ReadScriptFeatureIndices(const std::vector<uint8_t>& gsub,
+static bool ReadScriptFeatureIndices(const std::vector<uint8_t>& gsub,
                                      size_t script_list_offset,
                                      uint32_t required_script_tag,
-                                     uint32_t required_lang_sys_tag) -> std::vector<uint16_t> {
-    std::vector<uint16_t> feature_indices{};
+                                     uint32_t required_lang_sys_tag,
+                                     std::vector<uint16_t>& feature_indices) {
     if (gsub.size() < script_list_offset + 2) {
-        return {};
+        return false;
     }
     size_t script_count = GetUint16(gsub, script_list_offset);
     size_t script_records_offset = script_list_offset + 2;
@@ -147,7 +147,7 @@ static auto ReadScriptFeatureIndices(const std::vector<uint8_t>& gsub,
         constexpr size_t kScriptRecordSize = 6;
         size_t script_record_offset = script_records_offset + script_index * kScriptRecordSize;
         if (gsub.size() < script_record_offset + kScriptRecordSize) {
-            return {};
+            return false;
         }
         uint32_t script_tag = GetTag(gsub, script_record_offset);
         if (script_tag != required_script_tag) {
@@ -155,7 +155,7 @@ static auto ReadScriptFeatureIndices(const std::vector<uint8_t>& gsub,
         }
         size_t script_offset = script_list_offset + GetOffset16(gsub, script_record_offset + 4);
         if (gsub.size() < script_offset + 4) {
-            return {};
+            return false;
         }
         size_t default_lang_sys_offset = script_offset + GetOffset16(gsub, script_offset);
         size_t lang_sys_count = GetUint16(gsub, script_offset + 2);
@@ -165,7 +165,7 @@ static auto ReadScriptFeatureIndices(const std::vector<uint8_t>& gsub,
             constexpr size_t kLangSysRecordSize = 6;
             size_t lang_sys_record_offset = lang_sys_records_offset + lang_sys_index * kLangSysRecordSize;
             if (gsub.size() < lang_sys_record_offset + kLangSysRecordSize) {
-                return {};
+                return false;
             }
             uint32_t lang_sys_tag = GetTag(gsub, lang_sys_record_offset);
             if (lang_sys_tag == required_lang_sys_tag) {
@@ -177,7 +177,7 @@ static auto ReadScriptFeatureIndices(const std::vector<uint8_t>& gsub,
             continue;
         }
         if (gsub.size() < lang_sys_offset + 6) {
-            return {};
+            return false;
         }
         uint16_t required_feature_index = GetUint16(gsub, lang_sys_offset + 2);
         if (required_feature_index != 0xffff) {
@@ -187,21 +187,21 @@ static auto ReadScriptFeatureIndices(const std::vector<uint8_t>& gsub,
         size_t feature_indices_offset = lang_sys_offset + 6;
         for (size_t i = 0; i < feature_index_count; i++) {
             if (gsub.size() < feature_indices_offset + i * 2 + 2) {
-                return {};
+                return false;
             }
             uint16_t feature_index = GetUint16(gsub, feature_indices_offset + i * 2);
             feature_indices.push_back(feature_index);
         }
         break;
     }
-    return feature_indices;
+    return true;
 }
 
-auto LoadSingleGSUBTable(const std::vector<uint8_t>& gsub,
-                         uint32_t required_feature_tag,
-                         uint32_t script_tag,
-                         uint32_t lang_sys_tag) -> std::unordered_map<uint32_t, uint32_t> {
-    std::unordered_map<uint32_t, uint32_t> subst_map{};
+static bool ParseSingleSubstitutions(const std::vector<uint8_t>& gsub,
+                                     uint32_t required_feature_tag,
+                                     uint32_t script_tag,
+                                     uint32_t lang_sys_tag,
+                                     std::unordered_map<uint32_t, uint32_t>& subst_map) {
     size_t gsub_size = gsub.size();
     // GSUB Header:
     // uint16           majorVersion
@@ -211,10 +211,13 @@ auto LoadSingleGSUBTable(const std::vector<uint8_t>& gsub,
     // Offset16         lookupListOffset
     // Offset16         featureVariationsOffset if majorVersion = 1 and minorVersion = 1
     if (gsub_size < 10) {
-        return {};
+        return false;
     }
     size_t script_list_offset = GetOffset16(gsub, 4);
-    auto feature_indices = ReadScriptFeatureIndices(gsub, script_list_offset, script_tag, lang_sys_tag);
+    std::vector<uint16_t> feature_indices;
+    if (!ReadScriptFeatureIndices(gsub, script_list_offset, script_tag, lang_sys_tag, feature_indices)) {
+        return false;
+    }
     // FeatureList table:
     // uint16           featureCount
     // FeatureRecord    featureRecords[featureCount]
@@ -229,12 +232,12 @@ auto LoadSingleGSUBTable(const std::vector<uint8_t>& gsub,
     size_t feature_list_offset = GetOffset16(gsub, 6);
     size_t lookup_list_offset = GetOffset16(gsub, 8);
     if (gsub_size < lookup_list_offset + 2) {
-        return {};
+        return false;
     }
     uint16_t lookup_count = GetUint16(gsub, lookup_list_offset);
     size_t lookup_offsets_offset = lookup_list_offset + 2;
     if (gsub_size < feature_list_offset + 2) {
-        return {};
+        return false;
     }
     uint16_t feature_count = GetUint16(gsub, feature_list_offset);
     size_t feature_records_offset = feature_list_offset + 2;
@@ -242,7 +245,7 @@ auto LoadSingleGSUBTable(const std::vector<uint8_t>& gsub,
         constexpr size_t kFeatureRecordSize = 6;
         size_t feature_record_offset = feature_records_offset + feature_index * kFeatureRecordSize;
         if (feature_index >= feature_count || gsub_size < feature_record_offset + kFeatureRecordSize) {
-            return {};
+            return false;
         }
         uint32_t feature_tag = GetTag(gsub, feature_record_offset);
         if (feature_tag != required_feature_tag) {
@@ -254,27 +257,27 @@ auto LoadSingleGSUBTable(const std::vector<uint8_t>& gsub,
         // uint16       lookupIndexCount
         // uint16       lookupListIndices[lookupIndexCount]
         if (gsub_size < feature_offset + 4) {
-            return {};
+            return false;
         }
         size_t feature_params_offset = GetOffset16(gsub, feature_offset);
         if (feature_params_offset != 0) {
             // FeatureParams tables are defined only for 'cv01'-'cv99', 'size', and 'ss01'-'ss20'.
-            return {};
+            return false;
         }
         uint16_t lookup_index_count = GetUint16(gsub, feature_offset + 2);
         size_t lookup_list_indices_offset = feature_offset + 4;
         for (size_t lookup_index = 0; lookup_index < lookup_index_count; lookup_index++) {
             if (gsub_size < lookup_list_indices_offset + lookup_index * 2 + 2) {
-                return {};
+                return false;
             }
             size_t lookup_list_index = GetUint16(gsub, lookup_list_indices_offset + lookup_index * 2);
             if (lookup_list_index >= feature_count || gsub_size < lookup_offsets_offset + lookup_list_index * 2 + 2) {
-                return {};
+                return false;
             }
             size_t lookup_offset =
                 lookup_list_offset + GetOffset16(gsub, lookup_offsets_offset + lookup_list_index * 2);
             if (gsub_size < lookup_offset + 6) {
-                return {};
+                return false;
             }
             // Lookup table:
             // uint16           lookupType
@@ -289,12 +292,12 @@ auto LoadSingleGSUBTable(const std::vector<uint8_t>& gsub,
             size_t subtable_offsets_offset = lookup_offset + 6;
             for (size_t subtable_index = 0; subtable_index < subtable_count; subtable_index++) {
                 if (gsub_size < subtable_offsets_offset + subtable_index * 2 + 2) {
-                    return {};
+                    return false;
                 }
                 size_t subtable_offset =
                     lookup_offset + GetOffset16(gsub, subtable_offsets_offset + subtable_index * 2);
                 if (gsub_size < subtable_offset + 2) {
-                    return {};
+                    return false;
                 }
                 uint16_t subst_format = GetUint16(gsub, subtable_offset);
                 if (is_extension) {
@@ -306,26 +309,26 @@ auto LoadSingleGSUBTable(const std::vector<uint8_t>& gsub,
                         continue;
                     }
                     if (gsub_size < subtable_offset + 8) {
-                        return {};
+                        return false;
                     }
                     uint16_t extension_lookup_type = GetUint16(gsub, subtable_offset + 2);
                     size_t extension_offset = GetOffset32(gsub, subtable_offset + 4);
                     lookup_type = extension_lookup_type;
                     subtable_offset += extension_offset;
                     if (gsub_size < subtable_offset + 2) {
-                        return {};
+                        return false;
                     }
                     subst_format = GetUint16(gsub, subtable_offset);
                 }
                 if (lookup_type == 1) {
                     // LookupType 1: Single Substitution Subtable
                     if (gsub_size < subtable_offset + 4) {
-                        return {};
+                        return false;
                     }
                     size_t coverage_offset = subtable_offset + GetOffset16(gsub, subtable_offset + 2);
                     auto coverage = ReadCoverageTable(gsub, coverage_offset);
                     if (!coverage) {
-                        return {};
+                        return false;
                     }
                     if (subst_format == 1) {
                         // Single Substitution Format 1:
@@ -333,7 +336,7 @@ auto LoadSingleGSUBTable(const std::vector<uint8_t>& gsub,
                         // Offset16 coverageOffset
                         // int16    deltaGlyphID
                         if (gsub_size < subtable_offset + 6) {
-                            return {};
+                            return false;
                         }
                         int16_t delta_glyph_id = GetInt16(gsub, subtable_offset + 4);
                         for (auto&& glyph_id : coverage.value()) {
@@ -348,17 +351,17 @@ auto LoadSingleGSUBTable(const std::vector<uint8_t>& gsub,
                         // uint16   substituteGlyphIDs[glyphCount]
                         uint16_t glyph_count = GetUint16(gsub, subtable_offset + 4);
                         if (gsub_size < subtable_offset + 6) {
-                            return {};
+                            return false;
                         }
                         size_t substitute_glyph_ids_offset = subtable_offset + 6;
                         for (size_t coverage_index = 0; coverage_index < glyph_count; coverage_index++) {
                             if (gsub_size < substitute_glyph_ids_offset + coverage_index * 2 + 2) {
-                                return {};
+                                return false;
                             }
                             uint16_t substitute_glyph_id =
                                 GetUint16(gsub, substitute_glyph_ids_offset + coverage_index * 2);
                             if (coverage->size() <= coverage_index) {
-                                return {};
+                                return false;
                             }
                             subst_map[static_cast<uint32_t>(coverage.value()[coverage_index])] =
                                 static_cast<uint32_t>(substitute_glyph_id);
@@ -368,6 +371,17 @@ auto LoadSingleGSUBTable(const std::vector<uint8_t>& gsub,
             }
         }
         break;
+    }
+    return true;
+}
+
+auto LoadSingleGSUBTable(const std::vector<uint8_t>& gsub,
+                         uint32_t required_feature_tag,
+                         uint32_t script_tag,
+                         uint32_t lang_sys_tag) -> std::unordered_map<uint32_t, uint32_t> {
+    std::unordered_map<uint32_t, uint32_t> subst_map;
+    if (!ParseSingleSubstitutions(gsub, required_feature_tag, script_tag, lang_sys_tag, subst_map)) {
+        subst_map.clear();
     }
     return subst_map;
 }

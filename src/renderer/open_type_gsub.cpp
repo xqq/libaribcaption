@@ -71,7 +71,7 @@ static auto ReadCoverageTable(const std::vector<uint8_t>& gsub, size_t offset) -
             uint16_t glyph_id = GetUint16(gsub, glyph_array_offset + coverage_index * 2);
             coverage.push_back(glyph_id);
         }
-        return std::make_optional(std::move(coverage));
+        return coverage;
     } else if (coverage_format == 2) {
         // Coverage Format 2:
         // uint16       coverageFormat
@@ -106,7 +106,7 @@ static auto ReadCoverageTable(const std::vector<uint8_t>& gsub, size_t offset) -
                 coverage.push_back(glyph_id);
             }
         }
-        return std::make_optional(std::move(coverage));
+        return coverage;
     }
     return std::nullopt;
 }

@@ -356,6 +356,13 @@ extern const std::unordered_map<std::string, uint32_t> kDRCSReplacementMap = {
     {"c7b93e8e27f686cbeeb88e871c17327c", 0x300a},
     {"4eb14b82b3a870763de244c3c21e210b", 0x300b},
     {"dedbee40c06e17b51932431dc8cd8334", 0x8fc2},
+    {"e806d1481cfa721da5f60413531f39bd", 0x1f4f1},
+    {"063c95566807d5e7b51ab706426bedf9", 0x1f4f1},
+    {"22db8ff6ac75b60b76a15a6e9c42a5db", 0x1f4fa},
+    {"c42450812c184aee2ae01cc5e39ae957", 0x1f4fb},
+    {"d9b5d861024ce112c12fa5f155bb1af3", 0x1f50a},
+    {"d1e6371a34eaf49154ea6a4d0e9064ac", 0x1f50a},
+    {"06cb56043b9c4006bcfbe07cc831feaf", 0x1f50a},
 };
 
 }  // namespace aribcaption

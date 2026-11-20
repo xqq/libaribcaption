@@ -18,7 +18,8 @@
 
 #include <cassert>
 #include <cmath>
-#include <functional>
+#include <cstring>
+#include <vector>
 #include "base/floating_helper.hpp"
 #include "base/unicode_helper.hpp"
 #include "base/utf_helper.hpp"
@@ -30,32 +31,87 @@
 
 namespace aribcaption {
 
+static bool GetFontFaceFiles(IDWriteFontFace* face, std::vector<ComPtr<IDWriteFontFile>>& out_files) {
+    UINT32 count = 0;
+    if (FAILED(face->GetFiles(&count, nullptr)) || count == 0) {
+        return false;
+    }
+    std::vector<IDWriteFontFile*> raw_files(count, nullptr);
+    if (FAILED(face->GetFiles(&count, raw_files.data()))) {
+        return false;
+    }
+    out_files.resize(count);
+    for (UINT32 i = 0; i < count; i++) {
+        out_files[i].Attach(raw_files[i]);
+    }
+    return true;
+}
+
+// IDWriteFontFace3::Equals() requires Windows 10, compare face index, simulations and file identities instead
+static bool IsSameFontFace(IDWriteFontFace* a, IDWriteFontFace* b) {
+    if (a == b) {
+        return true;
+    }
+    if (!a || !b || a->GetIndex() != b->GetIndex() || a->GetSimulations() != b->GetSimulations()) {
+        return false;
+    }
+
+    std::vector<ComPtr<IDWriteFontFile>> files_a;
+    std::vector<ComPtr<IDWriteFontFile>> files_b;
+    if (!GetFontFaceFiles(a, files_a) || !GetFontFaceFiles(b, files_b) || files_a.size() != files_b.size()) {
+        return false;
+    }
+
+    for (size_t i = 0; i < files_a.size(); i++) {
+        ComPtr<IDWriteFontFileLoader> loader_a;
+        ComPtr<IDWriteFontFileLoader> loader_b;
+        const void* key_a = nullptr;
+        const void* key_b = nullptr;
+        UINT32 key_size_a = 0;
+        UINT32 key_size_b = 0;
+        if (FAILED(files_a[i]->GetLoader(&loader_a)) || FAILED(files_b[i]->GetLoader(&loader_b)) ||
+            FAILED(files_a[i]->GetReferenceKey(&key_a, &key_size_a)) ||
+            FAILED(files_b[i]->GetReferenceKey(&key_b, &key_size_b))) {
+            return false;
+        }
+        if (loader_a.Get() != loader_b.Get() || key_size_a != key_size_b || std::memcmp(key_a, key_b, key_size_a) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// Collects glyph run outlines instead of drawing them, so the caller can verify the layout
+// used the selected font face before anything reaches the render target
 class OutlineTextRenderer : public IDWriteTextRenderer {
-public:
-    using UnderlineDrawCB = std::function<void(const DWRITE_UNDERLINE* underline)>;
 public:
     OutlineTextRenderer(float horizontal_scale,
                         float vertical_scale,
-                        bool draw_outline_stroke,
-                        float stroke_width,
-                        ComPtr<ID2D1StrokeStyle> stroke_style,
+                        ComPtr<IDWriteFontFace> expected_fontface,
                         ComPtr<ID2D1Factory> d2d_factory,
-                        ComPtr<ID2D1RenderTarget> render_target,
-                        ComPtr<ID2D1SolidColorBrush> fill_brush,
-                        ComPtr<ID2D1SolidColorBrush> outline_brush,
-                        UnderlineDrawCB underline_draw_cb)
+                        ComPtr<ID2D1RenderTarget> render_target)
         : horizontal_scale_(horizontal_scale),
           vertical_scale_(vertical_scale),
-          draw_outline_stroke_(draw_outline_stroke),
-          stroke_width_(stroke_width),
-          stroke_style_(std::move(stroke_style)),
+          expected_fontface_(std::move(expected_fontface)),
           d2d_factory_(std::move(d2d_factory)),
-          render_target_(std::move(render_target)),
-          fill_brush_(std::move(fill_brush)),
-          outline_brush_(std::move(outline_brush)),
-          underline_draw_cb_(std::move(underline_draw_cb)) {}
+          render_target_(std::move(render_target)) {}
 
     virtual ~OutlineTextRenderer() = default;
+
+    [[nodiscard]]
+    bool HasFontFaceMismatch() const {
+        return fontface_mismatch_;
+    }
+
+    [[nodiscard]]
+    const std::vector<ComPtr<ID2D1TransformedGeometry>>& GetGeometries() const {
+        return geometries_;
+    }
+
+    [[nodiscard]]
+    const std::vector<DWRITE_UNDERLINE>& GetUnderlines() const {
+        return underlines_;
+    }
 
     IFACEMETHOD(IsPixelSnappingDisabled)(void* client_drawing_context, BOOL* is_disabled) {
         *is_disabled = FALSE;
@@ -82,6 +138,17 @@ public:
                               DWRITE_GLYPH_RUN const* glyph_run,
                               DWRITE_GLYPH_RUN_DESCRIPTION const* glyph_run_description,
                               IUnknown* client_drawing_effect) {
+        if (!IsSameFontFace(glyph_run->fontFace, expected_fontface_.Get())) {
+            fontface_mismatch_ = true;
+            return S_OK;
+        }
+        for (UINT32 i = 0; i < glyph_run->glyphCount; i++) {
+            if (glyph_run->glyphIndices[i] == 0) {
+                fontface_mismatch_ = true;
+                return S_OK;
+            }
+        }
+
         ComPtr<ID2D1PathGeometry> path_geometry;
         HRESULT hr = d2d_factory_->CreatePathGeometry(&path_geometry);
         if (FAILED(hr))
@@ -120,14 +187,7 @@ public:
         if (FAILED(hr))
             return hr;
 
-        if (draw_outline_stroke_) {
-            render_target_->DrawGeometry(transformed_geometry.Get(),
-                                         outline_brush_.Get(),
-                                         stroke_width_,
-                                         stroke_style_.Get());
-        }
-        render_target_->FillGeometry(transformed_geometry.Get(), fill_brush_.Get());
-
+        geometries_.push_back(std::move(transformed_geometry));
         return S_OK;
     }
 
@@ -136,7 +196,7 @@ public:
                                float baseline_origin_y,
                                DWRITE_UNDERLINE const* underline,
                                IUnknown* client_drawing_effect) {
-        underline_draw_cb_(underline);
+        underlines_.push_back(*underline);
         return S_OK;
     }
 
@@ -188,14 +248,12 @@ private:
     unsigned long ref_count_ = 0;
     float horizontal_scale_ = 1.0f;
     float vertical_scale_ = 1.0f;
-    bool draw_outline_stroke_ = false;
-    float stroke_width_ = 0.0f;
-    ComPtr<ID2D1StrokeStyle> stroke_style_;
+    ComPtr<IDWriteFontFace> expected_fontface_;
     ComPtr<ID2D1Factory> d2d_factory_;
     ComPtr<ID2D1RenderTarget> render_target_;
-    ComPtr<ID2D1SolidColorBrush> fill_brush_;
-    ComPtr<ID2D1SolidColorBrush> outline_brush_;
-    UnderlineDrawCB underline_draw_cb_;
+    bool fontface_mismatch_ = false;
+    std::vector<ComPtr<ID2D1TransformedGeometry>> geometries_;
+    std::vector<DWRITE_UNDERLINE> underlines_;
 };
 
 
@@ -257,6 +315,15 @@ bool TextRendererDirectWrite::Initialize() {
     if (FAILED(hr)) {
         log_->e("TextRendererDirectWrite: ID2D1Factory::CreateStrokeStyle() failed");
         return false;
+    }
+
+    // An empty font fallback stops IDWriteTextLayout from substituting another font (Windows 8.1+)
+    ComPtr<IDWriteFactory2> dwrite_factory2;
+    if (SUCCEEDED(dwrite_factory_.As(&dwrite_factory2)) && dwrite_factory2) {
+        ComPtr<IDWriteFontFallbackBuilder> fallback_builder;
+        if (SUCCEEDED(dwrite_factory2->CreateFontFallbackBuilder(&fallback_builder))) {
+            fallback_builder->CreateFontFallback(&no_fallback_);
+        }
     }
 
     return true;
@@ -456,9 +523,8 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
     auto face_info_priv = static_cast<FontfaceInfoPrivateDirectWrite*>(face_info->provider_priv.get());
     DWRITE_FONT_METRICS font_metrics = {0};
     face_info_priv->font->GetMetrics(&font_metrics);
-    int ascent = MulDiv(font_metrics.ascent, char_height, font_metrics.designUnitsPerEm);
-    [[maybe_unused]]
-    int descent = MulDiv(font_metrics.descent, char_height, font_metrics.designUnitsPerEm);
+    double em_size = static_cast<double>(char_height) * face_info_priv->scale;
+    int ascent = static_cast<int>(std::lround(font_metrics.ascent * em_size / font_metrics.designUnitsPerEm));
 
     bool is_requesting_halfwidth = floating::AlmostEquals(aspect_ratio, 0.5f, 0.05f);
     bool needless_horizontal_scaling = is_requesting_halfwidth && unicode::IsHalfwidthCharacter(ucs4);
@@ -553,13 +619,33 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
     render_target->CreateSolidColorBrush(RGBAToD2DColor(stroke_color), &outline_brush);
 
     ComPtr<OutlineTextRenderer> outline_text_renderer(new OutlineTextRenderer(
-        horizontal_scale, 1.0f, style & CharStyle::kCharStyleStroke, stroke_width * 2,
-        stroke_style_, d2d_factory_, render_target, fill_brush, outline_brush, underline_callback));
+        horizontal_scale, 1.0f, face_info_priv->fontface, d2d_factory_, render_target));
 
-    text_layout->Draw(nullptr,
-                      outline_text_renderer.Get(),
-                      static_cast<float>(target_x + margin_x),
-                      static_cast<float>(target_y + margin_y));
+    hr = text_layout->Draw(nullptr,
+                           outline_text_renderer.Get(),
+                           static_cast<float>(target_x + margin_x),
+                           static_cast<float>(target_y + margin_y));
+    if (FAILED(hr)) {
+        log_->e("TextRendererDirectWrite: IDWriteTextLayout::Draw() failed");
+        return TextRenderStatus::kOtherError;
+    }
+
+    if (outline_text_renderer->HasFontFaceMismatch() || outline_text_renderer->GetGeometries().empty()) {
+        log_->e("TextRendererDirectWrite: Layout used a different font than selected for U+%04X", ucs4);
+        return TextRenderStatus::kCodePointNotFound;
+    }
+
+    bool draw_outline_stroke = style & CharStyle::kCharStyleStroke;
+    for (const auto& geometry : outline_text_renderer->GetGeometries()) {
+        if (draw_outline_stroke) {
+            render_target->DrawGeometry(geometry.Get(), outline_brush.Get(), stroke_width * 2, stroke_style_.Get());
+        }
+        render_target->FillGeometry(geometry.Get(), fill_brush.Get());
+    }
+
+    for (const DWRITE_UNDERLINE& underline : outline_text_renderer->GetUnderlines()) {
+        underline_callback(&underline);
+    }
 
     return TextRenderStatus::kOK;
 }
@@ -695,7 +781,9 @@ auto TextRendererDirectWrite::FindOrLoadSystemFallbackSlot(uint32_t ucs4, std::s
 
 auto TextRendererDirectWrite::EnsureTextFormat(FontSlot& slot, int char_height) -> IDWriteTextFormat* {
     if (!slot.text_format || slot.pixel_height != char_height) {
-        slot.text_format = CreateDWriteTextFormat(slot.faceinfo, char_height);
+        auto priv = static_cast<FontfaceInfoPrivateDirectWrite*>(slot.faceinfo.provider_priv.get());
+        float scale = priv ? priv->scale : 1.0f;
+        slot.text_format = CreateDWriteTextFormat(slot.faceinfo, static_cast<float>(char_height) * scale);
         if (!slot.text_format) {
             slot.pixel_height = 0;
             return nullptr;
@@ -719,7 +807,7 @@ static const wchar_t* ISO6392ToWindowsLocaleName(uint32_t iso6392_language_code)
     }
 }
 
-auto TextRendererDirectWrite::CreateDWriteTextFormat(FontfaceInfo& face_info, int font_size)
+auto TextRendererDirectWrite::CreateDWriteTextFormat(FontfaceInfo& face_info, float font_size)
     -> ComPtr<IDWriteTextFormat> {
     ComPtr<IDWriteTextFormat> text_format;
     std::wstring font_family_name = wchar::UTF8ToWideString(face_info.family_name);
@@ -727,25 +815,39 @@ auto TextRendererDirectWrite::CreateDWriteTextFormat(FontfaceInfo& face_info, in
     DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_NORMAL;
     DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL;
     DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH_NORMAL;
+    // Resolve the family name in the collection the selected font belongs to
+    ComPtr<IDWriteFontCollection> font_collection;
     if (auto priv = static_cast<FontfaceInfoPrivateDirectWrite*>(face_info.provider_priv.get());
         priv && priv->font) {
         weight = priv->font->GetWeight();
         style = priv->font->GetStyle();
         stretch = priv->font->GetStretch();
+
+        ComPtr<IDWriteFontFamily> font_family;
+        if (SUCCEEDED(priv->font->GetFontFamily(&font_family)) && font_family) {
+            font_family->GetFontCollection(&font_collection);
+        }
     }
 
     HRESULT hr = dwrite_factory_->CreateTextFormat(font_family_name.c_str(),
-                                                   nullptr,
+                                                   font_collection.Get(),
                                                    weight,
                                                    style,
                                                    stretch,
-                                                   static_cast<float>(font_size),
+                                                   font_size,
                                                    ISO6392ToWindowsLocaleName(iso6392_language_code_),
                                                    &text_format);
     if (FAILED(hr) || !text_format) {
         log_->e("TextRendererDirectWrite: IDWriteFactory::CreateTextFormat() failed");
         text_format.Reset();
         return text_format;
+    }
+
+    if (no_fallback_) {
+        ComPtr<IDWriteTextFormat1> text_format1;
+        if (SUCCEEDED(text_format.As(&text_format1)) && text_format1) {
+            text_format1->SetFontFallback(no_fallback_.Get());
+        }
     }
 
     text_format->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);

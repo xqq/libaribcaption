@@ -325,7 +325,11 @@ auto FontProviderDirectWrite::GetFallbackFontFace(uint32_t ucs4, std::string_vie
         return Err(FontProviderError::kCodePointNotFound);
     }
 
-    return BuildFontfaceInfo(std::move(mapped_font));
+    auto result = BuildFontfaceInfo(std::move(mapped_font));
+    if (result.is_ok() && scale > 0.0f) {
+        static_cast<FontfaceInfoPrivateDirectWrite*>(result.value().provider_priv.get())->scale = scale;
+    }
+    return result;
 }
 
 auto FontProviderDirectWrite::BuildFontfaceInfo(ComPtr<IDWriteFont> dwrite_font)

@@ -21,7 +21,7 @@
 
 #include <wrl/client.h>
 #include <d2d1.h>
-#include <dwrite.h>
+#include <dwrite_2.h>
 #include <wincodec.h>
 #include <optional>
 #include <unordered_set>
@@ -69,7 +69,7 @@ private:
     auto EnsureMainSlot() -> std::optional<FontProviderError>;
     auto FindOrLoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name) -> FontSlot*;
     auto EnsureTextFormat(FontSlot& slot, int char_height) -> IDWriteTextFormat*;
-    auto CreateDWriteTextFormat(FontfaceInfo& face_info, int font_size) -> ComPtr<IDWriteTextFormat>;
+    auto CreateDWriteTextFormat(FontfaceInfo& face_info, float font_size) -> ComPtr<IDWriteTextFormat>;
     auto CreateWICRenderTarget(IWICBitmap* target) -> ComPtr<ID2D1RenderTarget>;
     bool BlendWICBitmapToBitmap(IWICBitmap* wic_bitmap, Bitmap& target_bmp,
                                 int target_x, int target_y);
@@ -89,6 +89,7 @@ private:
     ComPtr<IWICImagingFactory> wic_factory_;
     ComPtr<ID2D1Factory> d2d_factory_;
     ComPtr<ID2D1StrokeStyle> stroke_style_;
+    ComPtr<IDWriteFontFallback> no_fallback_;  // Empty fallback, null on Windows 7
 
     std::vector<FontSlot> font_slots_;
     std::vector<FontSlot> system_fallback_slots_;

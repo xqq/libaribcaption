@@ -37,6 +37,7 @@ public:
 public:
     ComPtr<IDWriteFont> font;
     ComPtr<IDWriteFontFace> fontface;
+    float scale = 1.0f;  // Em size multiplier suggested by IDWriteFontFallback::MapCharacters()
 };
 
 class FontProviderDirectWrite : public FontProvider {

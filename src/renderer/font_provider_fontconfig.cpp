@@ -17,6 +17,8 @@
  */
 
 #include <cassert>
+#include <cctype>
+#include <string_view>
 #include "base/language_code.hpp"
 #include "base/scoped_holder.hpp"
 #include "renderer/font_provider_fontconfig.hpp"
@@ -48,6 +50,105 @@ bool FontProviderFontconfig::Initialize() {
 
 void FontProviderFontconfig::SetLanguage(uint32_t iso6392_language_code) {
     iso6392_language_code_ = iso6392_language_code;
+}
+
+static bool EqualsIgnoreCase(std::string_view a, std::string_view b) {
+    if (a.size() != b.size()) {
+        return false;
+    }
+
+    for (size_t i = 0; i < a.size(); i++) {
+        if (std::tolower(static_cast<unsigned char>(a[i])) != std::tolower(static_cast<unsigned char>(b[i]))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool EqualsIgnoreCaseAndBlanks(std::string_view a, std::string_view b) {
+    size_t ia = 0;
+    size_t ib = 0;
+
+    while (ia < a.size() || ib < b.size()) {
+        while (ia < a.size() && (a[ia] == ' ' || a[ia] == '\t'))
+            ia++;
+        while (ib < b.size() && (b[ib] == ' ' || b[ib] == '\t'))
+            ib++;
+
+        if (ia == a.size() || ib == b.size()) {
+            return ia == a.size() && ib == b.size();
+        }
+        if (std::tolower(static_cast<unsigned char>(a[ia])) != std::tolower(static_cast<unsigned char>(b[ib]))) {
+            return false;
+        }
+        ia++;
+        ib++;
+    }
+
+    return true;
+}
+
+static bool IsGenericFamilyName(std::string_view name) {
+    size_t colon = name.find(':');
+    if (colon != std::string_view::npos) {
+        name = name.substr(0, colon);
+    }
+    static constexpr std::string_view kGenericFamilies[] = {
+        "sans-serif", "sans", "serif", "monospace", "mono",
+        "cursive", "fantasy", "system-ui", "ui-sans-serif",
+        "ui-serif", "ui-monospace", "ui-rounded", "emoji", "math", "fangsong",
+    };
+    for (std::string_view generic : kGenericFamilies) {
+        if (EqualsIgnoreCase(name, generic)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool PatternContainsName(FcPattern* font_pattern, const char* object, std::string_view expected) {
+    for (int i = 0;; i++) {
+        FcChar8* value = nullptr;
+        if (FcPatternGetString(font_pattern, object, i, &value) != FcResultMatch) {
+            break;
+        }
+        if (value && EqualsIgnoreCaseAndBlanks(reinterpret_cast<const char*>(value), expected)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool MatchesConcreteFamily(FcPattern* request_pattern, FcPattern* matched_font, std::string_view requested_name) {
+    auto font_matches = [&](std::string_view candidate) -> bool {
+        return PatternContainsName(matched_font, FC_FAMILY, candidate) ||
+               PatternContainsName(matched_font, FC_FULLNAME, candidate) ||
+               PatternContainsName(matched_font, FC_POSTSCRIPT_NAME, candidate);
+    };
+
+    if (font_matches(requested_name)) {
+        return true;
+    }
+
+#if defined(FC_VERSION) && FC_VERSION >= 21205
+    // Accept explicit strong/same Fontconfig aliases, but reject weak generic fallbacks
+    for (int i = 0;; i++) {
+        FcValue val{};
+        FcValueBinding binding = FcValueBindingWeak;
+        if (FcPatternGetWithBinding(request_pattern, FC_FAMILY, i, &val, &binding) != FcResultMatch) {
+            break;
+        }
+        if (binding == FcValueBindingStrong && val.type == FcTypeString && val.u.s) {
+            if (font_matches(reinterpret_cast<const char*>(val.u.s))) {
+                return true;
+            }
+        }
+    }
+#else
+    (void)request_pattern;
+#endif
+
+    return false;
 }
 
 auto FontProviderFontconfig::GetFontFace(const std::string& font_name) -> Result<FontfaceInfo, FontProviderError> {
@@ -88,6 +189,11 @@ auto FontProviderFontconfig::GetFontFace(const std::string& font_name) -> Result
 
     ScopedHolder<FcPattern*> best(matched, FcPatternDestroy);
 
+    if (!IsGenericFamilyName(font_name) && !MatchesConcreteFamily(pattern, best, font_name)) {
+        log_->w("Fontconfig: Concrete font family %s not found", font_name.c_str());
+        return Err(FontProviderError::kFontNotFound);
+    }
+
     FcChar8* filename = nullptr;
     if (FcResultMatch != FcPatternGetString(best, FC_FILE, 0, &filename)) {
         log_->e("Fontconfig: Retrieve font filename failed for %s", font_name.c_str());
@@ -106,15 +212,15 @@ auto FontProviderFontconfig::GetFontFace(const std::string& font_name) -> Result
         return Err(FontProviderError::kOtherError);
     }
 
+    std::string postscript_name;
     FcChar8* fc_postscript_name = nullptr;
-    if (FcResultMatch != FcPatternGetString(best, FC_POSTSCRIPT_NAME, 0, &fc_postscript_name)) {
-        log_->e("Fontconfig: Retrieve font FC_POSTSCRIPT_NAME failed for %s", font_name.c_str());
-        return Err(FontProviderError::kOtherError);
+    if (FcResultMatch == FcPatternGetString(best, FC_POSTSCRIPT_NAME, 0, &fc_postscript_name) && fc_postscript_name) {
+        postscript_name = reinterpret_cast<char*>(fc_postscript_name);
     }
 
     FontfaceInfo info;
     info.family_name = reinterpret_cast<char*>(fc_family_name);
-    info.postscript_name = reinterpret_cast<char*>(fc_postscript_name);
+    info.postscript_name = std::move(postscript_name);
     info.filename = reinterpret_cast<char*>(filename);
     info.face_index = fc_index;
     info.provider_type = FontProviderType::kFontconfig;

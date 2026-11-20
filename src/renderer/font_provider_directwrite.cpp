@@ -139,22 +139,40 @@ auto FontProviderDirectWrite::GetFontFace(const std::string& font_name) -> Resul
     std::string_view converted_family_name = ConvertFamilyName(font_name, iso6392_language_code_);
     std::wstring wide_font_name = wchar::UTF8ToWideString(converted_family_name);
 
-    LOGFONTW lf = {0};
-    if (wide_font_name.length() >= std::size(lf.lfFaceName)) {
-        return Err(FontProviderError::kFontNotFound);
-    }
-    wcscpy_s(lf.lfFaceName, wide_font_name.c_str());
-    lf.lfWeight = FW_NORMAL;
-    lf.lfCharSet = DEFAULT_CHARSET;
-    lf.lfOutPrecision = OUT_TT_PRECIS;
-    lf.lfClipPrecision = CLIP_DEFAULT_PRECIS;
-    lf.lfQuality = ANTIALIASED_QUALITY;
-    lf.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
-
     ComPtr<IDWriteFont> dwrite_font;
-    HRESULT hr = dwrite_gdi_interop_->CreateFontFromLOGFONT(&lf, &dwrite_font);
-    if (FAILED(hr)) {
-        log_->e("FontProviderDirectWrite: IDWriteGdiInterop::CreateFontFromLOGFONT() failed");
+    ComPtr<IDWriteFontCollection> system_collection;
+    HRESULT hr = dwrite_factory_->GetSystemFontCollection(&system_collection, FALSE);
+    if (SUCCEEDED(hr) && system_collection) {
+        UINT32 family_index = 0;
+        BOOL family_exists = FALSE;
+        hr = system_collection->FindFamilyName(wide_font_name.c_str(), &family_index, &family_exists);
+        if (SUCCEEDED(hr) && family_exists) {
+            ComPtr<IDWriteFontFamily> family;
+            hr = system_collection->GetFontFamily(family_index, &family);
+            if (SUCCEEDED(hr) && family) {
+                family->GetFirstMatchingFont(DWRITE_FONT_WEIGHT_NORMAL,
+                                             DWRITE_FONT_STRETCH_NORMAL,
+                                             DWRITE_FONT_STYLE_NORMAL,
+                                             &dwrite_font);
+            }
+        }
+    }
+
+    // Fall back to GDI LOGFONT lookup for GDI-only or subfamily names
+    if (!dwrite_font && wide_font_name.length() < LF_FACESIZE) {
+        LOGFONTW lf = {0};
+        wcscpy_s(lf.lfFaceName, wide_font_name.c_str());
+        lf.lfWeight = FW_NORMAL;
+        lf.lfCharSet = DEFAULT_CHARSET;
+        lf.lfOutPrecision = OUT_TT_PRECIS;
+        lf.lfClipPrecision = CLIP_DEFAULT_PRECIS;
+        lf.lfQuality = ANTIALIASED_QUALITY;
+        lf.lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
+        dwrite_gdi_interop_->CreateFontFromLOGFONT(&lf, &dwrite_font);
+    }
+
+    if (!dwrite_font) {
+        log_->w("FontProviderDirectWrite: Cannot find font %s", font_name.c_str());
         return Err(FontProviderError::kFontNotFound);
     }
 
@@ -181,14 +199,13 @@ auto FontProviderDirectWrite::GetFontFace(const std::string& font_name) -> Resul
         return Err(FontProviderError::kOtherError);
     }
 
-    // Retrieve Font PostScript name
+    std::string postscript_name;
     ComPtr<IDWriteLocalizedStrings> localized_postscript_names;
     hr = dwrite_font->GetInformationalStrings(DWRITE_INFORMATIONAL_STRING_POSTSCRIPT_NAME,
                                               &localized_postscript_names,
                                               &exists);
-    if (FAILED(hr) || !exists) {
-        log_->w("FontProviderDirectWrite: Retrieve font PostScript name failed");
-        return Err(FontProviderError::kOtherError);
+    if (SUCCEEDED(hr) && exists && localized_postscript_names) {
+        postscript_name = DWriteLocalizedStringsToUTF8(localized_postscript_names.Get(), 0);
     }
 
     // Retrieve Font filename
@@ -242,7 +259,7 @@ auto FontProviderDirectWrite::GetFontFace(const std::string& font_name) -> Resul
     FontfaceInfo fontface_info;
     fontface_info.filename = wchar::WideStringToUTF8(file_path);
     fontface_info.family_name = DWriteLocalizedStringsToUTF8(localized_family_names.Get());
-    fontface_info.postscript_name = DWriteLocalizedStringsToUTF8(localized_postscript_names.Get(), 0);
+    fontface_info.postscript_name = std::move(postscript_name);
     fontface_info.face_index = static_cast<int>(dwrite_fontface->GetIndex());
     fontface_info.provider_type = FontProviderType::kDirectWrite;
 

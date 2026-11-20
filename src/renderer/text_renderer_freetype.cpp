@@ -483,8 +483,7 @@ auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) ->
         return FontProviderError::kFontNotFound;
     }
 
-    out_slot.face_data = std::move(face_data);
-    out_slot.face = std::move(face);
+    out_slot.face = FTFaceHolder(std::move(face_data), std::move(face));
     out_slot.filename = info.filename;
     out_slot.face_index = static_cast<int>(out_slot.face->face_index);
     out_slot.family_name = out_slot.face->family_name ? out_slot.face->family_name : info.family_name;

@@ -63,11 +63,39 @@ private:
         kUnavailable
     };
 
+    // Owns an FT_Face and the memory buffer it may reference
+    // The face is always closed before the buffer is freed
+    struct FTFaceHolder {
+        FTFaceHolder() = default;
+        FTFaceHolder(std::vector<uint8_t>&& data, ScopedHolder<FT_Face>&& face)
+            : data(std::move(data)), face(std::move(face)) {}
+        FTFaceHolder(FTFaceHolder&&) noexcept = default;
+
+        FTFaceHolder& operator=(FTFaceHolder&& other) noexcept {
+            if (this != &other) {
+                face.Reset();
+                data = std::move(other.data);
+                face = std::move(other.face);
+            }
+            return *this;
+        }
+
+        operator FT_Face() const noexcept {
+            return face.Get();
+        }
+
+        FT_Face operator->() const noexcept {
+            return face.Get();
+        }
+
+        // data is declared before `face`, so destruction also closes the face first
+        std::vector<uint8_t> data;
+        ScopedHolder<FT_Face> face;
+    };
+
     struct FontSlot {
         SlotState state = SlotState::kUnloaded;
-        // Must be declared before `face` because FT_New_Memory_Face references this buffer
-        std::vector<uint8_t> face_data;
-        ScopedHolder<FT_Face> face;
+        FTFaceHolder face;
         std::string filename;
         int face_index = 0;
         std::string family_name;

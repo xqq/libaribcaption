@@ -80,12 +80,7 @@ static std::string_view ConvertFamilyName(std::string_view family_name, uint32_t
     return font_name;
 }
 
-auto FontProviderCoreText::GetFontFace(const std::string& font_name) -> Result<FontfaceInfo, FontProviderError> {
-    std::string_view converted_font = ConvertFamilyName(font_name, iso6392_language_code_);
-    ScopedCFRef<CFStringRef> fontname_request(cfstr::StdStringToCFString(converted_font));
-    if (!fontname_request)
-        return Err(FontProviderError::kOtherError);
-
+static auto MatchFontDescriptor(CFStringRef font_name, CFStringRef name_attribute) -> ScopedCFRef<CTFontDescriptorRef> {
     ScopedCFRef<CFMutableDictionaryRef> cf_attributes(CFDictionaryCreateMutable(kCFAllocatorDefault,
                                                                                 0,
                                                                                 &kCFTypeDictionaryKeyCallBacks,
@@ -94,27 +89,50 @@ auto FontProviderCoreText::GetFontFace(const std::string& font_name) -> Result<F
                                                                             0,
                                                                             &kCFTypeDictionaryKeyCallBacks,
                                                                             &kCFTypeDictionaryValueCallBacks));
-    if (!cf_attributes || !cf_traits)
-        return Err(FontProviderError::kOtherError);
+    if (!cf_attributes || !cf_traits) {
+        return {};
+    }
 
-    // Set expected font weight to Regular/Medium (could be overrided by Font family name)
-    CGFloat font_weight = 0.0f;
-    ScopedCFRef<CFNumberRef> cf_font_weight(CFNumberCreate(nullptr, kCFNumberFloatType, &font_weight));
+    CGFloat font_weight = 0.0;
+    ScopedCFRef<CFNumberRef> cf_font_weight(CFNumberCreate(nullptr, kCFNumberCGFloatType, &font_weight));
     CFDictionaryAddValue(cf_traits.get(), kCTFontWeightTrait, cf_font_weight.get());
-
-    // Set cf_traits into cf_attributes
     CFDictionaryAddValue(cf_attributes.get(), kCTFontTraitsAttribute, cf_traits.get());
+    CFDictionaryAddValue(cf_attributes.get(), name_attribute, font_name);
 
-    // Set requested font name
-    CFDictionaryAddValue(cf_attributes.get(), kCTFontFamilyNameAttribute, fontname_request.get());
+    ScopedCFRef<CTFontDescriptorRef> descriptor(CTFontDescriptorCreateWithAttributes(cf_attributes.get()));
+    if (!descriptor) {
+        return {};
+    }
 
-    // Create font descriptor
-    ScopedCFRef<CTFontDescriptorRef> descriptor_for_find(CTFontDescriptorCreateWithAttributes(cf_attributes.get()));
-    if (!descriptor_for_find)
+    const void* mandatory_keys[] = {name_attribute};
+    ScopedCFRef<CFSetRef> mandatory(CFSetCreate(kCFAllocatorDefault, mandatory_keys, 1, &kCFTypeSetCallBacks));
+    if (!mandatory) {
+        return {};
+    }
+
+    // Require mandatory name match so CoreText does not silently substitute a default font
+    return ScopedCFRef<CTFontDescriptorRef>(CTFontDescriptorCreateMatchingFontDescriptor(descriptor.get(),
+                                                                                         mandatory.get()));
+}
+
+auto FontProviderCoreText::GetFontFace(const std::string& font_name) -> Result<FontfaceInfo, FontProviderError> {
+    std::string_view converted_font = ConvertFamilyName(font_name, iso6392_language_code_);
+    ScopedCFRef<CFStringRef> fontname_request(cfstr::StdStringToCFString(converted_font));
+    if (!fontname_request)
         return Err(FontProviderError::kOtherError);
 
-    // Create CTFont by specified descriptor with attributes
-    ScopedCFRef<CTFontRef> ct_font(CTFontCreateWithFontDescriptor(descriptor_for_find.get(), 0, nullptr));
+    ScopedCFRef<CTFontDescriptorRef> matched_descriptor = MatchFontDescriptor(fontname_request.get(),
+                                                                              kCTFontFamilyNameAttribute);
+    if (!matched_descriptor) {
+        matched_descriptor = MatchFontDescriptor(fontname_request.get(), kCTFontNameAttribute);
+    }
+    if (!matched_descriptor) {
+        log_->w("CoreText: Cannot find font %.*s",
+                static_cast<int>(converted_font.size()), converted_font.data());
+        return Err(FontProviderError::kFontNotFound);
+    }
+
+    ScopedCFRef<CTFontRef> ct_font(CTFontCreateWithFontDescriptor(matched_descriptor.get(), 0, nullptr));
     if (!ct_font) {
         log_->e("CoreText: CTFontCreateWithFontDescriptor() returned with NULL");
         return Err(FontProviderError::kFontNotFound);

@@ -30,6 +30,7 @@
 #include <string>
 #include <memory>
 #include <optional>
+#include <unordered_set>
 #include "aribcaption/context.hpp"
 #include "base/logger.hpp"
 #include "base/scoped_cfref.hpp"
@@ -55,9 +56,25 @@ public:
                   std::optional<UnderlineInfo> underline_info,
                   TextRenderFallbackPolicy fallback_policy) -> TextRenderStatus override;
 private:
-    auto LoadCTFont(std::optional<uint32_t> codepoint = std::nullopt,
-                    std::optional<size_t> begin_index = std::nullopt)
-                    -> Result<std::pair<ScopedCFRef<CTFontRef>, size_t>, FontProviderError>;
+    enum class SlotState {
+        kUnloaded,
+        kLoaded,
+        kUnavailable
+    };
+
+    struct FontSlot {
+        SlotState state = SlotState::kUnloaded;
+        ScopedCFRef<CTFontRef> ctfont;
+        ScopedCFRef<CTFontRef> ctfont_sized;
+        int pixel_height = 0;
+        std::string family_name;
+        std::string postscript_name;
+    };
+private:
+    bool IsDuplicateFont(const std::string& family_name, const std::string& postscript_name) const;
+    auto LoadSlot(size_t slot_index) -> std::optional<FontProviderError>;
+    auto EnsureMainSlot() -> std::optional<FontProviderError>;
+    auto EnsureSizedCTFont(FontSlot& slot, int char_height) -> CTFontRef;
     void ResetFontFaces();
 private:
     static auto RGBAToCGColor(ColorRGBA rgba) -> ScopedCFRef<CGColorRef>;
@@ -70,16 +87,10 @@ private:
     uint32_t iso6392_language_code_ = 0;
     std::vector<std::string> font_family_;
 
-    size_t main_face_index_ = 0;
-
-    ScopedCFRef<CTFontRef> main_ctfont_;
-    ScopedCFRef<CTFontRef> fallback_ctfont_;
-
-    int main_ctfont_pixel_height_ = 0;
-    int fallback_ctfont_pixel_height_ = 0;
-
-    ScopedCFRef<CTFontRef> main_ctfont_sized_;
-    ScopedCFRef<CTFontRef> fallback_ctfont_sized_;
+    std::vector<FontSlot> font_slots_;
+    std::optional<size_t> main_slot_index_;
+    FontProviderError main_load_error_ = FontProviderError::kFontNotFound;
+    std::unordered_set<uint32_t> missing_codepoints_;
 };
 
 }  // namespace aribcaption

@@ -59,13 +59,10 @@ bool TextRendererCoreText::SetFontFamily(const std::vector<std::string>& font_fa
 }
 
 void TextRendererCoreText::ResetFontFaces() {
-    main_ctfont_pixel_height_ = 0;
-    fallback_ctfont_pixel_height_ = 0;
-    main_face_index_ = 0;
-    main_ctfont_sized_.reset();
-    main_ctfont_.reset();
-    fallback_ctfont_sized_.reset();
-    fallback_ctfont_.reset();
+    font_slots_.clear();
+    main_slot_index_.reset();
+    main_load_error_ = FontProviderError::kFontNotFound;
+    missing_codepoints_.clear();
 }
 
 struct TextRenderContextPrivateCoreText : public TextRenderContext::ContextPrivate {
@@ -120,29 +117,17 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
         return TextRenderStatus::kOK;
     }
 
-    // Load main CTFont if not loaded
-    if (!main_ctfont_) {
-        auto result = LoadCTFont();
-        if (result.is_err()) {
-            log_->e("TextRendererCoreText: Cannot find valid font");
-            return FontProviderErrorToStatus(result.error());
-        }
-        std::pair<ScopedCFRef<CTFontRef>, size_t>& pair = result.value();
-        main_ctfont_ = std::move(pair.first);
-        main_face_index_ = pair.second;
+    if (auto err = EnsureMainSlot()) {
+        log_->e("TextRendererCoreText: Cannot find valid font");
+        return FontProviderErrorToStatus(*err);
     }
 
-    // Build size-specified main CTFont
-    if (!main_ctfont_sized_ || char_height != main_ctfont_pixel_height_) {
-        main_ctfont_pixel_height_ = char_height;
-        main_ctfont_sized_ = CreateSizedCTFont(main_ctfont_.get(), char_height);
-        if (!main_ctfont_sized_) {
-            log_->e("TextRendererCoreText: Create sized CTFont failed");
-            return TextRenderStatus::kOtherError;
-        }
+    FontSlot& main_slot = font_slots_[*main_slot_index_];
+    CTFontRef ctfont = EnsureSizedCTFont(main_slot, char_height);
+    if (!ctfont) {
+        log_->e("TextRendererCoreText: Create sized CTFont failed");
+        return TextRenderStatus::kOtherError;
     }
-
-    CTFontRef ctfont = main_ctfont_sized_.get();
 
     std::u16string utf16;
     size_t codeunit_count = utf::UTF16AppendCodePoint(utf16, ucs4);
@@ -152,57 +137,58 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
                                                   glyphs,
                                                   static_cast<CFIndex>(codeunit_count));
 
-    // Check whether codepoint exists in main CTFont, otherwise load fallback CTFont
     if (!has_glyph) {
-        ScopedCFRef<CFStringRef> cf_main_family_name(CTFontCopyFamilyName(ctfont));
-        std::string main_family_name = cfstr::CFStringToStdString(cf_main_family_name.get());
-        log_->w("TextRendererCoreText: Main font %s doesn't contain U+%04X", main_family_name.c_str(), ucs4);
-
         if (fallback_policy == TextRenderFallbackPolicy::kFailOnCodePointNotFound) {
             return TextRenderStatus::kCodePointNotFound;
         }
 
-        if (main_face_index_ + 1 >= font_family_.size()) {
-            // Fallback fonts not available
+        if (missing_codepoints_.find(ucs4) != missing_codepoints_.end()) {
             return TextRenderStatus::kCodePointNotFound;
         }
 
-        bool reset_sized_fallback = false;
-        // Missing glyph, check fallback CTFont
-        if (!fallback_ctfont_ || !CTFontGetGlyphsForCharacters(fallback_ctfont_.get(),
-                                                               reinterpret_cast<UniChar*>(utf16.data()),
-                                                               glyphs,
-                                                               static_cast<CFIndex>(codeunit_count))) {
-            // Fallback CTFont not loaded, or fallback CTFont doesn't contain required codepoint
-            // Load next fallback CTFont by specific codepoint
-            auto result = LoadCTFont(ucs4, main_face_index_ + 1);
-            if (result.is_err()) {
-                log_->e("TextRendererCoreText: Cannot find available fallback font for U+%04X", ucs4);
-                return FontProviderErrorToStatus(result.error());
-            }
-            std::pair<ScopedCFRef<CTFontRef>, size_t>& pair = result.value();
-            fallback_ctfont_ = std::move(pair.first);
-            reset_sized_fallback = true;
-        }
+        log_->w("TextRendererCoreText: Main font %s doesn't contain U+%04X",
+                main_slot.family_name.c_str(), ucs4);
 
-        // Build size-specified fallback CTFont
-        if (!fallback_ctfont_sized_ || char_height != fallback_ctfont_pixel_height_ || reset_sized_fallback) {
-            fallback_ctfont_pixel_height_ = char_height;
-            fallback_ctfont_sized_ = CreateSizedCTFont(fallback_ctfont_.get(), char_height);
-            if (!fallback_ctfont_sized_) {
+        for (size_t i = *main_slot_index_ + 1; i < font_slots_.size(); i++) {
+            FontSlot& slot = font_slots_[i];
+            if (slot.state == SlotState::kUnavailable) {
+                continue;
+            }
+            if (slot.state == SlotState::kUnloaded) {
+                LoadSlot(i);
+                if (slot.state != SlotState::kLoaded) {
+                    continue;
+                }
+            }
+
+            if (!CTFontGetGlyphsForCharacters(slot.ctfont.get(),
+                                              reinterpret_cast<UniChar*>(utf16.data()),
+                                              glyphs,
+                                              static_cast<CFIndex>(codeunit_count))) {
+                continue;
+            }
+
+            ctfont = EnsureSizedCTFont(slot, char_height);
+            if (!ctfont) {
                 log_->e("TextRendererCoreText: Create sized fallback CTFont failed");
                 return TextRenderStatus::kOtherError;
             }
+
+            has_glyph = CTFontGetGlyphsForCharacters(ctfont,
+                                                     reinterpret_cast<UniChar*>(utf16.data()),
+                                                     glyphs,
+                                                     static_cast<CFIndex>(codeunit_count));
+            if (has_glyph) {
+                break;
+            }
         }
 
-        ctfont = fallback_ctfont_sized_.get();
+        if (!has_glyph) {
+            missing_codepoints_.insert(ucs4);
+            log_->e("TextRendererCoreText: Cannot find available fallback font for U+%04X", ucs4);
+            return TextRenderStatus::kCodePointNotFound;
+        }
     }
-
-    // Re-retrieve glyph from sized CTFont
-    CTFontGetGlyphsForCharacters(ctfont,
-                                 reinterpret_cast<UniChar*>(utf16.data()),
-                                 glyphs,
-                                 static_cast<CFIndex>(codeunit_count));
 
     CGFloat ascent = CTFontGetAscent(ctfont);
     CGFloat descent = CTFontGetDescent(ctfont);
@@ -251,14 +237,17 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
     if (style & CharStyle::kCharStyleStroke && stroke_width > 0.0f) {
         CGAffineTransform path_matrix = CGAffineTransformMakeTranslation(origin.x, origin.y);
         ScopedCFRef<CGPathRef> path(CTFontCreatePathForGlyph(ctfont, glyphs[0], &path_matrix));
-        CGContextAddPath(ctx.get(), path.get());
+        // Bitmap/color glyphs (e.g. Apple Color Emoji) have no outline path
+        if (path) {
+            CGContextAddPath(ctx.get(), path.get());
 
-        ScopedCFRef<CGColorRef> cg_stroke_color = RGBAToCGColor(stroke_color);
-        CGContextSetStrokeColorWithColor(ctx.get(), cg_stroke_color.get());
-        CGContextSetLineWidth(ctx.get(), stroke_width * 2);
-        CGContextSetLineCap(ctx.get(), kCGLineCapRound);
-        CGContextSetLineJoin(ctx.get(), kCGLineJoinRound);
-        CGContextStrokePath(ctx.get());
+            ScopedCFRef<CGColorRef> cg_stroke_color = RGBAToCGColor(stroke_color);
+            CGContextSetStrokeColorWithColor(ctx.get(), cg_stroke_color.get());
+            CGContextSetLineWidth(ctx.get(), stroke_width * 2);
+            CGContextSetLineCap(ctx.get(), kCGLineCapRound);
+            CGContextSetLineJoin(ctx.get(), kCGLineJoinRound);
+            CGContextStrokePath(ctx.get());
+        }
     }
 
     // Draw character (fill)
@@ -271,37 +260,115 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
     return TextRenderStatus::kOK;
 }
 
-auto TextRendererCoreText::LoadCTFont(std::optional<uint32_t> codepoint, std::optional<size_t> begin_index)
-        -> Result<std::pair<ScopedCFRef<CTFontRef>, size_t>, FontProviderError> {
-    if (begin_index && begin_index.value() >= font_family_.size()) {
-        return Err(FontProviderError::kFontNotFound);
+bool TextRendererCoreText::IsDuplicateFont(const std::string& family_name,
+                                           const std::string& postscript_name) const {
+    for (const auto& existing : font_slots_) {
+        if (existing.state != SlotState::kLoaded) {
+            continue;
+        }
+        if (!postscript_name.empty() && !existing.postscript_name.empty()) {
+            if (postscript_name == existing.postscript_name) {
+                return true;
+            }
+        } else if (!family_name.empty() && family_name == existing.family_name) {
+            return true;
+        }
+    }
+    return false;
+}
+
+auto TextRendererCoreText::LoadSlot(size_t slot_index) -> std::optional<FontProviderError> {
+    FontSlot& slot = font_slots_[slot_index];
+    if (slot.state != SlotState::kUnloaded) {
+        return std::nullopt;
     }
 
-    // begin_index is optional
-    size_t font_index = begin_index.value_or(0);
-
-    const std::string& font_name = font_family_[font_index];
-    auto result = font_provider_.GetFontFace(font_name, codepoint);
-
-    while (result.is_err() && font_index + 1 < font_family_.size()) {
-        // Find next suitable font
-        font_index++;
-        result = font_provider_.GetFontFace(font_family_[font_index], codepoint);
-    }
+    auto result = font_provider_.GetFontFace(font_family_[slot_index], std::nullopt);
     if (result.is_err()) {
-        // Not found, return Err Result
-        return Err(result.error());
+        slot.state = SlotState::kUnavailable;
+        return result.error();
     }
 
     FontfaceInfo& info = result.value();
     if (info.provider_type != FontProviderType::kCoreText) {
         log_->e("TextRendererCoreText: Font provider must be FontProviderCoreText");
-        return Err(FontProviderError::kOtherError);
+        slot.state = SlotState::kUnavailable;
+        return FontProviderError::kOtherError;
     }
 
     auto priv = static_cast<FontfaceInfoPrivateCoreText*>(info.provider_priv.get());
+    if (!priv || !priv->ct_font) {
+        slot.state = SlotState::kUnavailable;
+        return FontProviderError::kFontNotFound;
+    }
 
-    return Ok(std::move(priv->ct_font), font_index);
+    std::string family_name = info.family_name;
+    if (family_name.empty()) {
+        ScopedCFRef<CFStringRef> cf_family(CTFontCopyFamilyName(priv->ct_font.get()));
+        if (cf_family) {
+            family_name = cfstr::CFStringToStdString(cf_family.get());
+        }
+    }
+
+    std::string postscript_name = info.postscript_name;
+    if (postscript_name.empty()) {
+        ScopedCFRef<CFStringRef> cf_ps(CTFontCopyPostScriptName(priv->ct_font.get()));
+        if (cf_ps) {
+            postscript_name = cfstr::CFStringToStdString(cf_ps.get());
+        }
+    }
+
+    if (IsDuplicateFont(family_name, postscript_name)) {
+        slot.state = SlotState::kUnavailable;
+        return std::nullopt;
+    }
+
+    slot.ctfont = std::move(priv->ct_font);
+    slot.family_name = std::move(family_name);
+    slot.postscript_name = std::move(postscript_name);
+    slot.state = SlotState::kLoaded;
+    return std::nullopt;
+}
+
+auto TextRendererCoreText::EnsureMainSlot() -> std::optional<FontProviderError> {
+    if (font_family_.empty()) {
+        return FontProviderError::kFontNotFound;
+    }
+
+    if (main_slot_index_) {
+        return std::nullopt;
+    }
+
+    if (font_slots_.empty()) {
+        font_slots_.resize(font_family_.size());
+    }
+
+    for (size_t i = 0; i < font_slots_.size(); i++) {
+        if (font_slots_[i].state == SlotState::kUnavailable) {
+            continue;
+        }
+        if (auto err = LoadSlot(i)) {
+            main_load_error_ = *err;
+        }
+        if (font_slots_[i].state == SlotState::kLoaded) {
+            main_slot_index_ = i;
+            return std::nullopt;
+        }
+    }
+
+    return main_load_error_;
+}
+
+auto TextRendererCoreText::EnsureSizedCTFont(FontSlot& slot, int char_height) -> CTFontRef {
+    if (!slot.ctfont_sized || slot.pixel_height != char_height) {
+        slot.ctfont_sized = CreateSizedCTFont(slot.ctfont.get(), char_height);
+        if (!slot.ctfont_sized) {
+            slot.pixel_height = 0;
+            return nullptr;
+        }
+        slot.pixel_height = char_height;
+    }
+    return slot.ctfont_sized.get();
 }
 
 auto TextRendererCoreText::RGBAToCGColor(ColorRGBA rgba) -> ScopedCFRef<CGColorRef> {

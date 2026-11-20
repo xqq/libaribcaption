@@ -214,7 +214,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
             }
         }
 
-        if (glyph_index == 0) {
+        if (glyph_index == 0 && fallback_policy == TextRenderFallbackPolicy::kAutoFallback) {
             if (FontSlot* sys_slot =
                     FindOrLoadSystemFallbackSlot(ucs4, font_slots_[*main_slot_index_].family_name, glyph_index)) {
                 selected_slot = sys_slot;
@@ -222,8 +222,12 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
         }
 
         if (glyph_index == 0) {
-            missing_codepoints_.insert(ucs4);
-            log_->e("Freetype: Cannot find available fallback font for U+%04X", ucs4);
+            // A font-family-only miss may still be served by system fallback later, so don't cache it,
+            // unless it is a PUA codepoint which system fallback never handles
+            if (fallback_policy == TextRenderFallbackPolicy::kAutoFallback || unicode::IsPrivateUseArea(ucs4)) {
+                missing_codepoints_.insert(ucs4);
+                log_->e("Freetype: Cannot find available fallback font for U+%04X", ucs4);
+            }
             return TextRenderStatus::kCodePointNotFound;
         }
     }

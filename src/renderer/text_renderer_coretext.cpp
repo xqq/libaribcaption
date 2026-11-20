@@ -184,7 +184,7 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
             }
         }
 
-        if (!has_glyph) {
+        if (!has_glyph && fallback_policy == TextRenderFallbackPolicy::kAutoFallback) {
             if (CTFontRef sys_ctfont = FindOrLoadSystemFallbackSlot(ucs4,
                                                                     main_slot.family_name,
                                                                     reinterpret_cast<const UniChar*>(utf16.data()),
@@ -197,8 +197,12 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
         }
 
         if (!has_glyph) {
-            missing_codepoints_.insert(ucs4);
-            log_->e("TextRendererCoreText: Cannot find available fallback font for U+%04X", ucs4);
+            // A font-family-only miss may still be served by system fallback later, so don't cache it,
+            // unless it is a PUA codepoint which system fallback never handles
+            if (fallback_policy == TextRenderFallbackPolicy::kAutoFallback || unicode::IsPrivateUseArea(ucs4)) {
+                missing_codepoints_.insert(ucs4);
+                log_->e("TextRendererCoreText: Cannot find available fallback font for U+%04X", ucs4);
+            }
             return TextRenderStatus::kCodePointNotFound;
         }
     }

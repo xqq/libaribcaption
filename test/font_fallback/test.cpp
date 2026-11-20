@@ -321,6 +321,47 @@ void RunMockProviderTests(Context& ctx, FontProvider& backing, TextRendererType 
         CHECK(DrawSingleChar(*tr, 0x3044, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
         CHECK(proxy.GetFallbackCallCount() == 1);
     }
+
+    // 8. kFontFamilyFallbackOnly searches the font family list but never system fallback,
+    // so gaiji can try a listed font's PUA glyph before system fallback picks a font for the Unicode codepoint
+    if (latin_lacks_hiragana) {
+        proxy.ResetCounts();
+        proxy.SetAllowSystemFallback(true);
+        proxy.SetForcedSystemFallback("sans-serif", ThreeCC("jpn"));
+        {
+            auto tr = TextRenderer::Create(renderer_type, ctx, proxy);
+            CHECK(tr && tr->Initialize());
+            tr->SetFontFamily({"MockLatin"});
+
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kFontFamilyFallbackOnly) ==
+                  TextRenderStatus::kCodePointNotFound);
+            CHECK(proxy.GetFallbackCallCount() == 0);
+
+            // The font-family-only miss must not be negatively cached, system fallback must still be reachable
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+            CHECK(proxy.GetFallbackCallCount() == 1);
+
+            // PUA misses are final under either policy
+            CHECK(DrawSingleChar(*tr, 0xE000, TextRenderFallbackPolicy::kFontFamilyFallbackOnly) ==
+                  TextRenderStatus::kCodePointNotFound);
+            CHECK(DrawSingleChar(*tr, 0xE000, TextRenderFallbackPolicy::kFontFamilyFallbackOnly) ==
+                  TextRenderStatus::kCodePointNotFound);
+            CHECK(proxy.GetFallbackCallCount() == 1);
+        }
+
+        proxy.ResetCounts();
+        {
+            auto tr = TextRenderer::Create(renderer_type, ctx, proxy);
+            CHECK(tr && tr->Initialize());
+            tr->SetFontFamily({"MockLatin", "MockCJK"});
+
+            // Listed fallback fonts are still used
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kFontFamilyFallbackOnly) ==
+                  TextRenderStatus::kOK);
+            CHECK(proxy.GetFontCallCount("MockCJK") == 1);
+            CHECK(proxy.GetFallbackCallCount() == 0);
+        }
+    }
 }
 #endif
 

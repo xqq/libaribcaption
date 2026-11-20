@@ -205,16 +205,20 @@ auto RegionRenderer::RenderCaptionRegion(const CaptionRegion& region,
 
             TextRenderStatus status = TextRenderStatus::kOtherError;
             if (ch.pua_codepoint) {
-                // Gaiji lookup order: main(unicode) -> main(pua) -> fallback(unicode) -> fallback(pua)
+                // Gaiji lookup order: main(unicode) -> main(pua) -> font family(unicode) -> font family(pua)
+                // -> system fallback(unicode). System fallback never handles PUA codepoints.
                 status = draw_char(ch.codepoint, TextRenderFallbackPolicy::kFailOnCodePointNotFound);
                 if (status == TextRenderStatus::kCodePointNotFound) {
                     status = draw_char(ch.pua_codepoint, TextRenderFallbackPolicy::kFailOnCodePointNotFound);
                 }
                 if (status == TextRenderStatus::kCodePointNotFound) {
-                    status = draw_char(ch.codepoint, TextRenderFallbackPolicy::kAutoFallback);
+                    status = draw_char(ch.codepoint, TextRenderFallbackPolicy::kFontFamilyFallbackOnly);
                 }
                 if (status == TextRenderStatus::kCodePointNotFound) {
-                    status = draw_char(ch.pua_codepoint, TextRenderFallbackPolicy::kAutoFallback);
+                    status = draw_char(ch.pua_codepoint, TextRenderFallbackPolicy::kFontFamilyFallbackOnly);
+                }
+                if (status == TextRenderStatus::kCodePointNotFound) {
+                    status = draw_char(ch.codepoint, TextRenderFallbackPolicy::kAutoFallback);
                 }
             } else {
                 status = draw_char(ch.codepoint, TextRenderFallbackPolicy::kAutoFallback);

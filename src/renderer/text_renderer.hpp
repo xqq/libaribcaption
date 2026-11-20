@@ -43,8 +43,9 @@ enum class TextRenderStatus {
 };
 
 enum class TextRenderFallbackPolicy {
-    kAutoFallback,
-    kFailOnCodePointNotFound
+    kAutoFallback,             // main font -> font family list -> system fallback
+    kFontFamilyFallbackOnly,   // main font -> font family list, no system fallback
+    kFailOnCodePointNotFound   // main font only
 };
 
 class TextRenderContext {

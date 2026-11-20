@@ -25,8 +25,11 @@
     #include <ApplicationServices/ApplicationServices.h>
 #endif
 #include "base/cfstr_helper.hpp"
+#include "base/language_code.hpp"
 #include "base/scoped_cfref.hpp"
 #include "base/scoped_holder.hpp"
+#include "base/unicode_helper.hpp"
+#include "base/utf_helper.hpp"
 #include "renderer/font_provider_coretext.hpp"
 
 namespace aribcaption {
@@ -115,60 +118,39 @@ static auto MatchFontDescriptor(CFStringRef font_name, CFStringRef name_attribut
                                                                                          mandatory.get()));
 }
 
-auto FontProviderCoreText::GetFontFace(const std::string& font_name) -> Result<FontfaceInfo, FontProviderError> {
-    std::string_view converted_font = ConvertFamilyName(font_name, iso6392_language_code_);
-    ScopedCFRef<CFStringRef> fontname_request(cfstr::StdStringToCFString(converted_font));
-    if (!fontname_request)
-        return Err(FontProviderError::kOtherError);
-
-    ScopedCFRef<CTFontDescriptorRef> matched_descriptor = MatchFontDescriptor(fontname_request.get(),
-                                                                              kCTFontFamilyNameAttribute);
-    if (!matched_descriptor) {
-        matched_descriptor = MatchFontDescriptor(fontname_request.get(), kCTFontNameAttribute);
-    }
-    if (!matched_descriptor) {
-        log_->w("CoreText: Cannot find font %.*s",
-                static_cast<int>(converted_font.size()), converted_font.data());
-        return Err(FontProviderError::kFontNotFound);
-    }
-
-    ScopedCFRef<CTFontRef> ct_font(CTFontCreateWithFontDescriptor(matched_descriptor.get(), 0, nullptr));
-    if (!ct_font) {
-        log_->e("CoreText: CTFontCreateWithFontDescriptor() returned with NULL");
-        return Err(FontProviderError::kFontNotFound);
-    }
-
-    // Retrieve descriptor associated with the CTFont
+static auto BuildFontfaceInfo(ScopedCFRef<CTFontRef> ct_font) -> Result<FontfaceInfo, FontProviderError> {
     ScopedCFRef<CTFontDescriptorRef> ct_font_descriptor(CTFontCopyFontDescriptor(ct_font.get()));
-    if (!ct_font_descriptor)
+    if (!ct_font_descriptor) {
         return Err(FontProviderError::kOtherError);
+    }
 
-    // Retrieve font filename (path) from descriptor
     ScopedCFRef<CFURLRef> cf_url(static_cast<CFURLRef>(CTFontDescriptorCopyAttribute(ct_font_descriptor.get(),
                                                                                      kCTFontURLAttribute)));
-    if (!cf_url)
+    if (!cf_url) {
         return Err(FontProviderError::kOtherError);
+    }
 
     ScopedCFRef<CFStringRef> cf_path(CFURLCopyFileSystemPath(cf_url.get(), kCFURLPOSIXPathStyle));
-    if (!cf_path)
+    if (!cf_path) {
         return Err(FontProviderError::kOtherError);
+    }
 
-    // Retrieve font family name from descriptor
     ScopedCFRef<CFStringRef> cf_family_name(
         static_cast<CFStringRef>(CTFontDescriptorCopyAttribute(ct_font_descriptor.get(), kCTFontFamilyNameAttribute)));
-    if (!cf_family_name)
+    if (!cf_family_name) {
         return Err(FontProviderError::kOtherError);
+    }
 
-    // Retrieve font PostScript name from descriptor
     ScopedCFRef<CFStringRef> cf_postscript_name(
         static_cast<CFStringRef>(CTFontDescriptorCopyAttribute(ct_font_descriptor.get(), kCTFontNameAttribute)));
-    if (!cf_postscript_name)
+    if (!cf_postscript_name) {
         return Err(FontProviderError::kOtherError);
+    }
 
     FontfaceInfo info;
     info.family_name = cfstr::CFStringToStdString(cf_family_name.get());
     info.postscript_name = cfstr::CFStringToStdString(cf_postscript_name.get());
-    info.filename = cfstr::CFStringToStdString(cf_path.get());;
+    info.filename = cfstr::CFStringToStdString(cf_path.get());
     info.face_index = -1;
     info.provider_type = FontProviderType::kCoreText;
 
@@ -177,6 +159,97 @@ auto FontProviderCoreText::GetFontFace(const std::string& font_name) -> Result<F
     info.provider_priv = std::move(priv);
 
     return Ok(std::move(info));
+}
+
+static auto ResolveCTFontByName(std::string_view font_name) -> ScopedCFRef<CTFontRef> {
+    ScopedCFRef<CFStringRef> fontname_request(cfstr::StdStringToCFString(font_name));
+    if (!fontname_request) {
+        return {};
+    }
+
+    ScopedCFRef<CTFontDescriptorRef> matched = MatchFontDescriptor(fontname_request.get(), kCTFontFamilyNameAttribute);
+    if (!matched) {
+        matched = MatchFontDescriptor(fontname_request.get(), kCTFontNameAttribute);
+    }
+    if (!matched) {
+        return {};
+    }
+
+    return ScopedCFRef<CTFontRef>(CTFontCreateWithFontDescriptor(matched.get(), 0, nullptr));
+}
+
+auto FontProviderCoreText::GetFontFace(const std::string& font_name) -> Result<FontfaceInfo, FontProviderError> {
+    std::string_view converted_font = ConvertFamilyName(font_name, iso6392_language_code_);
+    ScopedCFRef<CTFontRef> ct_font = ResolveCTFontByName(converted_font);
+    if (!ct_font) {
+        log_->w("CoreText: Cannot find font %.*s", static_cast<int>(converted_font.size()), converted_font.data());
+        return Err(FontProviderError::kFontNotFound);
+    }
+
+    return BuildFontfaceInfo(std::move(ct_font));
+}
+
+auto FontProviderCoreText::GetFallbackFontFace(uint32_t ucs4, std::string_view base_family_name)
+    -> Result<FontfaceInfo, FontProviderError> {
+    if (ucs4 == 0 || unicode::IsPrivateUseArea(ucs4)) {
+        return Err(FontProviderError::kCodePointNotFound);
+    }
+
+    ScopedCFRef<CTFontRef> base_font;
+    if (!base_family_name.empty()) {
+        base_font = ResolveCTFontByName(ConvertFamilyName(base_family_name, iso6392_language_code_));
+    }
+    if (!base_font) {
+        base_font = ResolveCTFontByName(ConvertFamilyName("sans-serif", iso6392_language_code_));
+    }
+    if (!base_font) {
+        base_font.reset(CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, 0, nullptr));
+    }
+    if (!base_font) {
+        return Err(FontProviderError::kCodePointNotFound);
+    }
+
+    std::u16string utf16;
+    size_t count = utf::UTF16AppendCodePoint(utf16, ucs4);
+    ScopedCFRef<CFStringRef> cf_str(CFStringCreateWithCharacters(kCFAllocatorDefault,
+                                                                 reinterpret_cast<const UniChar*>(utf16.data()),
+                                                                 static_cast<CFIndex>(count)));
+    if (!cf_str) {
+        return Err(FontProviderError::kOtherError);
+    }
+
+    ScopedCFRef<CFStringRef> cf_lang;
+    if (iso6392_language_code_) {
+        cf_lang = cfstr::StdStringToCFString(ISO6392ToISO6391LanguageString(iso6392_language_code_));
+    }
+
+    ScopedCFRef<CTFontRef> fallback_font(CTFontCreateForStringWithLanguage(base_font.get(),
+                                                                           cf_str.get(),
+                                                                           CFRangeMake(0, static_cast<CFIndex>(count)),
+                                                                           cf_lang.get()));
+    if (!fallback_font) {
+        return Err(FontProviderError::kCodePointNotFound);
+    }
+
+    CGGlyph glyphs[2] = {0};
+    if (!CTFontGetGlyphsForCharacters(fallback_font.get(),
+                                      reinterpret_cast<const UniChar*>(utf16.data()),
+                                      glyphs,
+                                      static_cast<CFIndex>(count))) {
+        return Err(FontProviderError::kCodePointNotFound);
+    }
+
+    auto info_result = BuildFontfaceInfo(std::move(fallback_font));
+    if (info_result.is_err()) {
+        return info_result;
+    }
+
+    const FontfaceInfo& info = info_result.value();
+    if (info.family_name == ".LastResort" || info.family_name == "LastResort" || info.postscript_name == "LastResort") {
+        return Err(FontProviderError::kCodePointNotFound);
+    }
+
+    return info_result;
 }
 
 }  // namespace aribcaption

@@ -42,6 +42,12 @@ inline bool IsHalfwidthCharacter(uint32_t codepoint) {
     return false;
 }
 
+inline bool IsPrivateUseArea(uint32_t codepoint) {
+    return (codepoint >= 0xE000 && codepoint <= 0xF8FF) ||
+           (codepoint >= 0xF0000 && codepoint <= 0xFFFFD) ||
+           (codepoint >= 0x100000 && codepoint <= 0x10FFFD);
+}
+
 }  // namespace unicode
 
 #endif  // ARIBCAPTION_UNICODE_HELPER_HPP

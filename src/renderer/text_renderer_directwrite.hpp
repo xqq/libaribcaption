@@ -67,6 +67,7 @@ private:
     bool IsDuplicateFont(const FontfaceInfo& info) const;
     auto LoadSlot(size_t slot_index) -> std::optional<FontProviderError>;
     auto EnsureMainSlot() -> std::optional<FontProviderError>;
+    auto FindOrLoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name) -> FontSlot*;
     auto EnsureTextFormat(FontSlot& slot, int char_height) -> IDWriteTextFormat*;
     auto CreateDWriteTextFormat(FontfaceInfo& face_info, int font_size) -> ComPtr<IDWriteTextFormat>;
     auto CreateWICRenderTarget(IWICBitmap* target) -> ComPtr<ID2D1RenderTarget>;
@@ -90,6 +91,7 @@ private:
     ComPtr<ID2D1StrokeStyle> stroke_style_;
 
     std::vector<FontSlot> font_slots_;
+    std::vector<FontSlot> system_fallback_slots_;
     std::optional<size_t> main_slot_index_;
     FontProviderError main_load_error_ = FontProviderError::kFontNotFound;
     std::unordered_set<uint32_t> missing_codepoints_;

@@ -21,6 +21,7 @@
 #include <string_view>
 #include "base/language_code.hpp"
 #include "base/scoped_holder.hpp"
+#include "base/unicode_helper.hpp"
 #include "renderer/font_provider_fontconfig.hpp"
 
 #ifndef FC_POSTSCRIPT_NAME
@@ -151,6 +152,46 @@ static bool MatchesConcreteFamily(FcPattern* request_pattern, FcPattern* matched
     return false;
 }
 
+static bool IsLastResortFont(std::string_view family_name) {
+    return EqualsIgnoreCase(family_name, ".LastResort") || EqualsIgnoreCase(family_name, "LastResort");
+}
+
+static auto BuildFontfaceInfo(FcPattern* best, Logger& log, std::string_view label)
+    -> Result<FontfaceInfo, FontProviderError> {
+    FcChar8* filename = nullptr;
+    if (FcResultMatch != FcPatternGetString(best, FC_FILE, 0, &filename)) {
+        log.e("Fontconfig: Retrieve font filename failed for %.*s", static_cast<int>(label.size()), label.data());
+        return Err(FontProviderError::kOtherError);
+    }
+
+    int fc_index = 0;
+    if (FcResultMatch != FcPatternGetInteger(best, FC_INDEX, 0, &fc_index)) {
+        log.e("Fontconfig: Retrieve font FC_INDEX failed for %.*s", static_cast<int>(label.size()), label.data());
+        return Err(FontProviderError::kOtherError);
+    }
+
+    FcChar8* fc_family_name = nullptr;
+    if (FcResultMatch != FcPatternGetString(best, FC_FAMILY, 0, &fc_family_name)) {
+        log.e("Fontconfig: Retrieve font FC_FAMILY failed for %.*s", static_cast<int>(label.size()), label.data());
+        return Err(FontProviderError::kOtherError);
+    }
+
+    std::string postscript_name;
+    FcChar8* fc_postscript_name = nullptr;
+    if (FcResultMatch == FcPatternGetString(best, FC_POSTSCRIPT_NAME, 0, &fc_postscript_name) && fc_postscript_name) {
+        postscript_name = reinterpret_cast<char*>(fc_postscript_name);
+    }
+
+    FontfaceInfo info;
+    info.family_name = reinterpret_cast<char*>(fc_family_name);
+    info.postscript_name = std::move(postscript_name);
+    info.filename = reinterpret_cast<char*>(filename);
+    info.face_index = fc_index;
+    info.provider_type = FontProviderType::kFontconfig;
+
+    return Ok(std::move(info));
+}
+
 auto FontProviderFontconfig::GetFontFace(const std::string& font_name) -> Result<FontfaceInfo, FontProviderError> {
     assert(config_);
 
@@ -194,38 +235,72 @@ auto FontProviderFontconfig::GetFontFace(const std::string& font_name) -> Result
         return Err(FontProviderError::kFontNotFound);
     }
 
-    FcChar8* filename = nullptr;
-    if (FcResultMatch != FcPatternGetString(best, FC_FILE, 0, &filename)) {
-        log_->e("Fontconfig: Retrieve font filename failed for %s", font_name.c_str());
+    return BuildFontfaceInfo(best, *log_, font_name);
+}
+
+auto FontProviderFontconfig::GetFallbackFontFace(uint32_t ucs4, std::string_view base_family_name)
+    -> Result<FontfaceInfo, FontProviderError> {
+    assert(config_);
+
+    if (ucs4 == 0 || unicode::IsPrivateUseArea(ucs4)) {
+        return Err(FontProviderError::kCodePointNotFound);
+    }
+
+    ScopedHolder<FcPattern*> pattern(FcPatternCreate(), FcPatternDestroy);
+    if (!pattern) {
         return Err(FontProviderError::kOtherError);
     }
 
-    int fc_index = 0;
-    if (FcResultMatch != FcPatternGetInteger(best, FC_INDEX, 0, &fc_index)) {
-        log_->e("Fontconfig: Retrieve font FC_INDEX failed for %s", font_name.c_str());
+    if (!base_family_name.empty()) {
+        std::string base_family(base_family_name);
+        FcPatternAddString(pattern, FC_FAMILY, reinterpret_cast<const FcChar8*>(base_family.c_str()));
+    }
+    FcPatternAddBool(pattern, FC_OUTLINE, FcTrue);
+
+    ScopedHolder<FcCharSet*> request_charset(FcCharSetCreate(), FcCharSetDestroy);
+    if (!request_charset || !FcCharSetAddChar(request_charset, ucs4)) {
         return Err(FontProviderError::kOtherError);
+    }
+    FcPatternAddCharSet(pattern, FC_CHARSET, request_charset);
+
+    if (FcTrue != FcConfigSubstitute(config_, pattern, FcMatchPattern)) {
+        log_->e("Fontconfig: Substitution cannot be performed");
+        return Err(FontProviderError::kOtherError);
+    }
+    FcDefaultSubstitute(pattern);
+
+    FcPatternDel(pattern, FC_LANG);
+    if (iso6392_language_code_) {
+        ScopedHolder<FcLangSet*> fc_langset(FcLangSetCreate(), FcLangSetDestroy);
+        FcLangSetAdd(fc_langset,
+                     reinterpret_cast<const FcChar8*>(ISO6392ToISO6391LanguageString(iso6392_language_code_)));
+        FcPatternAddLangSet(pattern, FC_LANG, fc_langset);
+    }
+
+    FcResult result = FcResultMatch;
+    FcPattern* matched = FcFontMatch(config_, pattern, &result);
+    if (!matched || result != FcResultMatch) {
+        return Err(FontProviderError::kCodePointNotFound);
+    }
+
+    ScopedHolder<FcPattern*> best(matched, FcPatternDestroy);
+
+    FcCharSet* best_charset = nullptr;
+    if (FcResultMatch != FcPatternGetCharSet(best, FC_CHARSET, 0, &best_charset) ||
+        !best_charset ||
+        FcTrue != FcCharSetHasChar(best_charset, ucs4)) {
+        return Err(FontProviderError::kCodePointNotFound);
     }
 
     FcChar8* fc_family_name = nullptr;
-    if (FcResultMatch != FcPatternGetString(best, FC_FAMILY, 0, &fc_family_name)) {
-        log_->e("Fontconfig: Retrieve font FC_FAMILY failed for %s", font_name.c_str());
-        return Err(FontProviderError::kOtherError);
+    if (FcResultMatch == FcPatternGetString(best, FC_FAMILY, 0, &fc_family_name) &&
+        fc_family_name &&
+        IsLastResortFont(reinterpret_cast<const char*>(fc_family_name))) {
+        // Reject placeholder fonts (e.g. macOS LastResort) so callers can fall back to DRCS bitmaps
+        return Err(FontProviderError::kCodePointNotFound);
     }
 
-    std::string postscript_name;
-    FcChar8* fc_postscript_name = nullptr;
-    if (FcResultMatch == FcPatternGetString(best, FC_POSTSCRIPT_NAME, 0, &fc_postscript_name) && fc_postscript_name) {
-        postscript_name = reinterpret_cast<char*>(fc_postscript_name);
-    }
-
-    FontfaceInfo info;
-    info.family_name = reinterpret_cast<char*>(fc_family_name);
-    info.postscript_name = std::move(postscript_name);
-    info.filename = reinterpret_cast<char*>(filename);
-    info.face_index = fc_index;
-    info.provider_type = FontProviderType::kFontconfig;
-
-    return Ok(std::move(info));
+    return BuildFontfaceInfo(best, *log_, "fallback");
 }
 
 }  // namespace aribcaption

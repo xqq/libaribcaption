@@ -40,6 +40,8 @@ public:
     bool Initialize() override;
     void SetLanguage(uint32_t iso6392_language_code) override;
     Result<FontfaceInfo, FontProviderError> GetFontFace(const std::string& font_name) override;
+    Result<FontfaceInfo, FontProviderError> GetFallbackFontFace(uint32_t ucs4,
+                                                                std::string_view base_family_name) override;
 private:
     std::shared_ptr<Logger> log_;
 

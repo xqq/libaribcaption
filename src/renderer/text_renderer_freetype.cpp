@@ -78,6 +78,7 @@ bool TextRendererFreetype::SetFontFamily(const std::vector<std::string>& font_fa
 
 void TextRendererFreetype::ResetFontFaces() {
     font_slots_.clear();
+    system_fallback_slots_.clear();
     main_slot_index_.reset();
     main_load_error_ = FontProviderError::kFontNotFound;
     missing_codepoints_.clear();
@@ -210,6 +211,13 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
                 selected_slot = &slot;
                 glyph_index = candidate_glyph;
                 break;
+            }
+        }
+
+        if (glyph_index == 0) {
+            if (FontSlot* sys_slot =
+                    FindOrLoadSystemFallbackSlot(ucs4, font_slots_[*main_slot_index_].family_name, glyph_index)) {
+                selected_slot = sys_slot;
             }
         }
 
@@ -503,26 +511,29 @@ bool TextRendererFreetype::IsDuplicateFontInfo(const FontfaceInfo& info) const {
 }
 
 bool TextRendererFreetype::IsDuplicateSlot(const FontSlot& candidate) const {
-    for (const auto& existing : font_slots_) {
-        if (existing.state != SlotState::kLoaded) {
-            continue;
-        }
-        if (!candidate.filename.empty() && !existing.filename.empty()) {
-            if (candidate.filename == existing.filename &&
-                candidate.face_index == existing.face_index) {
+    auto matches_list = [&](const std::vector<FontSlot>& slots) -> bool {
+        for (const auto& existing : slots) {
+            if (existing.state != SlotState::kLoaded) {
+                continue;
+            }
+            if (!candidate.filename.empty() && !existing.filename.empty()) {
+                if (candidate.filename == existing.filename && candidate.face_index == existing.face_index) {
+                    return true;
+                }
+            } else if (!candidate.postscript_name.empty() && !existing.postscript_name.empty()) {
+                if (candidate.postscript_name == existing.postscript_name) {
+                    return true;
+                }
+            } else if (!candidate.family_name.empty() &&
+                       candidate.family_name == existing.family_name &&
+                       candidate.face_index == existing.face_index) {
                 return true;
             }
-        } else if (!candidate.postscript_name.empty() && !existing.postscript_name.empty()) {
-            if (candidate.postscript_name == existing.postscript_name) {
-                return true;
-            }
-        } else if (!candidate.family_name.empty() &&
-                   candidate.family_name == existing.family_name &&
-                   candidate.face_index == existing.face_index) {
-            return true;
         }
-    }
-    return false;
+        return false;
+    };
+
+    return matches_list(font_slots_) || matches_list(system_fallback_slots_);
 }
 
 auto TextRendererFreetype::LoadSlot(size_t slot_index) -> std::optional<FontProviderError> {
@@ -585,6 +596,49 @@ auto TextRendererFreetype::EnsureMainSlot() -> std::optional<FontProviderError> 
     }
 
     return main_load_error_;
+}
+
+auto TextRendererFreetype::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
+                                                        std::string_view base_family_name,
+                                                        FT_UInt& out_glyph_index) -> FontSlot* {
+    if (unicode::IsPrivateUseArea(ucs4)) {
+        return nullptr;
+    }
+
+    for (auto& slot : system_fallback_slots_) {
+        if (slot.state != SlotState::kLoaded) {
+            continue;
+        }
+        FT_UInt glyph = FT_Get_Char_Index(slot.face, ucs4);
+        if (glyph != 0) {
+            out_glyph_index = glyph;
+            return &slot;
+        }
+    }
+
+    auto result = font_provider_.GetFallbackFontFace(ucs4, base_family_name);
+    if (result.is_err()) {
+        return nullptr;
+    }
+
+    FontSlot loaded_slot;
+    if (OpenFTFace(result.value(), loaded_slot)) {
+        return nullptr;
+    }
+
+    FT_UInt glyph = FT_Get_Char_Index(loaded_slot.face, ucs4);
+    if (glyph == 0 || IsDuplicateSlot(loaded_slot)) {
+        return nullptr;
+    }
+
+    static constexpr size_t kMaxSystemFallbackSlots = 16;
+    if (system_fallback_slots_.size() >= kMaxSystemFallbackSlots) {
+        system_fallback_slots_.erase(system_fallback_slots_.begin());
+    }
+
+    system_fallback_slots_.push_back(std::move(loaded_slot));
+    out_glyph_index = glyph;
+    return &system_fallback_slots_.back();
 }
 
 }  // namespace aribcaption

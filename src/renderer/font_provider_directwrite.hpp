@@ -20,7 +20,7 @@
 #define ARIBCAPTION_FONT_PROVIDER_DIRECTWRITE_HPP
 
 #include <wrl/client.h>
-#include <dwrite.h>
+#include <dwrite_2.h>
 #include <memory>
 #include "aribcaption/context.hpp"
 #include "base/logger.hpp"
@@ -48,8 +48,12 @@ public:
     bool Initialize() override;
     void SetLanguage(uint32_t iso6392_language_code) override;
     Result<FontfaceInfo, FontProviderError> GetFontFace(const std::string& font_name) override;
+    Result<FontfaceInfo, FontProviderError> GetFallbackFontFace(uint32_t ucs4,
+                                                                std::string_view base_family_name) override;
 public:
     ComPtr<IDWriteFactory> GetDWriteFactory();
+private:
+    Result<FontfaceInfo, FontProviderError> BuildFontfaceInfo(ComPtr<IDWriteFont> dwrite_font);
 private:
     std::shared_ptr<Logger> log_;
 
@@ -57,6 +61,7 @@ private:
 
     ComPtr<IDWriteFactory> dwrite_factory_;
     ComPtr<IDWriteGdiInterop> dwrite_gdi_interop_;
+    ComPtr<IDWriteFontFallback> dwrite_font_fallback_;
 };
 
 }  // namespace aribcaption

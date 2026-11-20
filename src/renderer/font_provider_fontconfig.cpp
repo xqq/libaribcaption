@@ -50,8 +50,7 @@ void FontProviderFontconfig::SetLanguage(uint32_t iso6392_language_code) {
     iso6392_language_code_ = iso6392_language_code;
 }
 
-auto FontProviderFontconfig::GetFontFace(const std::string& font_name,
-                                         std::optional<uint32_t> ucs4) -> Result<FontfaceInfo, FontProviderError> {
+auto FontProviderFontconfig::GetFontFace(const std::string& font_name) -> Result<FontfaceInfo, FontProviderError> {
     assert(config_);
 
     ScopedHolder<FcPattern*> pattern(
@@ -99,20 +98,6 @@ auto FontProviderFontconfig::GetFontFace(const std::string& font_name,
     if (FcResultMatch != FcPatternGetInteger(best, FC_INDEX, 0, &fc_index)) {
         log_->e("Fontconfig: Retrieve font FC_INDEX failed for %s", font_name.c_str());
         return Err(FontProviderError::kOtherError);
-    }
-
-    if (ucs4.has_value() && ucs4 != 0) {
-        FcCharSet* charset = nullptr;
-
-        if (FcResultMatch != FcPatternGetCharSet(best, FC_CHARSET, 0, &charset)) {
-            log_->e("Fontconfig: Retrieve font charset failed for %s", font_name.c_str());
-            return Err(FontProviderError::kOtherError);
-        }
-
-        if (FcTrue != FcCharSetHasChar(charset, ucs4.value())) {
-            log_->w("Fontconfig: Font %s doesn't contain U+%04X", font_name.c_str(), ucs4.value());
-            return Err(FontProviderError::kCodePointNotFound);
-        }
     }
 
     FcChar8* fc_family_name = nullptr;

@@ -70,8 +70,7 @@ static FontFile* FindRegularFont(FontFamily& family) {
     return best;
 }
 
-auto FontProviderAndroid::GetFontFace(const std::string &font_name,
-                                      std::optional<uint32_t> ucs4) -> Result<FontfaceInfo, FontProviderError> {
+auto FontProviderAndroid::GetFontFace(const std::string& font_name) -> Result<FontfaceInfo, FontProviderError> {
     FontFamily* family = nullptr;
 
     if (iso6392_language_code_ == ThreeCC("jpn") || iso6392_language_code_ == 0) {

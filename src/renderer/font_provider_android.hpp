@@ -67,8 +67,7 @@ public:
     FontProviderType GetType() override;
     bool Initialize() override;
     void SetLanguage(uint32_t iso6392_language_code) override;
-    auto GetFontFace(const std::string& font_name,
-                     std::optional<uint32_t> ucs4) -> Result<FontfaceInfo, FontProviderError> override;
+    auto GetFontFace(const std::string& font_name) -> Result<FontfaceInfo, FontProviderError> override;
 private:
     internal::FontFamily* FindFamilyByName(std::string_view name);
     internal::FontFamily* FindFallbackFamilyByLanguageAndFallbackFor(std::string_view lang,

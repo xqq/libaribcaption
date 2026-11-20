@@ -19,7 +19,6 @@
 #include <windows.h>
 #include <string_view>
 #include <vector>
-#include "base/utf_helper.hpp"
 #include "base/wchar_helper.hpp"
 #include "renderer/font_provider_gdi.hpp"
 
@@ -99,33 +98,6 @@ static bool RetrieveFontData(HDC hdc, std::vector<uint8_t>& buffer, bool& is_ttc
     return true;
 }
 
-static bool CheckCodePointExists(HDC hdc, uint32_t ucs4) {
-    std::u16string u16str;
-    utf::UTF16AppendCodePoint(u16str, ucs4);
-
-    std::u16string indices(u16str.length(), 0);
-
-    DWORD ret = GetGlyphIndicesW(hdc,
-                                 reinterpret_cast<LPCWSTR>(u16str.c_str()),
-                                 static_cast<int>(u16str.length()),
-                                 reinterpret_cast<LPWORD>(indices.data()),
-                                 GGI_MARK_NONEXISTING_GLYPHS);
-    if (ret == GDI_ERROR) {
-        return false;
-    }
-
-    for (size_t i = 0; i < u16str.length(); i++) {
-        if (utf::IsUTF16Surrogate(u16str[i])) {
-            continue;
-        }
-        if (indices[i] == 0xffff) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 #if defined(_MSC_VER) && !defined(__clang__)
     // Specifying calling convention for lambdas is unsupported in MSVC (except clang-cl)
     #define LAMBDA_CALL_CONV(a)
@@ -134,7 +106,7 @@ static bool CheckCodePointExists(HDC hdc, uint32_t ucs4) {
     #define LAMBDA_CALL_CONV(a) a
 #endif
 
-auto FontProviderGDI::GetFontFace(const std::string& font_name, std::optional<uint32_t> ucs4)
+auto FontProviderGDI::GetFontFace(const std::string& font_name)
         -> Result<FontfaceInfo, FontProviderError> {
     std::string_view converted_family_name = ConvertFamilyName(font_name, iso6392_language_code_);
     std::wstring wide_font_name = wchar::UTF8ToWideString(converted_family_name);
@@ -178,13 +150,6 @@ auto FontProviderGDI::GetFontFace(const std::string& font_name, std::optional<ui
     // Restore the previously selected font before hfont is deleted,
     // a font must not be deleted while it's still selected into a DC
     HGDIOBJ prev_font = SelectObject(hdc_, hfont);
-
-    if (ucs4.has_value()) {
-        if (!CheckCodePointExists(hdc_, ucs4.value())) {
-            SelectObject(hdc_, prev_font);
-            return Err(FontProviderError::kCodePointNotFound);
-        }
-    }
 
     bool is_ttc = false;
     bool succ = RetrieveFontData(hdc_, info.font_data, is_ttc);

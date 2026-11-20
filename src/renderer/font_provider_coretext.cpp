@@ -27,7 +27,6 @@
 #include "base/cfstr_helper.hpp"
 #include "base/scoped_cfref.hpp"
 #include "base/scoped_holder.hpp"
-#include "base/utf_helper.hpp"
 #include "renderer/font_provider_coretext.hpp"
 
 namespace aribcaption {
@@ -81,8 +80,7 @@ static std::string_view ConvertFamilyName(std::string_view family_name, uint32_t
     return font_name;
 }
 
-auto FontProviderCoreText::GetFontFace(const std::string& font_name,
-                                       std::optional<uint32_t> ucs4) -> Result<FontfaceInfo, FontProviderError> {
+auto FontProviderCoreText::GetFontFace(const std::string& font_name) -> Result<FontfaceInfo, FontProviderError> {
     std::string_view converted_font = ConvertFamilyName(font_name, iso6392_language_code_);
     ScopedCFRef<CFStringRef> fontname_request(cfstr::StdStringToCFString(converted_font));
     if (!fontname_request)
@@ -120,22 +118,6 @@ auto FontProviderCoreText::GetFontFace(const std::string& font_name,
     if (!ct_font) {
         log_->e("CoreText: CTFontCreateWithFontDescriptor() returned with NULL");
         return Err(FontProviderError::kFontNotFound);
-    }
-
-    // Check whether the font contains the required codepoint if needed
-    if (ucs4.has_value()) {
-        std::u16string utf16;
-        size_t count = utf::UTF16AppendCodePoint(utf16, ucs4.value());
-        CGGlyph glyphs[2] = {0};
-        bool ret = CTFontGetGlyphsForCharacters(ct_font.get(),
-                                                reinterpret_cast<UniChar*>(utf16.data()),
-                                                glyphs,
-                                                static_cast<CFIndex>(count));
-        if (!ret) {
-            log_->w("CoreText: Font %.*s doesn't contain U+%04X",
-                    static_cast<int>(converted_font.size()), converted_font.data(), ucs4.value());
-            return Err(FontProviderError::kCodePointNotFound);
-        }
     }
 
     // Retrieve descriptor associated with the CTFont

@@ -531,7 +531,7 @@ auto TextRendererFreetype::LoadSlot(size_t slot_index) -> std::optional<FontProv
         return std::nullopt;
     }
 
-    auto result = font_provider_.GetFontFace(font_family_[slot_index], std::nullopt);
+    auto result = font_provider_.GetFontFace(font_family_[slot_index]);
     if (result.is_err()) {
         slot.state = SlotState::kUnavailable;
         return result.error();

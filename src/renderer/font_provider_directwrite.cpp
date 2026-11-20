@@ -18,6 +18,7 @@
 
 #include <windows.h>
 #include <initguid.h>
+#include <optional>
 #include <string_view>
 #include "base/wchar_helper.hpp"
 #include "renderer/font_provider_directwrite.hpp"
@@ -134,8 +135,7 @@ static std::string DWriteLocalizedStringsToUTF8(IDWriteLocalizedStrings* strs,
     return u8str;
 }
 
-auto FontProviderDirectWrite::GetFontFace(const std::string& font_name,
-                                          std::optional<uint32_t> ucs4) -> Result<FontfaceInfo, FontProviderError> {
+auto FontProviderDirectWrite::GetFontFace(const std::string& font_name) -> Result<FontfaceInfo, FontProviderError> {
     std::string_view converted_family_name = ConvertFamilyName(font_name, iso6392_language_code_);
     std::wstring wide_font_name = wchar::UTF8ToWideString(converted_family_name);
 
@@ -170,16 +170,6 @@ auto FontProviderDirectWrite::GetFontFace(const std::string& font_name,
     if (FAILED(hr)) {
         log_->e("FontProviderDirectWrite: IDWriteFont::CreateFontFace() failed");
         return Err(FontProviderError::kOtherError);
-    }
-
-    // Check whether the font contains the requested Unicode codepoint
-    if (ucs4.has_value()) {
-        BOOL ucs4_exists = FALSE;
-        hr = dwrite_font->HasCharacter(ucs4.value(), &ucs4_exists);
-        if (FAILED(hr) || !ucs4_exists) {
-            log_->w("FontProviderDirectWrite: Font %s doesn't contain U+%04X", font_name.c_str(), ucs4.value());
-            return Err(FontProviderError::kCodePointNotFound);
-        }
     }
 
     // Retrieve Font family name

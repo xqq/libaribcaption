@@ -77,15 +77,10 @@ bool TextRendererFreetype::SetFontFamily(const std::vector<std::string>& font_fa
 }
 
 void TextRendererFreetype::ResetFontFaces() {
-    main_face_.Reset();
-    fallback_face_.Reset();
-    main_face_data_.clear();
-    fallback_face_data_.clear();
-    main_baseline_cache_.clear();
-    fallback_baseline_cache_.clear();
-    main_halfwidth_subst_map_.reset();
-    fallback_halfwidth_subst_map_.reset();
-    main_face_index_ = 0;
+    font_slots_.clear();
+    main_slot_index_.reset();
+    main_load_error_ = FontProviderError::kFontNotFound;
+    missing_codepoints_.clear();
 }
 
 void TextRendererFreetype::SetReplaceMSZHalfWidthGlyph(bool replace) {
@@ -178,57 +173,54 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
         return TextRenderStatus::kOK;
     }
 
-    if (!main_face_) {
-        // If main FT_Face is not yet loaded, try load FT_Face from font_family_
-        // We don't care about the codepoint (ucs4) now
-        auto result = LoadFontFace(false);
-        if (result.is_err()) {
-            log_->e("Freetype: Cannot find valid font");
-            return FontProviderErrorToStatus(result.error());
-        }
-        std::pair<FT_Face, size_t>& pair = result.value();
-        main_face_ = ScopedHolder<FT_Face>(pair.first, FT_Done_Face);
-        main_face_index_ = pair.second;
+    if (auto err = EnsureMainSlot()) {
+        log_->e("Freetype: Cannot find valid font");
+        return FontProviderErrorToStatus(*err);
     }
 
-    FT_Face face = main_face_;
-    FT_UInt glyph_index = FT_Get_Char_Index(face, ucs4);
+    FontSlot* selected_slot = &font_slots_[*main_slot_index_];
+    FT_UInt glyph_index = FT_Get_Char_Index(selected_slot->face, ucs4);
 
     if (glyph_index == 0) {
-        log_->w("Freetype: Main font %s doesn't contain U+%04X", face->family_name, ucs4);
-
         if (fallback_policy == TextRenderFallbackPolicy::kFailOnCodePointNotFound) {
             return TextRenderStatus::kCodePointNotFound;
         }
 
-        // Missing glyph, check fallback face
-        if (fallback_face_ && (glyph_index = FT_Get_Char_Index(fallback_face_, ucs4))) {
-            face = fallback_face_;
-        } else if (main_face_index_ + 1 >= font_family_.size()) {
-            // Fallback fonts not available
+        if (missing_codepoints_.find(ucs4) != missing_codepoints_.end()) {
             return TextRenderStatus::kCodePointNotFound;
-        } else {
-            // Fallback fontface not loaded, or fallback fontface doesn't contain required codepoint
-            // Load next fallback font face by specific codepoint
-            auto result = LoadFontFace(true, ucs4, main_face_index_ + 1);
-            if (result.is_err()) {
-                log_->e("Freetype: Cannot find available fallback font for U+%04X", ucs4);
-                return FontProviderErrorToStatus(result.error());
-            }
-            std::pair<FT_Face, size_t>& pair = result.value();
-            fallback_face_ = ScopedHolder<FT_Face>(pair.first, FT_Done_Face);
-            fallback_baseline_cache_.clear();
-            fallback_halfwidth_subst_map_.reset();
+        }
 
-            // Use this fallback fontface for rendering this time
-            face = fallback_face_;
-            glyph_index = FT_Get_Char_Index(face, ucs4);
-            if (glyph_index == 0) {
-                log_->e("Freetype: Got glyph_index == 0 for U+%04X in fallback font", ucs4);
-                return TextRenderStatus::kCodePointNotFound;
+        log_->w("Freetype: Main font %s doesn't contain U+%04X",
+                selected_slot->family_name.c_str(), ucs4);
+
+        for (size_t i = *main_slot_index_ + 1; i < font_slots_.size(); i++) {
+            FontSlot& slot = font_slots_[i];
+            if (slot.state == SlotState::kUnavailable) {
+                continue;
+            }
+            if (slot.state == SlotState::kUnloaded) {
+                LoadSlot(i);
+                if (slot.state != SlotState::kLoaded) {
+                    continue;
+                }
+            }
+
+            FT_UInt candidate_glyph = FT_Get_Char_Index(slot.face, ucs4);
+            if (candidate_glyph != 0) {
+                selected_slot = &slot;
+                glyph_index = candidate_glyph;
+                break;
             }
         }
+
+        if (glyph_index == 0) {
+            missing_codepoints_.insert(ucs4);
+            log_->e("Freetype: Cannot find available fallback font for U+%04X", ucs4);
+            return TextRenderStatus::kCodePointNotFound;
+        }
     }
+
+    FT_Face face = selected_slot->face;
 
     // If aspect_ratio is 0.5 (1:2), this should be MSZ (Middle size)
     bool is_requesting_halfwidth = floating::AlmostEquals(aspect_ratio, 0.5f, 0.05f);
@@ -238,26 +230,15 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
     }
 
     if (replace_msz_halfwidth_glyph_ && is_requesting_halfwidth) {
-        if (face == main_face_) {
-            if (!main_halfwidth_subst_map_) {
-                main_halfwidth_subst_map_ =
-                    LoadSingleGSUBTable(LoadSFNTTable(face, FT_MAKE_TAG('G', 'S', 'U', 'B')), kOpenTypeFeatureHalfWidth,
-                                        kOpenTypeScriptHiraganaKatakana, kOpenTypeLangSysJapanese);
-            }
-        } else if (fallback_face_ && face == fallback_face_) {
-            if (!fallback_halfwidth_subst_map_) {
-                fallback_halfwidth_subst_map_ =
-                    LoadSingleGSUBTable(LoadSFNTTable(face, FT_MAKE_TAG('G', 'S', 'U', 'B')), kOpenTypeFeatureHalfWidth,
-                                        kOpenTypeScriptHiraganaKatakana, kOpenTypeLangSysJapanese);
-            }
+        if (!selected_slot->halfwidth_subst_map) {
+            selected_slot->halfwidth_subst_map =
+                LoadSingleGSUBTable(LoadSFNTTable(face, FT_MAKE_TAG('G', 'S', 'U', 'B')), kOpenTypeFeatureHalfWidth,
+                                    kOpenTypeScriptHiraganaKatakana, kOpenTypeLangSysJapanese);
         }
-        auto& subst_map = face == main_face_ ? main_halfwidth_subst_map_ : fallback_halfwidth_subst_map_;
-        if (subst_map) {
-            auto subst = subst_map->find(glyph_index);
-            if (subst != subst_map->end()) {
-                glyph_index = subst->second;
-                char_width = char_height;
-            }
+        auto subst = selected_slot->halfwidth_subst_map->find(glyph_index);
+        if (subst != selected_slot->halfwidth_subst_map->end()) {
+            glyph_index = subst->second;
+            char_width = char_height;
         }
     }
 
@@ -276,7 +257,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
     int em_adjust_y = (char_height - em_height) / 2;
     baseline += em_adjust_y;
 
-    auto& baseline_cache = face == main_face_ ? main_baseline_cache_ : fallback_baseline_cache_;
+    auto& baseline_cache = selected_slot->baseline_cache;
     uint64_t pixel_size_key = MakePixelSizeKey(char_width, char_height);
     auto baseline_iter = baseline_cache.find(pixel_size_key);
     if (baseline_iter == baseline_cache.end()) {
@@ -422,99 +403,188 @@ static bool MatchFontFamilyName(FT_Face face, std::string_view family_name) {
     return false;
 }
 
-auto TextRendererFreetype::LoadFontFace(bool is_fallback,
-                                        std::optional<uint32_t> codepoint,
-                                        std::optional<size_t> begin_index)
-        -> Result<std::pair<FT_Face, size_t>, FontProviderError> {
-    if (begin_index && begin_index.value() >= font_family_.size()) {
-        return Err(FontProviderError::kFontNotFound);
+auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) -> std::optional<FontProviderError> {
+    bool use_memory_data = !info.font_data.empty();
+    std::vector<uint8_t> face_data;
+    if (use_memory_data) {
+        face_data = std::move(info.font_data);
     }
 
-    // begin_index is optional
-    size_t font_index = begin_index.value_or(0);
+    auto create_face = [&](FT_Long index) -> ScopedHolder<FT_Face> {
+        FT_Face raw_face = nullptr;
+        FT_Error err = 0;
+        if (!use_memory_data) {
+            err = FT_New_Face(library_, info.filename.c_str(), index, &raw_face);
+        } else {
+            err = FT_New_Memory_Face(library_,
+                                     face_data.data(),
+                                     static_cast<FT_Long>(face_data.size()),
+                                     index,
+                                     &raw_face);
+        }
+        if (err || !raw_face) {
+            return {};
+        }
+        return ScopedHolder<FT_Face>(raw_face, FT_Done_Face);
+    };
 
-    const std::string& font_name = font_family_[font_index];
-    auto result = font_provider_.GetFontFace(font_name, codepoint);
-
-    while (result.is_err() && font_index + 1 < font_family_.size()) {
-        // Find next suitable font
-        font_index++;
-        result = font_provider_.GetFontFace(font_family_[font_index], codepoint);
+    ScopedHolder<FT_Face> face = create_face(info.face_index);
+    if (!face) {
+        return FontProviderError::kFontNotFound;
     }
+
+    if (info.face_index < 0) {
+        // Negative face_index queries num_faces; match the exact subface by PostScript or family name
+        if (info.family_name.empty() && info.postscript_name.empty()) {
+            log_->e("Freetype: Missing Family name / PostScript name for cases that face_index < 0");
+            return FontProviderError::kOtherError;
+        }
+
+        FT_Long num_faces = face->num_faces;
+        face.Reset();
+
+        for (FT_Long i = 0; i < num_faces; i++) {
+            ScopedHolder<FT_Face> candidate = create_face(i);
+            if (!candidate) {
+                return FontProviderError::kFontNotFound;
+            }
+
+            const char* ps_name = FT_Get_Postscript_Name(candidate);
+            if (!info.postscript_name.empty() && ps_name && info.postscript_name == ps_name) {
+                face = std::move(candidate);
+                break;
+            } else if (!info.family_name.empty() && MatchFontFamilyName(candidate, info.family_name)) {
+                face = std::move(candidate);
+                break;
+            }
+        }
+
+        if (!face) {
+            return FontProviderError::kFontNotFound;
+        }
+    }
+
+    if (!FT_IS_SCALABLE(face)) {
+        // FT_LOAD_NO_BITMAP + FT_Stroker require scalable outlines
+        log_->w("Freetype: Skipping non-scalable font %s",
+                face->family_name ? face->family_name : info.family_name.c_str());
+        return FontProviderError::kFontNotFound;
+    }
+
+    out_slot.face_data = std::move(face_data);
+    out_slot.face = std::move(face);
+    out_slot.filename = info.filename;
+    out_slot.face_index = static_cast<int>(out_slot.face->face_index);
+    out_slot.family_name = out_slot.face->family_name ? out_slot.face->family_name : info.family_name;
+    const char* ps_name = FT_Get_Postscript_Name(out_slot.face);
+    out_slot.postscript_name = ps_name ? ps_name : info.postscript_name;
+    out_slot.state = SlotState::kLoaded;
+    return std::nullopt;
+}
+
+bool TextRendererFreetype::IsDuplicateFontInfo(const FontfaceInfo& info) const {
+    if (info.filename.empty()) {
+        return false;
+    }
+
+    for (const auto& existing : font_slots_) {
+        if (existing.state != SlotState::kLoaded || existing.filename != info.filename) {
+            continue;
+        }
+        if (info.face_index >= 0) {
+            if (existing.face_index == info.face_index) {
+                return true;
+            }
+        } else if (!info.postscript_name.empty() && existing.postscript_name == info.postscript_name) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool TextRendererFreetype::IsDuplicateSlot(const FontSlot& candidate) const {
+    for (const auto& existing : font_slots_) {
+        if (existing.state != SlotState::kLoaded) {
+            continue;
+        }
+        if (!candidate.filename.empty() && !existing.filename.empty()) {
+            if (candidate.filename == existing.filename &&
+                candidate.face_index == existing.face_index) {
+                return true;
+            }
+        } else if (!candidate.postscript_name.empty() && !existing.postscript_name.empty()) {
+            if (candidate.postscript_name == existing.postscript_name) {
+                return true;
+            }
+        } else if (!candidate.family_name.empty() &&
+                   candidate.family_name == existing.family_name &&
+                   candidate.face_index == existing.face_index) {
+            return true;
+        }
+    }
+    return false;
+}
+
+auto TextRendererFreetype::LoadSlot(size_t slot_index) -> std::optional<FontProviderError> {
+    FontSlot& slot = font_slots_[slot_index];
+    if (slot.state != SlotState::kUnloaded) {
+        return std::nullopt;
+    }
+
+    auto result = font_provider_.GetFontFace(font_family_[slot_index], std::nullopt);
     if (result.is_err()) {
-        // Not found, return Err Result
-        return Err(result.error());
+        slot.state = SlotState::kUnavailable;
+        return result.error();
     }
 
     FontfaceInfo& info = result.value();
+    if (IsDuplicateFontInfo(info)) {
+        slot.state = SlotState::kUnavailable;
+        return std::nullopt;
+    }
 
-    bool use_memory_data = false;
-    std::vector<uint8_t>* memory_data = nullptr;
-    if (!info.font_data.empty()) {
-        use_memory_data = true;
-        if (!is_fallback) {
-            main_face_.Reset();
-            main_face_data_ = std::move(info.font_data);
-            memory_data = &main_face_data_;
-        } else {  // is_fallback
-            fallback_face_.Reset();
-            fallback_face_data_ = std::move(info.font_data);
-            memory_data = &fallback_face_data_;
+    FontSlot loaded_slot;
+    if (auto err = OpenFTFace(info, loaded_slot)) {
+        slot.state = SlotState::kUnavailable;
+        return err;
+    }
+
+    if (IsDuplicateSlot(loaded_slot)) {
+        slot.state = SlotState::kUnavailable;
+        return std::nullopt;
+    }
+
+    slot = std::move(loaded_slot);
+    return std::nullopt;
+}
+
+auto TextRendererFreetype::EnsureMainSlot() -> std::optional<FontProviderError> {
+    if (font_family_.empty()) {
+        return FontProviderError::kFontNotFound;
+    }
+
+    if (main_slot_index_) {
+        return std::nullopt;
+    }
+
+    if (font_slots_.empty()) {
+        font_slots_.resize(font_family_.size());
+    }
+
+    for (size_t i = 0; i < font_slots_.size(); i++) {
+        if (font_slots_[i].state == SlotState::kUnavailable) {
+            continue;
+        }
+        if (auto err = LoadSlot(i)) {
+            main_load_error_ = *err;
+        }
+        if (font_slots_[i].state == SlotState::kLoaded) {
+            main_slot_index_ = i;
+            return std::nullopt;
         }
     }
 
-    FT_Face face = nullptr;
-    if (!use_memory_data) {
-        if (FT_New_Face(library_, info.filename.c_str(), info.face_index, &face)) {
-            return Err(FontProviderError::kFontNotFound);
-        }
-    } else {  // use_memory_data
-        if (FT_New_Memory_Face(library_,
-                               memory_data->data(),
-                               static_cast<FT_Long>(memory_data->size()),
-                               info.face_index,
-                               &face)) {
-            return Err(FontProviderError::kFontNotFound);
-        }
-    }
-
-    if (info.face_index >= 0) {
-        return Ok(face, font_index);
-    } else {
-        // face_index is negative, e.g. -1, means face index is unknown
-        // Find exact font face by PostScript name or Family name
-        if (info.family_name.empty() && info.postscript_name.empty()) {
-            log_->e("Freetype: Missing Family name / PostScript name for cases that face_index < 0");
-            return Err(FontProviderError::kOtherError);
-        }
-
-        for (FT_Long i = 0; i < face->num_faces; i++) {
-            FT_Done_Face(face);
-
-            if (!use_memory_data) {
-                if (FT_New_Face(library_, info.filename.c_str(), i, &face)) {
-                    return Err(FontProviderError::kFontNotFound);
-                }
-            } else {  // use_memory_data
-                if (FT_New_Memory_Face(library_,
-                                       memory_data->data(),
-                                       static_cast<FT_Long>(memory_data->size()),
-                                       i,
-                                       &face)) {
-                    return Err(FontProviderError::kFontNotFound);
-                }
-            }
-
-            // Find by comparing PostScript name
-            if (!info.postscript_name.empty() && info.postscript_name == FT_Get_Postscript_Name(face)) {
-                return Ok(face, font_index);
-            } else if (!info.family_name.empty() && MatchFontFamilyName(face, info.family_name)) {
-                // Find by matching family name
-                return Ok(face, font_index);
-            }
-        }
-        return Err(FontProviderError::kFontNotFound);
-    }
+    return main_load_error_;
 }
 
 }  // namespace aribcaption

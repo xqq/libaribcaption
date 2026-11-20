@@ -26,6 +26,7 @@
 #include <string>
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include "aribcaption/caption.hpp"
 #include "aribcaption/color.hpp"
@@ -56,11 +57,31 @@ public:
                   std::optional<UnderlineInfo> underline_info,
                   TextRenderFallbackPolicy fallback_policy) -> TextRenderStatus override;
 private:
+    enum class SlotState {
+        kUnloaded,
+        kLoaded,
+        kUnavailable
+    };
+
+    struct FontSlot {
+        SlotState state = SlotState::kUnloaded;
+        // Must be declared before `face` because FT_New_Memory_Face references this buffer
+        std::vector<uint8_t> face_data;
+        ScopedHolder<FT_Face> face;
+        std::string filename;
+        int face_index = 0;
+        std::string family_name;
+        std::string postscript_name;
+        std::optional<std::unordered_map<uint32_t, uint32_t>> halfwidth_subst_map;
+        std::unordered_map<uint64_t, std::optional<int>> baseline_cache;
+    };
+private:
     static Bitmap FTBitmapToColoredBitmap(const FT_Bitmap& ft_bmp, ColorRGBA color);
-    auto LoadFontFace(bool is_fallback,
-                      std::optional<uint32_t> codepoint = std::nullopt,
-                      std::optional<size_t> begin_index = std::nullopt)
-        -> Result<std::pair<FT_Face, size_t>, FontProviderError>;  // Result<Pair<face, font_index>, error>
+    auto OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) -> std::optional<FontProviderError>;
+    bool IsDuplicateFontInfo(const FontfaceInfo& info) const;
+    bool IsDuplicateSlot(const FontSlot& candidate) const;
+    auto LoadSlot(size_t slot_index) -> std::optional<FontProviderError>;
+    auto EnsureMainSlot() -> std::optional<FontProviderError>;
     void ResetFontFaces();
 private:
     std::shared_ptr<Logger> log_;
@@ -70,15 +91,10 @@ private:
     std::vector<std::string> font_family_;
 
     ScopedHolder<FT_Library> library_;
-    ScopedHolder<FT_Face> main_face_;
-    ScopedHolder<FT_Face> fallback_face_;
-    std::vector<uint8_t> main_face_data_;
-    std::vector<uint8_t> fallback_face_data_;
-    std::optional<std::unordered_map<uint32_t, uint32_t>> main_halfwidth_subst_map_;
-    std::optional<std::unordered_map<uint32_t, uint32_t>> fallback_halfwidth_subst_map_;
-    std::unordered_map<uint64_t, std::optional<int>> main_baseline_cache_;
-    std::unordered_map<uint64_t, std::optional<int>> fallback_baseline_cache_;
-    size_t main_face_index_ = 0;
+    std::vector<FontSlot> font_slots_;
+    std::optional<size_t> main_slot_index_;
+    FontProviderError main_load_error_ = FontProviderError::kFontNotFound;
+    std::unordered_set<uint32_t> missing_codepoints_;
 
     bool replace_msz_halfwidth_glyph_ = true;
 };

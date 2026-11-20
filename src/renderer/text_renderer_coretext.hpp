@@ -74,6 +74,12 @@ private:
     bool IsDuplicateFont(const std::string& family_name, const std::string& postscript_name) const;
     auto LoadSlot(size_t slot_index) -> std::optional<FontProviderError>;
     auto EnsureMainSlot() -> std::optional<FontProviderError>;
+    auto FindOrLoadSystemFallbackSlot(uint32_t ucs4,
+                                      std::string_view base_family_name,
+                                      const UniChar* utf16,
+                                      CFIndex codeunit_count,
+                                      int char_height,
+                                      CGGlyph* out_glyphs) -> CTFontRef;
     auto EnsureSizedCTFont(FontSlot& slot, int char_height) -> CTFontRef;
     void ResetFontFaces();
 private:
@@ -88,6 +94,7 @@ private:
     std::vector<std::string> font_family_;
 
     std::vector<FontSlot> font_slots_;
+    std::vector<FontSlot> system_fallback_slots_;
     std::optional<size_t> main_slot_index_;
     FontProviderError main_load_error_ = FontProviderError::kFontNotFound;
     std::unordered_set<uint32_t> missing_codepoints_;

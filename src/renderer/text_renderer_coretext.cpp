@@ -60,6 +60,7 @@ bool TextRendererCoreText::SetFontFamily(const std::vector<std::string>& font_fa
 
 void TextRendererCoreText::ResetFontFaces() {
     font_slots_.clear();
+    system_fallback_slots_.clear();
     main_slot_index_.reset();
     main_load_error_ = FontProviderError::kFontNotFound;
     missing_codepoints_.clear();
@@ -184,6 +185,18 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
         }
 
         if (!has_glyph) {
+            if (CTFontRef sys_ctfont = FindOrLoadSystemFallbackSlot(ucs4,
+                                                                    main_slot.family_name,
+                                                                    reinterpret_cast<const UniChar*>(utf16.data()),
+                                                                    static_cast<CFIndex>(codeunit_count),
+                                                                    char_height,
+                                                                    glyphs)) {
+                ctfont = sys_ctfont;
+                has_glyph = true;
+            }
+        }
+
+        if (!has_glyph) {
             missing_codepoints_.insert(ucs4);
             log_->e("TextRendererCoreText: Cannot find available fallback font for U+%04X", ucs4);
             return TextRenderStatus::kCodePointNotFound;
@@ -262,19 +275,23 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
 
 bool TextRendererCoreText::IsDuplicateFont(const std::string& family_name,
                                            const std::string& postscript_name) const {
-    for (const auto& existing : font_slots_) {
-        if (existing.state != SlotState::kLoaded) {
-            continue;
-        }
-        if (!postscript_name.empty() && !existing.postscript_name.empty()) {
-            if (postscript_name == existing.postscript_name) {
+    auto matches_list = [&](const std::vector<FontSlot>& slots) -> bool {
+        for (const auto& existing : slots) {
+            if (existing.state != SlotState::kLoaded) {
+                continue;
+            }
+            if (!postscript_name.empty() && !existing.postscript_name.empty()) {
+                if (postscript_name == existing.postscript_name) {
+                    return true;
+                }
+            } else if (!family_name.empty() && family_name == existing.family_name) {
                 return true;
             }
-        } else if (!family_name.empty() && family_name == existing.family_name) {
-            return true;
         }
-    }
-    return false;
+        return false;
+    };
+
+    return matches_list(font_slots_) || matches_list(system_fallback_slots_);
 }
 
 auto TextRendererCoreText::LoadSlot(size_t slot_index) -> std::optional<FontProviderError> {
@@ -357,6 +374,84 @@ auto TextRendererCoreText::EnsureMainSlot() -> std::optional<FontProviderError> 
     }
 
     return main_load_error_;
+}
+
+auto TextRendererCoreText::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
+                                                        std::string_view base_family_name,
+                                                        const UniChar* utf16,
+                                                        CFIndex codeunit_count,
+                                                        int char_height,
+                                                        CGGlyph* out_glyphs) -> CTFontRef {
+    if (unicode::IsPrivateUseArea(ucs4)) {
+        return nullptr;
+    }
+
+    for (auto& slot : system_fallback_slots_) {
+        if (slot.state != SlotState::kLoaded) {
+            continue;
+        }
+        if (!CTFontGetGlyphsForCharacters(slot.ctfont.get(), utf16, out_glyphs, codeunit_count)) {
+            continue;
+        }
+        CTFontRef sized = EnsureSizedCTFont(slot, char_height);
+        if (sized && CTFontGetGlyphsForCharacters(sized, utf16, out_glyphs, codeunit_count)) {
+            return sized;
+        }
+    }
+
+    auto result = font_provider_.GetFallbackFontFace(ucs4, base_family_name);
+    if (result.is_err()) {
+        return nullptr;
+    }
+
+    FontfaceInfo& info = result.value();
+    if (info.provider_type != FontProviderType::kCoreText) {
+        return nullptr;
+    }
+
+    auto priv = static_cast<FontfaceInfoPrivateCoreText*>(info.provider_priv.get());
+    if (!priv || !priv->ct_font) {
+        return nullptr;
+    }
+
+    std::string family_name = info.family_name;
+    if (family_name.empty()) {
+        ScopedCFRef<CFStringRef> cf_family(CTFontCopyFamilyName(priv->ct_font.get()));
+        if (cf_family) {
+            family_name = cfstr::CFStringToStdString(cf_family.get());
+        }
+    }
+
+    std::string postscript_name = info.postscript_name;
+    if (postscript_name.empty()) {
+        ScopedCFRef<CFStringRef> cf_ps(CTFontCopyPostScriptName(priv->ct_font.get()));
+        if (cf_ps) {
+            postscript_name = cfstr::CFStringToStdString(cf_ps.get());
+        }
+    }
+
+    if (IsDuplicateFont(family_name, postscript_name)) {
+        return nullptr;
+    }
+
+    FontSlot slot;
+    slot.ctfont = std::move(priv->ct_font);
+    slot.family_name = std::move(family_name);
+    slot.postscript_name = std::move(postscript_name);
+    slot.state = SlotState::kLoaded;
+
+    CTFontRef sized = EnsureSizedCTFont(slot, char_height);
+    if (!sized || !CTFontGetGlyphsForCharacters(sized, utf16, out_glyphs, codeunit_count)) {
+        return nullptr;
+    }
+
+    static constexpr size_t kMaxSystemFallbackSlots = 16;
+    if (system_fallback_slots_.size() >= kMaxSystemFallbackSlots) {
+        system_fallback_slots_.erase(system_fallback_slots_.begin());
+    }
+
+    system_fallback_slots_.push_back(std::move(slot));
+    return system_fallback_slots_.back().ctfont_sized.get();
 }
 
 auto TextRendererCoreText::EnsureSizedCTFont(FontSlot& slot, int char_height) -> CTFontRef {

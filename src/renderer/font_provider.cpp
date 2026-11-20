@@ -87,4 +87,11 @@ std::unique_ptr<FontProvider> FontProvider::Create(FontProviderType type, Contex
     }
 }
 
+auto FontProvider::GetFallbackFontFace(uint32_t ucs4,
+                                       std::string_view base_family_name) -> Result<FontfaceInfo, FontProviderError> {
+    (void)ucs4;
+    (void)base_family_name;
+    return Err(FontProviderError::kCodePointNotFound);
+}
+
 }  // namespace aribcaption

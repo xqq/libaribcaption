@@ -285,13 +285,10 @@ bool TextRendererDirectWrite::SetFontFamily(const std::vector<std::string>& font
 }
 
 void TextRendererDirectWrite::ResetFontFaces() {
-    main_face_index_ = 0;
-    main_faceinfo_.reset();
-    fallback_faceinfo_.reset();
-    main_text_format_.Reset();
-    fallback_text_format_.Reset();
-    main_text_format_pixel_height_ = 0;
-    fallback_text_format_pixel_height_ = 0;
+    font_slots_.clear();
+    main_slot_index_.reset();
+    main_load_error_ = FontProviderError::kFontNotFound;
+    missing_codepoints_.clear();
 }
 
 void TextRendererDirectWrite::SetReplaceMSZHalfWidthGlyph(bool replace) {
@@ -371,74 +368,59 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
         return TextRenderStatus::kOK;
     }
 
-    // Load main font if not loaded
-    if (!main_faceinfo_) {
-        auto result = LoadDWriteFont();
-        if (result.is_err()) {
-            log_->e("TextRendererDirectWrite: Cannot find valid font");
-            return FontProviderErrorToStatus(result.error());
-        }
-        auto& pair = result.value();
-        main_faceinfo_ = std::move(pair.first);
-        main_face_index_ = pair.second;
+    if (auto err = EnsureMainSlot()) {
+        log_->e("TextRendererDirectWrite: Cannot find valid font");
+        return FontProviderErrorToStatus(*err);
     }
 
-    // Setup IDWriteTextFormat for main font
-    if (!main_text_format_ || char_height != main_text_format_pixel_height_) {
-        main_text_format_pixel_height_ = char_height;
-        main_text_format_ = CreateDWriteTextFormat(main_faceinfo_.value(), char_height);
-        if (!main_text_format_) {
-            log_->e("TextRendererDirectWrite: Create IDWriteTextFormat failed");
-            return TextRenderStatus::kOtherError;
-        }
-    }
+    FontSlot* selected_slot = &font_slots_[*main_slot_index_];
 
-    FontfaceInfo* face_info = &main_faceinfo_.value();
-    IDWriteTextFormat* text_format = main_text_format_.Get();
-
-    // If codepoint was not found in main font, load fallback font
-    if (!FontfaceHasCharacter(main_faceinfo_.value(), ucs4)) {
-        log_->w("TextRendererDirectWrite: Main font %s doesn't contain U+%04X",
-                main_faceinfo_.value().family_name.c_str(), ucs4);
-
+    if (!FontfaceHasCharacter(selected_slot->faceinfo, ucs4)) {
         if (fallback_policy == TextRenderFallbackPolicy::kFailOnCodePointNotFound) {
             return TextRenderStatus::kCodePointNotFound;
         }
 
-        if (main_face_index_ + 1 >= font_family_.size()) {
-            // Fallback fonts not available
+        if (missing_codepoints_.find(ucs4) != missing_codepoints_.end()) {
             return TextRenderStatus::kCodePointNotFound;
         }
 
-        bool reset_fallback_text_format = false;
-        // Check fallback faceinfo
-        if (!fallback_faceinfo_ || !FontfaceHasCharacter(fallback_faceinfo_.value(), ucs4)) {
-            // Fallback font not loaded, or doesn't contain required codepoint
-            auto result = LoadDWriteFont(ucs4, main_face_index_ + 1);
-            if (result.is_err()) {
-                log_->e("TextRendererDirectWrite: Cannot find available fallback font for U+%04X", ucs4);
-                return FontProviderErrorToStatus(result.error());
-            }
-            auto& pair = result.value();
-            fallback_faceinfo_ = std::move(pair.first);
-            reset_fallback_text_format = true;
-        }
+        log_->w("TextRendererDirectWrite: Main font %s doesn't contain U+%04X",
+                selected_slot->faceinfo.family_name.c_str(), ucs4);
 
-        // Setup IDWriteTextFormat for fallback font
-        if (!fallback_text_format_ ||
-            char_height != fallback_text_format_pixel_height_ ||
-            reset_fallback_text_format) {
-            fallback_text_format_pixel_height_ = char_height;
-            fallback_text_format_ = CreateDWriteTextFormat(fallback_faceinfo_.value(), char_height);
-            if (!fallback_text_format_) {
-                log_->e("TextRendererDirectWrite: Create fallback IDWriteTextFormat failed");
-                return TextRenderStatus::kOtherError;
+        bool found = false;
+        for (size_t i = *main_slot_index_ + 1; i < font_slots_.size(); i++) {
+            FontSlot& slot = font_slots_[i];
+            if (slot.state == SlotState::kUnavailable) {
+                continue;
+            }
+            if (slot.state == SlotState::kUnloaded) {
+                LoadSlot(i);
+                if (slot.state != SlotState::kLoaded) {
+                    continue;
+                }
+            }
+
+            if (FontfaceHasCharacter(slot.faceinfo, ucs4)) {
+                selected_slot = &slot;
+                found = true;
+                break;
             }
         }
 
-        face_info = &fallback_faceinfo_.value();
-        text_format = fallback_text_format_.Get();
+        if (!found) {
+            missing_codepoints_.insert(ucs4);
+            log_->e("TextRendererDirectWrite: Cannot find available fallback font for U+%04X", ucs4);
+            return TextRenderStatus::kCodePointNotFound;
+        }
     }
+
+    IDWriteTextFormat* text_format = EnsureTextFormat(*selected_slot, char_height);
+    if (!text_format) {
+        log_->e("TextRendererDirectWrite: Create IDWriteTextFormat failed");
+        return TextRenderStatus::kOtherError;
+    }
+
+    FontfaceInfo* face_info = &selected_slot->faceinfo;
 
     std::u16string wide_char;
     utf::UTF16AppendCodePoint(wide_char, ucs4);
@@ -570,36 +552,103 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
     return TextRenderStatus::kOK;
 }
 
-auto TextRendererDirectWrite::LoadDWriteFont(std::optional<uint32_t> codepoint,
-                                             std::optional<size_t> begin_index)
-    -> Result<std::pair<FontfaceInfo, size_t>, FontProviderError> {
-    if (begin_index && begin_index.value() >= font_family_.size()) {
-        return Err(FontProviderError::kFontNotFound);
+bool TextRendererDirectWrite::IsDuplicateFont(const FontfaceInfo& info) const {
+    for (const auto& existing : font_slots_) {
+        if (existing.state != SlotState::kLoaded) {
+            continue;
+        }
+        if (!info.filename.empty() && !existing.faceinfo.filename.empty()) {
+            if (info.filename == existing.faceinfo.filename &&
+                info.face_index == existing.faceinfo.face_index) {
+                return true;
+            }
+        } else if (!info.postscript_name.empty() && !existing.faceinfo.postscript_name.empty()) {
+            if (info.postscript_name == existing.faceinfo.postscript_name) {
+                return true;
+            }
+        } else if (!info.family_name.empty() &&
+                   info.family_name == existing.faceinfo.family_name &&
+                   info.face_index == existing.faceinfo.face_index) {
+            return true;
+        }
+    }
+    return false;
+}
+
+auto TextRendererDirectWrite::LoadSlot(size_t slot_index) -> std::optional<FontProviderError> {
+    FontSlot& slot = font_slots_[slot_index];
+    if (slot.state != SlotState::kUnloaded) {
+        return std::nullopt;
     }
 
-    // begin_index is optional
-    size_t font_index = begin_index.value_or(0);
-
-    const std::string& font_name = font_family_[font_index];
-    auto result = font_provider_.GetFontFace(font_name, codepoint);
-
-    while (result.is_err() && font_index + 1 < font_family_.size()) {
-        // Find next suitable font
-        font_index++;
-        result = font_provider_.GetFontFace(font_family_[font_index], codepoint);
-    }
+    auto result = font_provider_.GetFontFace(font_family_[slot_index], std::nullopt);
     if (result.is_err()) {
-        // Not found, return Err Result
-        return Err(result.error());
+        slot.state = SlotState::kUnavailable;
+        return result.error();
     }
 
     FontfaceInfo& info = result.value();
     if (info.provider_type != FontProviderType::kDirectWrite) {
         log_->e("TextRendererDirectWrite: Font provider must be FontProviderDirectWrite");
-        return Err(FontProviderError::kOtherError);
+        slot.state = SlotState::kUnavailable;
+        return FontProviderError::kOtherError;
     }
 
-    return Ok(std::move(info), font_index);
+    auto priv = static_cast<FontfaceInfoPrivateDirectWrite*>(info.provider_priv.get());
+    if (!priv || !priv->font) {
+        slot.state = SlotState::kUnavailable;
+        return FontProviderError::kFontNotFound;
+    }
+
+    if (IsDuplicateFont(info)) {
+        slot.state = SlotState::kUnavailable;
+        return std::nullopt;
+    }
+
+    slot.faceinfo = std::move(info);
+    slot.state = SlotState::kLoaded;
+    return std::nullopt;
+}
+
+auto TextRendererDirectWrite::EnsureMainSlot() -> std::optional<FontProviderError> {
+    if (font_family_.empty()) {
+        return FontProviderError::kFontNotFound;
+    }
+
+    if (main_slot_index_) {
+        return std::nullopt;
+    }
+
+    if (font_slots_.empty()) {
+        font_slots_.resize(font_family_.size());
+    }
+
+    for (size_t i = 0; i < font_slots_.size(); i++) {
+        if (font_slots_[i].state == SlotState::kUnavailable) {
+            continue;
+        }
+        if (auto err = LoadSlot(i)) {
+            main_load_error_ = *err;
+        }
+        if (font_slots_[i].state == SlotState::kLoaded) {
+            main_slot_index_ = i;
+            return std::nullopt;
+        }
+    }
+
+    return main_load_error_;
+}
+
+auto TextRendererDirectWrite::EnsureTextFormat(FontSlot& slot, int char_height) -> IDWriteTextFormat* {
+    if (!slot.text_format || slot.pixel_height != char_height) {
+        slot.text_format = CreateDWriteTextFormat(slot.faceinfo, char_height);
+        if (!slot.text_format) {
+            slot.pixel_height = 0;
+            return nullptr;
+        }
+        slot.pixel_height = char_height;
+    }
+    return slot.text_format.Get();
 }
 
 static const wchar_t* ISO6392ToWindowsLocaleName(uint32_t iso6392_language_code) {
@@ -621,11 +670,21 @@ auto TextRendererDirectWrite::CreateDWriteTextFormat(FontfaceInfo& face_info, in
     ComPtr<IDWriteTextFormat> text_format;
     std::wstring font_family_name = wchar::UTF8ToWideString(face_info.family_name);
 
+    DWRITE_FONT_WEIGHT weight = DWRITE_FONT_WEIGHT_NORMAL;
+    DWRITE_FONT_STYLE style = DWRITE_FONT_STYLE_NORMAL;
+    DWRITE_FONT_STRETCH stretch = DWRITE_FONT_STRETCH_NORMAL;
+    if (auto priv = static_cast<FontfaceInfoPrivateDirectWrite*>(face_info.provider_priv.get());
+        priv && priv->font) {
+        weight = priv->font->GetWeight();
+        style = priv->font->GetStyle();
+        stretch = priv->font->GetStretch();
+    }
+
     HRESULT hr = dwrite_factory_->CreateTextFormat(font_family_name.c_str(),
                                                    nullptr,
-                                                   DWRITE_FONT_WEIGHT_NORMAL,
-                                                   DWRITE_FONT_STYLE_NORMAL,
-                                                   DWRITE_FONT_STRETCH_NORMAL,
+                                                   weight,
+                                                   style,
+                                                   stretch,
                                                    static_cast<float>(font_size),
                                                    ISO6392ToWindowsLocaleName(iso6392_language_code_),
                                                    &text_format);

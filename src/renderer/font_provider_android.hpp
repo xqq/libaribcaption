@@ -22,6 +22,8 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 #include "aribcaption/context.hpp"
 #include "base/logger.hpp"
@@ -68,7 +70,10 @@ public:
     bool Initialize() override;
     void SetLanguage(uint32_t iso6392_language_code) override;
     auto GetFontFace(const std::string& font_name) -> Result<FontfaceInfo, FontProviderError> override;
+    auto GetFallbackFontFace(uint32_t ucs4, std::string_view base_family_name)
+        -> Result<FontfaceInfo, FontProviderError> override;
 private:
+    bool FontHasCodePoint(const std::string& full_path, int collection_index, uint32_t ucs4);
     internal::FontFamily* FindFamilyByName(std::string_view name);
     internal::FontFamily* FindFallbackFamilyByLanguageAndFallbackFor(std::string_view lang,
                                                                      std::string_view fallback_for);
@@ -94,6 +99,8 @@ private:
 
     std::string base_font_path_;
     std::vector<internal::FontFamily> font_families_;
+    // Cached sorted (start, end) Unicode ranges per "<path>#<collection_index>"
+    std::unordered_map<std::string, std::vector<std::pair<uint32_t, uint32_t>>> cmap_cache_;
 
     uint32_t iso6392_language_code_ = 0;
 };

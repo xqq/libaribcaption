@@ -17,9 +17,14 @@
  */
 
 #include <unistd.h>
-#include <cstring>
-#include <cstdlib>
 #include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <optional>
+#include "base/language_code.hpp"
+#include "base/scoped_holder.hpp"
+#include "base/unicode_helper.hpp"
 #include "renderer/font_provider_android.hpp"
 
 using namespace tinyxml2;
@@ -70,6 +75,286 @@ static FontFile* FindRegularFont(FontFamily& family) {
     return best;
 }
 
+namespace {
+
+using CodePointRange = std::pair<uint32_t, uint32_t>;
+
+inline uint16_t ReadBE16(const uint8_t* p) {
+    return static_cast<uint16_t>((static_cast<uint16_t>(p[0]) << 8) | p[1]);
+}
+
+inline uint32_t ReadBE32(const uint8_t* p) {
+    return (static_cast<uint32_t>(p[0]) << 24) |
+           (static_cast<uint32_t>(p[1]) << 16) |
+           (static_cast<uint32_t>(p[2]) << 8) |
+           static_cast<uint32_t>(p[3]);
+}
+
+bool ReadFileAt(FILE* fp, uint64_t offset, void* dst, size_t len) {
+    if (fseek(fp, static_cast<long>(offset), SEEK_SET) != 0) {
+        return false;
+    }
+    return fread(dst, 1, len, fp) == len;
+}
+
+void AppendRange(std::vector<CodePointRange>& ranges, uint32_t start, uint32_t end) {
+    if (start <= end) {
+        ranges.emplace_back(start, end);
+    }
+}
+
+void ParseCmapFormat4(const uint8_t* table, size_t table_size, std::vector<CodePointRange>& ranges) {
+    if (table_size < 14) {
+        return;
+    }
+    uint16_t seg_count_x2 = ReadBE16(table + 6);
+    if (seg_count_x2 < 2 || (seg_count_x2 & 1) != 0) {
+        return;
+    }
+    size_t seg_count = seg_count_x2 / 2;
+    size_t end_code_off = 14;
+    size_t start_code_off = end_code_off + seg_count_x2 + 2;
+    size_t id_delta_off = start_code_off + seg_count_x2;
+    size_t id_range_off = id_delta_off + seg_count_x2;
+    if (id_range_off + seg_count_x2 > table_size) {
+        return;
+    }
+
+    for (size_t i = 0; i < seg_count; i++) {
+        uint16_t end_code = ReadBE16(table + end_code_off + i * 2);
+        uint16_t start_code = ReadBE16(table + start_code_off + i * 2);
+        if (start_code == 0xFFFF && end_code == 0xFFFF) {
+            break;
+        }
+        if (start_code > end_code) {
+            continue;
+        }
+        uint16_t id_delta = ReadBE16(table + id_delta_off + i * 2);
+        size_t range_entry_off = id_range_off + i * 2;
+        uint16_t range_offset = ReadBE16(table + range_entry_off);
+
+        if (range_offset == 0) {
+            uint32_t zero_cp = static_cast<uint16_t>(0u - id_delta);
+            if (zero_cp >= start_code && zero_cp <= end_code) {
+                if (zero_cp > start_code) {
+                    AppendRange(ranges, start_code, zero_cp - 1);
+                }
+                if (zero_cp < end_code) {
+                    AppendRange(ranges, zero_cp + 1, end_code);
+                }
+            } else {
+                AppendRange(ranges, start_code, end_code);
+            }
+        } else {
+            bool in_run = false;
+            uint32_t run_start = 0;
+            for (uint32_t cp = start_code; cp <= end_code; cp++) {
+                size_t glyph_off = range_entry_off + range_offset + static_cast<size_t>(cp - start_code) * 2;
+                if (glyph_off + 2 > table_size) {
+                    break;
+                }
+                uint16_t glyph_id = ReadBE16(table + glyph_off);
+                bool mapped = glyph_id != 0 && static_cast<uint16_t>(glyph_id + id_delta) != 0;
+                if (mapped && !in_run) {
+                    run_start = cp;
+                    in_run = true;
+                } else if (!mapped && in_run) {
+                    AppendRange(ranges, run_start, cp - 1);
+                    in_run = false;
+                }
+            }
+            if (in_run) {
+                AppendRange(ranges, run_start, end_code);
+            }
+        }
+    }
+}
+
+void ParseCmapFormat12(const uint8_t* table, size_t table_size, std::vector<CodePointRange>& ranges) {
+    if (table_size < 16) {
+        return;
+    }
+    uint32_t num_groups = ReadBE32(table + 12);
+    size_t max_groups = (table_size - 16) / 12;
+    if (num_groups > max_groups) {
+        num_groups = static_cast<uint32_t>(max_groups);
+    }
+
+    for (uint32_t i = 0; i < num_groups; i++) {
+        const uint8_t* g = table + 16 + static_cast<size_t>(i) * 12;
+        uint32_t start_cp = ReadBE32(g);
+        uint32_t end_cp = ReadBE32(g + 4);
+        uint32_t start_glyph = ReadBE32(g + 8);
+        if (start_glyph == 0 && start_cp < end_cp) {
+            start_cp++;
+        } else if (start_glyph == 0) {
+            continue;
+        }
+        AppendRange(ranges, start_cp, end_cp);
+    }
+}
+
+std::vector<CodePointRange> LoadSFNTUnicodeRanges(const std::string& full_path, int collection_index) {
+    std::vector<CodePointRange> ranges;
+    if (collection_index < 0) {
+        return ranges;
+    }
+
+    ScopedHolder<FILE*> fp(std::fopen(full_path.c_str(), "rb"), [](FILE* f) { std::fclose(f); });
+    if (!fp) {
+        return ranges;
+    }
+    if (fseek(fp, 0, SEEK_END) != 0) {
+        return ranges;
+    }
+    long file_size_long = ftell(fp);
+    if (file_size_long < 12) {
+        return ranges;
+    }
+    uint64_t file_size = static_cast<uint64_t>(file_size_long);
+
+    uint8_t header[12];
+    if (!ReadFileAt(fp, 0, header, sizeof(header))) {
+        return ranges;
+    }
+
+    uint32_t sfnt_tag = ReadBE32(header);
+    uint64_t sfnt_offset = 0;
+    if (sfnt_tag == 0x74746366u) {  // 'ttcf'
+        uint32_t num_fonts = ReadBE32(header + 8);
+        if (static_cast<uint32_t>(collection_index) >= num_fonts) {
+            return ranges;
+        }
+        uint64_t entry_off = 12 + static_cast<uint64_t>(collection_index) * 4;
+        if (entry_off + 4 > file_size) {
+            return ranges;
+        }
+        uint8_t off_buf[4];
+        if (!ReadFileAt(fp, entry_off, off_buf, sizeof(off_buf))) {
+            return ranges;
+        }
+        sfnt_offset = ReadBE32(off_buf);
+        if (sfnt_offset + 12 > file_size || !ReadFileAt(fp, sfnt_offset, header, sizeof(header))) {
+            return ranges;
+        }
+        sfnt_tag = ReadBE32(header);
+    }
+
+    if (sfnt_tag != 0x00010000u && sfnt_tag != 0x4F54544Fu && sfnt_tag != 0x74727565u) {
+        return ranges;
+    }
+
+    uint16_t num_tables = ReadBE16(header + 4);
+    uint64_t dir_size = static_cast<uint64_t>(num_tables) * 16;
+    if (sfnt_offset + 12 + dir_size > file_size) {
+        return ranges;
+    }
+
+    std::vector<uint8_t> table_dir(static_cast<size_t>(dir_size));
+    if (!ReadFileAt(fp, sfnt_offset + 12, table_dir.data(), table_dir.size())) {
+        return ranges;
+    }
+
+    bool has_outline = false;
+    bool has_color_bitmap = false;
+    uint32_t cmap_offset = 0;
+    uint32_t cmap_length = 0;
+    for (uint16_t i = 0; i < num_tables; i++) {
+        const uint8_t* rec = table_dir.data() + static_cast<size_t>(i) * 16;
+        uint32_t tag = ReadBE32(rec);
+        if (tag == 0x676C7966u || tag == 0x43464620u || tag == 0x43464632u) {  // 'glyf', 'CFF ', 'CFF2'
+            has_outline = true;
+        } else if (tag == 0x43424454u || tag == 0x73626978u) {  // 'CBDT', 'sbix'
+            has_color_bitmap = true;
+        } else if (tag == 0x636D6170u) {  // 'cmap'
+            cmap_offset = ReadBE32(rec + 8);
+            cmap_length = ReadBE32(rec + 12);
+        }
+    }
+
+    // Android renders via FreeType's outline path, so skip bitmap-only/color-bitmap fonts
+    constexpr uint32_t kMaxCmapSize = 16u * 1024u * 1024u;
+    if (!has_outline || has_color_bitmap || cmap_length < 4 || cmap_length > kMaxCmapSize ||
+        static_cast<uint64_t>(cmap_offset) + cmap_length > file_size) {
+        return ranges;
+    }
+
+    std::vector<uint8_t> cmap(cmap_length);
+    if (!ReadFileAt(fp, cmap_offset, cmap.data(), cmap.size())) {
+        return ranges;
+    }
+
+    uint16_t num_subtables = ReadBE16(cmap.data() + 2);
+    if (4 + static_cast<size_t>(num_subtables) * 8 > cmap.size()) {
+        return ranges;
+    }
+
+    uint32_t format12_off = 0;
+    uint32_t format4_off = 0;
+    for (uint16_t i = 0; i < num_subtables; i++) {
+        const uint8_t* rec = cmap.data() + 4 + static_cast<size_t>(i) * 8;
+        uint16_t platform_id = ReadBE16(rec);
+        uint16_t encoding_id = ReadBE16(rec + 2);
+        uint32_t sub_off = ReadBE32(rec + 4);
+        if (sub_off + 2 > cmap.size()) {
+            continue;
+        }
+        uint16_t format = ReadBE16(cmap.data() + sub_off);
+        bool is_unicode_full = (platform_id == 3 && encoding_id == 10) || (platform_id == 0 && encoding_id == 4);
+        bool is_unicode_bmp = (platform_id == 3 && encoding_id == 1) || (platform_id == 0 && encoding_id == 3);
+        if (format == 12 && is_unicode_full && format12_off == 0) {
+            format12_off = sub_off;
+        } else if (format == 4 && is_unicode_bmp && format4_off == 0) {
+            format4_off = sub_off;
+        }
+    }
+
+    if (format12_off != 0) {
+        ParseCmapFormat12(cmap.data() + format12_off, cmap.size() - format12_off, ranges);
+    } else if (format4_off != 0) {
+        ParseCmapFormat4(cmap.data() + format4_off, cmap.size() - format4_off, ranges);
+    }
+
+    if (ranges.empty()) {
+        return ranges;
+    }
+
+    std::sort(ranges.begin(), ranges.end());
+    std::vector<CodePointRange> merged;
+    merged.reserve(ranges.size());
+    for (const auto& r : ranges) {
+        if (!merged.empty() && r.first <= merged.back().second + 1) {
+            if (r.second > merged.back().second) {
+                merged.back().second = r.second;
+            }
+        } else {
+            merged.push_back(r);
+        }
+    }
+    return merged;
+}
+
+bool RangesContainCodePoint(const std::vector<CodePointRange>& ranges, uint32_t ucs4) {
+    auto it = std::upper_bound(ranges.begin(), ranges.end(), ucs4,
+                               [](uint32_t cp, const CodePointRange& r) { return cp < r.first; });
+    if (it == ranges.begin()) {
+        return false;
+    }
+    --it;
+    return ucs4 >= it->first && ucs4 <= it->second;
+}
+
+bool FamilyMatchesLanguage(const FontFamily& family, std::string_view lang) {
+    for (const auto& l : family.languages) {
+        if (l == lang) {
+            return true;
+        }
+    }
+    return false;
+}
+
+}  // namespace
+
 auto FontProviderAndroid::GetFontFace(const std::string& font_name) -> Result<FontfaceInfo, FontProviderError> {
     FontFamily* family = nullptr;
 
@@ -100,6 +385,91 @@ auto FontProviderAndroid::GetFontFace(const std::string& font_name) -> Result<Fo
     info.provider_type = FontProviderType::kAndroid;
 
     return Ok(std::move(info));
+}
+
+bool FontProviderAndroid::FontHasCodePoint(const std::string& full_path, int collection_index, uint32_t ucs4) {
+    std::string cache_key = full_path + "#" + std::to_string(collection_index);
+    auto iter = cmap_cache_.find(cache_key);
+    if (iter == cmap_cache_.end()) {
+        iter = cmap_cache_.emplace(std::move(cache_key), LoadSFNTUnicodeRanges(full_path, collection_index)).first;
+    }
+    return RangesContainCodePoint(iter->second, ucs4);
+}
+
+auto FontProviderAndroid::GetFallbackFontFace(uint32_t ucs4, std::string_view base_family_name)
+    -> Result<FontfaceInfo, FontProviderError> {
+    if (ucs4 == 0 || unicode::IsPrivateUseArea(ucs4)) {
+        return Err(FontProviderError::kCodePointNotFound);
+    }
+
+    auto try_family = [&](FontFamily& family) -> std::optional<FontfaceInfo> {
+        FontFile* font_file = FindRegularFont(family);
+        if (!font_file) {
+            return std::nullopt;
+        }
+        std::string full_path = base_font_path_ + font_file->filename;
+        if (!FontHasCodePoint(full_path, font_file->collection_index, ucs4)) {
+            return std::nullopt;
+        }
+        FontfaceInfo info;
+        info.family_name = !family.names.empty() ? family.names[0] : family.fallback_for;
+        info.postscript_name = font_file->postscript_name;
+        info.filename = std::move(full_path);
+        info.face_index = font_file->collection_index;
+        info.provider_type = FontProviderType::kAndroid;
+        return info;
+    };
+
+    std::string_view lang = ISO6392ToISO6391LanguageString(iso6392_language_code_);
+    std::string_view target_fallback_for = base_family_name.empty() ? std::string_view("sans-serif") : base_family_name;
+
+    // 1. Language-matching fallback families for base_family_name (or sans-serif)
+    for (auto& family : font_families_) {
+        if (!family.is_fallback || !FamilyMatchesLanguage(family, lang)) {
+            continue;
+        }
+        if (family.fallback_for != target_fallback_for && family.fallback_for != "sans-serif") {
+            continue;
+        }
+        if (auto info = try_family(family)) {
+            return Ok(std::move(*info));
+        }
+    }
+
+    // 2. Fallback families matching target_fallback_for (or sans-serif) before other styles (e.g. serif)
+    for (auto& family : font_families_) {
+        if (!family.is_fallback) {
+            continue;
+        }
+        if (family.fallback_for != target_fallback_for && family.fallback_for != "sans-serif") {
+            continue;
+        }
+        if (auto info = try_family(family)) {
+            return Ok(std::move(*info));
+        }
+    }
+
+    // 3. Remaining fallback families of any style
+    for (auto& family : font_families_) {
+        if (!family.is_fallback) {
+            continue;
+        }
+        if (auto info = try_family(family)) {
+            return Ok(std::move(*info));
+        }
+    }
+
+    // 4. Named families (e.g. sans-serif / Roboto when main font was a CJK fallback)
+    for (auto& family : font_families_) {
+        if (family.is_fallback) {
+            continue;
+        }
+        if (auto info = try_family(family)) {
+            return Ok(std::move(*info));
+        }
+    }
+
+    return Err(FontProviderError::kCodePointNotFound);
 }
 
 FontFamily* FontProviderAndroid::FindFamilyByName(std::string_view search_name) {
@@ -338,6 +708,10 @@ bool FontProviderAndroid::LMPHandleFamily(XMLElement* element) {
 
     if (const char* lang = element->Attribute("lang")) {
         SplitByComma(lang, current_family.languages);
+    }
+
+    // Unnamed <family> blocks (with or without lang) are fallback families in Android fonts.xml
+    if (current_family.names.empty()) {
         current_family.is_fallback = true;
         current_family.fallback_for = "sans-serif";
     }

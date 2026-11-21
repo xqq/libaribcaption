@@ -191,9 +191,6 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
             return TextRenderStatus::kCodePointNotFound;
         }
 
-        log_->w("Freetype: Main font %s doesn't contain U+%04X",
-                selected_slot->family_name.c_str(), ucs4);
-
         for (size_t i = *main_slot_index_ + 1; i < font_slots_.size(); i++) {
             FontSlot& slot = font_slots_[i];
             if (slot.state == SlotState::kUnavailable) {

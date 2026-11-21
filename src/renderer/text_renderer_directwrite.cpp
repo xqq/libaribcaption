@@ -452,9 +452,6 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
             return TextRenderStatus::kCodePointNotFound;
         }
 
-        log_->w("TextRendererDirectWrite: Main font %s doesn't contain U+%04X",
-                selected_slot->faceinfo.family_name.c_str(), ucs4);
-
         bool found = false;
         for (size_t i = *main_slot_index_ + 1; i < font_slots_.size(); i++) {
             FontSlot& slot = font_slots_[i];

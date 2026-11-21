@@ -120,37 +120,45 @@ static auto MatchFontDescriptor(CFStringRef font_name, CFStringRef name_attribut
 
 static auto BuildFontfaceInfo(ScopedCFRef<CTFontRef> ct_font) -> Result<FontfaceInfo, FontProviderError> {
     ScopedCFRef<CTFontDescriptorRef> ct_font_descriptor(CTFontCopyFontDescriptor(ct_font.get()));
-    if (!ct_font_descriptor) {
-        return Err(FontProviderError::kOtherError);
+
+    std::string filename;
+    ScopedCFRef<CFStringRef> cf_family_name;
+    ScopedCFRef<CFStringRef> cf_postscript_name;
+
+    if (ct_font_descriptor) {
+        ScopedCFRef<CFURLRef> cf_url(static_cast<CFURLRef>(
+            CTFontDescriptorCopyAttribute(ct_font_descriptor.get(), kCTFontURLAttribute)));
+        if (cf_url) {
+            ScopedCFRef<CFStringRef> cf_scheme(CFURLCopyScheme(cf_url.get()));
+            if (cf_scheme &&
+                CFStringCompare(cf_scheme.get(), CFSTR("file"), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+                ScopedCFRef<CFStringRef> cf_path(CFURLCopyFileSystemPath(cf_url.get(), kCFURLPOSIXPathStyle));
+                if (cf_path) {
+                    filename = cfstr::CFStringToStdString(cf_path.get());
+                }
+            }
+        }
+
+        cf_family_name.reset(static_cast<CFStringRef>(
+            CTFontDescriptorCopyAttribute(ct_font_descriptor.get(), kCTFontFamilyNameAttribute)));
+        cf_postscript_name.reset(static_cast<CFStringRef>(
+            CTFontDescriptorCopyAttribute(ct_font_descriptor.get(), kCTFontNameAttribute)));
     }
 
-    ScopedCFRef<CFURLRef> cf_url(static_cast<CFURLRef>(CTFontDescriptorCopyAttribute(ct_font_descriptor.get(),
-                                                                                     kCTFontURLAttribute)));
-    if (!cf_url) {
-        return Err(FontProviderError::kOtherError);
-    }
-
-    ScopedCFRef<CFStringRef> cf_path(CFURLCopyFileSystemPath(cf_url.get(), kCFURLPOSIXPathStyle));
-    if (!cf_path) {
-        return Err(FontProviderError::kOtherError);
-    }
-
-    ScopedCFRef<CFStringRef> cf_family_name(
-        static_cast<CFStringRef>(CTFontDescriptorCopyAttribute(ct_font_descriptor.get(), kCTFontFamilyNameAttribute)));
     if (!cf_family_name) {
-        return Err(FontProviderError::kOtherError);
+        cf_family_name.reset(CTFontCopyFamilyName(ct_font.get()));
     }
-
-    ScopedCFRef<CFStringRef> cf_postscript_name(
-        static_cast<CFStringRef>(CTFontDescriptorCopyAttribute(ct_font_descriptor.get(), kCTFontNameAttribute)));
     if (!cf_postscript_name) {
+        cf_postscript_name.reset(CTFontCopyPostScriptName(ct_font.get()));
+    }
+    if (!cf_family_name && !cf_postscript_name) {
         return Err(FontProviderError::kOtherError);
     }
 
     FontfaceInfo info;
     info.family_name = cfstr::CFStringToStdString(cf_family_name.get());
     info.postscript_name = cfstr::CFStringToStdString(cf_postscript_name.get());
-    info.filename = cfstr::CFStringToStdString(cf_path.get());
+    info.filename = std::move(filename);
     info.face_index = -1;
     info.provider_type = FontProviderType::kCoreText;
 

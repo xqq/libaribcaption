@@ -126,6 +126,10 @@ public:
         return get_fallback_calls_;
     }
 
+    const std::string& GetLastFallbackBaseFamily() const {
+        return last_fallback_base_family_;
+    }
+
     Result<FontfaceInfo, FontProviderError> GetFontFace(const std::string& font_name) override {
         get_font_calls_[font_name]++;
         auto it = font_map_.find(font_name);
@@ -141,6 +145,7 @@ public:
     Result<FontfaceInfo, FontProviderError> GetFallbackFontFace(uint32_t ucs4,
                                                                 std::string_view base_family_name) override {
         get_fallback_calls_++;
+        last_fallback_base_family_ = std::string(base_family_name);
         if (!allow_system_fallback_) {
             return Err(FontProviderError::kCodePointNotFound);
         }
@@ -165,6 +170,7 @@ private:
     bool allow_system_fallback_ = false;
     std::optional<MappedFont> forced_fallback_;
     int get_fallback_calls_ = 0;
+    std::string last_fallback_base_family_;
 };
 
 void RunMockProviderTests(Context& ctx, FontProvider& backing, TextRendererType renderer_type, const char* label) {
@@ -316,6 +322,8 @@ void RunMockProviderTests(Context& ctx, FontProvider& backing, TextRendererType 
         // First missing non-PUA character triggers GetFallbackFontFace once and caches it
         CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
         CHECK(proxy.GetFallbackCallCount() == 1);
+        // base_family_name must be the requested font family entry, not the loaded face's family name
+        CHECK(proxy.GetLastFallbackBaseFamily() == "MockLatin");
 
         // Second character covered by the cached system fallback must NOT call GetFallbackFontFace again
         CHECK(DrawSingleChar(*tr, 0x3044, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);

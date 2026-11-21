@@ -147,6 +147,7 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
             return TextRenderStatus::kCodePointNotFound;
         }
 
+        // Try fallback fonts in configured font-family list
         for (size_t i = *main_slot_index_ + 1; i < font_slots_.size(); i++) {
             FontSlot& slot = font_slots_[i];
             if (slot.state == SlotState::kUnavailable) {
@@ -181,6 +182,7 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
             }
         }
 
+        // Try system fallback, if allowed by fallback policy
         if (!has_glyph && fallback_policy == TextRenderFallbackPolicy::kAutoFallback) {
             if (CTFontRef sys_ctfont = FindOrLoadSystemFallbackSlot(ucs4,
                                                                     main_slot.family_name,

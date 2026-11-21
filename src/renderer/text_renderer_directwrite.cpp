@@ -453,6 +453,8 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
         }
 
         bool found = false;
+
+        // Try fallback fonts in configured font-family list
         for (size_t i = *main_slot_index_ + 1; i < font_slots_.size(); i++) {
             FontSlot& slot = font_slots_[i];
             if (slot.state == SlotState::kUnavailable) {
@@ -472,6 +474,7 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
             }
         }
 
+        // Try system fallback, if allowed by fallback policy
         if (!found && fallback_policy == TextRenderFallbackPolicy::kAutoFallback) {
             if (FontSlot* sys_slot = FindOrLoadSystemFallbackSlot(ucs4, selected_slot->faceinfo.family_name)) {
                 selected_slot = sys_slot;

@@ -251,8 +251,10 @@ auto FontProviderFontconfig::GetFallbackFontFace(uint32_t ucs4, std::string_view
         return Err(FontProviderError::kOtherError);
     }
 
-    if (!base_family_name.empty()) {
-        std::string base_family(base_family_name);
+    // base_family_name may be a pattern string such as "Family:style=Regular", keep only the family part.
+    // FcNameParse() is not used because it also treats '-' as a size separator ("sans-serif" -> "sans").
+    std::string base_family(base_family_name.substr(0, base_family_name.find(':')));
+    if (!base_family.empty()) {
         FcPatternAddString(pattern, FC_FAMILY, reinterpret_cast<const FcChar8*>(base_family.c_str()));
     }
     FcPatternAddBool(pattern, FC_OUTLINE, FcTrue);

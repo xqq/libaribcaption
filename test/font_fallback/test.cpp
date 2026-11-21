@@ -468,6 +468,153 @@ void RunRealPlatformTests(Context& ctx,
     }
 }
 
+#if defined(ARIBCC_USE_FREETYPE) && defined(ARIBCC_USE_CORETEXT)
+class StaticFontProvider : public FontProvider {
+public:
+    StaticFontProvider(std::string filename,
+                       std::string family_name,
+                       std::string postscript_name,
+                       int face_index)
+        : filename_(std::move(filename)),
+          family_name_(std::move(family_name)),
+          postscript_name_(std::move(postscript_name)),
+          face_index_(face_index) {}
+
+    FontProviderType GetType() override {
+        return FontProviderType::kCoreText;
+    }
+
+    bool Initialize() override {
+        return true;
+    }
+
+    void SetLanguage(uint32_t iso6392_language_code) override {
+        (void)iso6392_language_code;
+    }
+
+    Result<FontfaceInfo, FontProviderError> GetFontFace(const std::string& font_name) override {
+        (void)font_name;
+        FontfaceInfo info;
+        info.filename = filename_;
+        info.family_name = family_name_;
+        info.postscript_name = postscript_name_;
+        info.face_index = face_index_;
+        info.provider_type = FontProviderType::kCoreText;
+        return Ok(std::move(info));
+    }
+private:
+    std::string filename_;
+    std::string family_name_;
+    std::string postscript_name_;
+    int face_index_ = 0;
+};
+
+void RunFreeTypeCollectionScanTests(Context& ctx, FontProvider& coretext_fp) {
+    printf("Running FreeType collection scan tests (FreeType+CoreText)...\n");
+
+    coretext_fp.SetLanguage(ThreeCC("eng"));
+    auto regular_res = coretext_fp.GetFontFace("Avenir Next Condensed");
+    auto bold_res = coretext_fp.GetFontFace("AvenirNextCondensed-Bold");
+    if (regular_res.is_err() || bold_res.is_err()) {
+        return;
+    }
+
+    const FontfaceInfo& regular = regular_res.value();
+    const FontfaceInfo& bold = bold_res.value();
+    if (regular.filename.empty() || regular.filename != bold.filename || regular.face_index >= 0 ||
+        regular.family_name != bold.family_name || regular.postscript_name == bold.postscript_name) {
+        return;
+    }
+
+    // 1. Exact PostScript match wins over earlier family-name match in a collection
+    Bitmap regular_bmp(64, 64, PixelFormat::kRGBA8888);
+    Bitmap bold_bmp(64, 64, PixelFormat::kRGBA8888);
+    Bitmap ibreve_bmp(64, 64, PixelFormat::kRGBA8888);
+    {
+        auto tr_regular = TextRenderer::Create(TextRendererType::kFreetype, ctx, coretext_fp);
+        auto tr_bold = TextRenderer::Create(TextRendererType::kFreetype, ctx, coretext_fp);
+        CHECK(tr_regular && tr_regular->Initialize() && tr_bold && tr_bold->Initialize());
+
+        tr_regular->SetFontFamily({"Avenir Next Condensed"});
+        tr_bold->SetFontFamily({"AvenirNextCondensed-Bold"});
+
+        CHECK(DrawSingleChar(*tr_regular, 0x0041, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &regular_bmp) ==
+              TextRenderStatus::kOK);
+        CHECK(DrawSingleChar(*tr_bold, 0x0041, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &bold_bmp) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapHasNonZeroPixels(regular_bmp));
+        CHECK(BitmapHasNonZeroPixels(bold_bmp));
+        CHECK(!BitmapsEqual(regular_bmp, bold_bmp));
+
+        // U+012C exists in Regular (face 7) but not in Bold (face 0)
+        CHECK(DrawSingleChar(*tr_regular, 0x012C, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &ibreve_bmp) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapHasNonZeroPixels(ibreve_bmp));
+
+        CHECK(DrawSingleChar(*tr_bold, 0x012C, TextRenderFallbackPolicy::kFailOnCodePointNotFound) ==
+              TextRenderStatus::kCodePointNotFound);
+    }
+
+    // 2. Two subfaces from the same collection file load as distinct slots without false deduplication
+    {
+        auto tr = TextRenderer::Create(TextRendererType::kFreetype, ctx, coretext_fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetFontFamily({"AvenirNextCondensed-Bold", "Avenir Next Condensed"});
+        Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+        CHECK(DrawSingleChar(*tr, 0x012C, TextRenderFallbackPolicy::kFontFamilyFallbackOnly, &actual) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapsEqual(actual, ibreve_bmp));
+    }
+
+    // 3. Remaining scan branches via StaticFontProvider with face_index = -1
+    {
+        // Empty postscript_name + valid family_name: opens first family match (face 0, Bold)
+        StaticFontProvider fp(regular.filename, regular.family_name, "", -1);
+        auto tr = TextRenderer::Create(TextRendererType::kFreetype, ctx, fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetFontFamily({"StaticTest"});
+        Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+        CHECK(DrawSingleChar(*tr, 0x0041, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &actual) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapsEqual(actual, bold_bmp));
+    }
+
+    {
+        // Unmatched postscript_name + valid family_name: falls back to first family match after scanning all faces
+        StaticFontProvider fp(regular.filename, regular.family_name, "AribccNonExistentPostScriptName", -1);
+        auto tr = TextRenderer::Create(TextRendererType::kFreetype, ctx, fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetFontFamily({"StaticTest"});
+        Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+        CHECK(DrawSingleChar(*tr, 0x0041, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &actual) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapsEqual(actual, bold_bmp));
+    }
+
+    {
+        // Valid postscript_name + empty family_name: opens exact PostScript face (face 7, Regular)
+        StaticFontProvider fp(regular.filename, "", regular.postscript_name, -1);
+        auto tr = TextRenderer::Create(TextRendererType::kFreetype, ctx, fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetFontFamily({"StaticTest"});
+        Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+        CHECK(DrawSingleChar(*tr, 0x012C, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &actual) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapsEqual(actual, ibreve_bmp));
+    }
+
+    {
+        // Neither postscript_name nor family_name matches: returns kFontNotFound
+        StaticFontProvider fp(regular.filename, kNonExistentFont, "AribccNonExistentPostScriptName", -1);
+        auto tr = TextRenderer::Create(TextRendererType::kFreetype, ctx, fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetFontFamily({"StaticTest"});
+        CHECK(DrawSingleChar(*tr, 0x0041, TextRenderFallbackPolicy::kFailOnCodePointNotFound) ==
+              TextRenderStatus::kFontNotFound);
+    }
+}
+#endif
+
 }  // namespace
 
 int main() {
@@ -500,6 +647,7 @@ int main() {
         CHECK(fp && fp->Initialize());
         if (fp) {
             RunMockProviderTests(ctx, *fp, TextRendererType::kFreetype, "FreeType+CoreText");
+            RunFreeTypeCollectionScanTests(ctx, *fp);
         }
         RunRealPlatformTests(ctx, FontProviderType::kCoreText, TextRendererType::kFreetype, "FreeType+CoreText", true);
     }

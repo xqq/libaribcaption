@@ -445,7 +445,8 @@ auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) ->
     }
 
     if (info.face_index < 0) {
-        // Negative face_index queries num_faces; match the exact subface by PostScript or family name
+        // Negative face_index queries num_faces; prefer exact PostScript match across all faces,
+        // falling back to the first family-name match only if no face matched the PostScript name
         if (info.family_name.empty() && info.postscript_name.empty()) {
             log_->e("TextRendererFreetype: Missing Family name / PostScript name for cases that face_index < 0");
             return FontProviderError::kOtherError;
@@ -454,20 +455,32 @@ auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) ->
         FT_Long num_faces = face->num_faces;
         face.Reset();
 
+        ScopedHolder<FT_Face> family_match;
+
         for (FT_Long i = 0; i < num_faces; i++) {
             ScopedHolder<FT_Face> candidate = create_face(i);
             if (!candidate) {
                 return FontProviderError::kFontNotFound;
             }
 
-            const char* ps_name = FT_Get_Postscript_Name(candidate);
-            if (!info.postscript_name.empty() && ps_name && info.postscript_name == ps_name) {
-                face = std::move(candidate);
-                break;
-            } else if (!info.family_name.empty() && MatchFontFamilyName(candidate, info.family_name)) {
-                face = std::move(candidate);
-                break;
+            if (!info.postscript_name.empty()) {
+                const char* ps_name = FT_Get_Postscript_Name(candidate);
+                if (ps_name && info.postscript_name == ps_name) {
+                    face = std::move(candidate);
+                    break;
+                }
             }
+
+            if (!family_match && !info.family_name.empty() && MatchFontFamilyName(candidate, info.family_name)) {
+                family_match = std::move(candidate);
+                if (info.postscript_name.empty()) {
+                    break;
+                }
+            }
+        }
+
+        if (!face) {
+            face = std::move(family_match);
         }
 
         if (!face) {

@@ -416,6 +416,13 @@ static bool MatchFontFamilyName(FT_Face face, std::string_view family_name) {
 
 auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) -> std::optional<FontProviderError> {
     bool use_memory_data = !info.font_data.empty();
+    if (!use_memory_data && info.filename.empty()) {
+        log_->w("TextRendererFreetype: Skipping font %s with neither file path nor memory data",
+                !info.postscript_name.empty() ? info.postscript_name.c_str()
+                                              : (!info.family_name.empty() ? info.family_name.c_str() : "<unknown>"));
+        return FontProviderError::kFontNotFound;
+    }
+
     std::vector<uint8_t> face_data;
     if (use_memory_data) {
         face_data = std::move(info.font_data);

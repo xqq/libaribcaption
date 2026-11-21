@@ -476,7 +476,7 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
 
         // Try system fallback, if allowed by fallback policy
         if (!found && fallback_policy == TextRenderFallbackPolicy::kAutoFallback) {
-            if (FontSlot* sys_slot = FindOrLoadSystemFallbackSlot(ucs4, selected_slot->faceinfo.family_name)) {
+            if (FontSlot* sys_slot = FindOrLoadSystemFallbackSlot(ucs4, font_family_[*main_slot_index_])) {
                 selected_slot = sys_slot;
                 found = true;
             }

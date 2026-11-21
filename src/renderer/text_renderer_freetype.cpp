@@ -215,7 +215,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
         // Try system fallback, if allowed by fallback policy
         if (glyph_index == 0 && fallback_policy == TextRenderFallbackPolicy::kAutoFallback) {
             if (FontSlot* sys_slot =
-                    FindOrLoadSystemFallbackSlot(ucs4, font_slots_[*main_slot_index_].family_name, glyph_index)) {
+                    FindOrLoadSystemFallbackSlot(ucs4, font_family_[*main_slot_index_], glyph_index)) {
                 selected_slot = sys_slot;
             }
         }

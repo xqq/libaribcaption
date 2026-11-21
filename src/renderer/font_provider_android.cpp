@@ -423,29 +423,32 @@ auto FontProviderAndroid::GetFallbackFontFace(uint32_t ucs4, std::string_view ba
     std::string_view lang = ISO6392ToISO6391LanguageString(iso6392_language_code_);
     std::string_view target_fallback_for = base_family_name.empty() ? std::string_view("sans-serif") : base_family_name;
 
-    // 1. Language-matching fallback families for base_family_name (or sans-serif)
-    for (auto& family : font_families_) {
-        if (!family.is_fallback || !FamilyMatchesLanguage(family, lang)) {
-            continue;
+    auto scan = [&](bool require_language, std::string_view fallback_for) -> std::optional<FontfaceInfo> {
+        for (auto& family : font_families_) {
+            if (!family.is_fallback || family.fallback_for != fallback_for) {
+                continue;
+            }
+            if (require_language && !FamilyMatchesLanguage(family, lang)) {
+                continue;
+            }
+            if (auto info = try_family(family)) {
+                return info;
+            }
         }
-        if (family.fallback_for != target_fallback_for && family.fallback_for != "sans-serif") {
-            continue;
-        }
-        if (auto info = try_family(family)) {
-            return Ok(std::move(*info));
-        }
-    }
+        return std::nullopt;
+    };
 
-    // 2. Fallback families matching target_fallback_for (or sans-serif) before other styles (e.g. serif)
-    for (auto& family : font_families_) {
-        if (!family.is_fallback) {
-            continue;
-        }
-        if (family.fallback_for != target_fallback_for && family.fallback_for != "sans-serif") {
-            continue;
-        }
-        if (auto info = try_family(family)) {
+    // 1. Language-matching fallback families: the exact style of base_family_name first, then sans-serif.
+    // 2. Same for fallback families of any language.
+    // Language outranks style, e.g. a Japanese sans-serif fallback beats a serif fallback for another language.
+    for (bool require_language : {true, false}) {
+        if (auto info = scan(require_language, target_fallback_for)) {
             return Ok(std::move(*info));
+        }
+        if (target_fallback_for != "sans-serif") {
+            if (auto info = scan(require_language, "sans-serif")) {
+                return Ok(std::move(*info));
+            }
         }
     }
 

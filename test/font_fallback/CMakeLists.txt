@@ -37,6 +37,9 @@ target_include_directories(test_font_fallback
 target_link_libraries(test_font_fallback
     PRIVATE
         aribcaption
+        $<$<BOOL:${ARIBCC_USE_CORETEXT}>:${COREFOUNDATION_FRAMEWORK}>
+        $<$<BOOL:${ARIBCC_USE_CORETEXT}>:${COREGRAPHICS_FRAMEWORK}>
+        $<$<BOOL:${ARIBCC_USE_CORETEXT}>:${CORETEXT_FRAMEWORK}>
 )
 
 set_target_properties(test_font_fallback

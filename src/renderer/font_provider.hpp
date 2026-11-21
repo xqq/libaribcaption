@@ -63,6 +63,8 @@ public:
     virtual bool Initialize() = 0;
     virtual void SetLanguage(uint32_t iso6392_language_code) = 0;
     virtual Result<FontfaceInfo, FontProviderError> GetFontFace(const std::string& font_name) = 0;
+    // base_family_name: the main font's entry from the font family list as configured
+    // (may be a generic name such as "sans-serif"), not the loaded face's own family name
     virtual Result<FontfaceInfo, FontProviderError> GetFallbackFontFace(uint32_t ucs4,
                                                                         std::string_view base_family_name);
 public:

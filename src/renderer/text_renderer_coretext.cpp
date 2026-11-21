@@ -185,7 +185,7 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
         // Try system fallback, if allowed by fallback policy
         if (!has_glyph && fallback_policy == TextRenderFallbackPolicy::kAutoFallback) {
             if (CTFontRef sys_ctfont = FindOrLoadSystemFallbackSlot(ucs4,
-                                                                    main_slot.family_name,
+                                                                    font_family_[*main_slot_index_],
                                                                     reinterpret_cast<const UniChar*>(utf16.data()),
                                                                     static_cast<CFIndex>(codeunit_count),
                                                                     char_height,

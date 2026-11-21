@@ -46,7 +46,7 @@ bool TextRendererFreetype::Initialize() {
     FT_Library library;
     FT_Error error = FT_Init_FreeType(&library);
     if (error) {
-        log_->e("Freetype: FT_Init_FreeType() failed");
+        log_->e("TextRendererFreetype: FT_Init_FreeType() failed");
         library_ = nullptr;
         return false;
     }
@@ -175,7 +175,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
     }
 
     if (auto err = EnsureMainSlot()) {
-        log_->e("Freetype: Cannot find valid font");
+        log_->e("TextRendererFreetype: Cannot find valid font");
         return FontProviderErrorToStatus(*err);
     }
 
@@ -223,7 +223,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
             // unless it is a PUA codepoint which system fallback never handles
             if (fallback_policy == TextRenderFallbackPolicy::kAutoFallback || unicode::IsPrivateUseArea(ucs4)) {
                 missing_codepoints_.insert(ucs4);
-                log_->e("Freetype: Cannot find available fallback font for U+%04X", ucs4);
+                log_->e("TextRendererFreetype: Cannot find available fallback font for U+%04X", ucs4);
             }
             return TextRenderStatus::kCodePointNotFound;
         }
@@ -252,7 +252,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
     }
 
     if (FT_Set_Pixel_Sizes(face, static_cast<FT_UInt>(char_width), static_cast<FT_UInt>(char_height))) {
-        log_->e("Freetype: FT_Set_Pixel_Sizes failed");
+        log_->e("TextRendererFreetype: FT_Set_Pixel_Sizes failed");
         return TextRenderStatus::kOtherError;
     }
 
@@ -278,19 +278,19 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
     }
 
     if (FT_Load_Glyph(face, glyph_index, FT_LOAD_NO_BITMAP)) {
-        log_->e("Freetype: FT_Load_Glyph failed");
+        log_->e("TextRendererFreetype: FT_Load_Glyph failed");
         return TextRenderStatus::kOtherError;
     }
 
     // Generate glyph bitmap for filling
     ScopedHolder<FT_Glyph> glyph_image(nullptr, FT_Done_Glyph);
     if (FT_Get_Glyph(face->glyph, &glyph_image)) {
-        log_->e("Freetype: FT_Get_Glyph failed");
+        log_->e("TextRendererFreetype: FT_Get_Glyph failed");
         return TextRenderStatus::kOtherError;
     }
 
     if (FT_Glyph_To_Bitmap(&glyph_image, FT_RENDER_MODE_NORMAL, nullptr, true)) {
-        log_->e("Freetype: FT_Glyph_To_Bitmap failed");
+        log_->e("TextRendererFreetype: FT_Glyph_To_Bitmap failed");
         return TextRenderStatus::kOtherError;
     }
 
@@ -301,7 +301,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
         // Generate glyph bitmap for stroke border
         ScopedHolder<FT_Glyph> stroke_glyph(nullptr, FT_Done_Glyph);
         if (FT_Get_Glyph(face->glyph, &stroke_glyph)) {
-            log_->e("Freetype: FT_Get_Glyph failed");
+            log_->e("TextRendererFreetype: FT_Get_Glyph failed");
             return TextRenderStatus::kOtherError;
         }
 
@@ -316,7 +316,7 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
         FT_Glyph_StrokeBorder(&stroke_glyph, stroker, false, true);
 
         if (FT_Glyph_To_Bitmap(&stroke_glyph, FT_RENDER_MODE_NORMAL, nullptr, true)) {
-            log_->e("Freetype: FT_Glyph_To_Bitmap failed");
+            log_->e("TextRendererFreetype: FT_Glyph_To_Bitmap failed");
             return TextRenderStatus::kOtherError;
         }
 
@@ -445,7 +445,7 @@ auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) ->
     if (info.face_index < 0) {
         // Negative face_index queries num_faces; match the exact subface by PostScript or family name
         if (info.family_name.empty() && info.postscript_name.empty()) {
-            log_->e("Freetype: Missing Family name / PostScript name for cases that face_index < 0");
+            log_->e("TextRendererFreetype: Missing Family name / PostScript name for cases that face_index < 0");
             return FontProviderError::kOtherError;
         }
 
@@ -475,7 +475,7 @@ auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) ->
 
     if (!FT_IS_SCALABLE(face)) {
         // FT_LOAD_NO_BITMAP + FT_Stroker require scalable outlines
-        log_->w("Freetype: Skipping non-scalable font %s",
+        log_->w("TextRendererFreetype: Skipping non-scalable font %s",
                 face->family_name ? face->family_name : info.family_name.c_str());
         return FontProviderError::kFontNotFound;
     }

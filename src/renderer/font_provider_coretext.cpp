@@ -248,15 +248,12 @@ auto FontProviderCoreText::GetFallbackFontFace(uint32_t ucs4, std::string_view b
     }
 
     auto info_result = BuildFontfaceInfo(std::move(fallback_font));
-    if (info_result.is_err()) {
-        return info_result;
+    if (info_result.is_ok()) {
+        const FontfaceInfo& info = info_result.value();
+        if (info.family_name == ".LastResort" || info.family_name == "LastResort" || info.postscript_name == "LastResort") {
+            info_result = Err(FontProviderError::kCodePointNotFound);
+        }
     }
-
-    const FontfaceInfo& info = info_result.value();
-    if (info.family_name == ".LastResort" || info.family_name == "LastResort" || info.postscript_name == "LastResort") {
-        return Err(FontProviderError::kCodePointNotFound);
-    }
-
     return info_result;
 }
 

@@ -372,7 +372,7 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
             out_result.images = prev_rendered_images_;
             return RenderStatus::kGotImageUnchanged;
         } else {
-            InvalidatePrevRenderedImages();
+            // Every region was skipped, keep the empty result cached to avoid re-rendering
             return RenderStatus::kNoImage;
         }
     }
@@ -430,6 +430,10 @@ RenderStatus RendererImpl::Render(int64_t pts, RenderResult& out_result) {
     prev_rendered_caption_pts_ = caption.pts;
     prev_rendered_caption_duration_ = caption.wait_duration;
     prev_rendered_images_ = std::move(images);
+
+    if (prev_rendered_images_.empty()) {
+        return RenderStatus::kNoImage;
+    }
 
     out_result.pts = caption.pts;
     out_result.duration = caption.wait_duration;

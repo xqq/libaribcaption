@@ -315,13 +315,21 @@ auto FontProviderDirectWrite::GetFallbackFontFace(uint32_t ucs4, std::string_vie
         &mapped_length,
         &mapped_font,
         &scale);
-    if (FAILED(hr) || !mapped_font || mapped_length == 0) {
+    if (FAILED(hr)) {
+        log_->e("FontProviderDirectWrite: IDWriteFontFallback::MapCharacters() failed");
+        return Err(FontProviderError::kOtherError);
+    }
+    if (!mapped_font || mapped_length == 0) {
         return Err(FontProviderError::kCodePointNotFound);
     }
 
     BOOL has_char = FALSE;
     hr = mapped_font->HasCharacter(ucs4, &has_char);
-    if (FAILED(hr) || !has_char) {
+    if (FAILED(hr)) {
+        log_->e("FontProviderDirectWrite: IDWriteFont::HasCharacter() failed");
+        return Err(FontProviderError::kOtherError);
+    }
+    if (!has_char) {
         return Err(FontProviderError::kCodePointNotFound);
     }
 

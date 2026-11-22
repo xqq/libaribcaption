@@ -214,9 +214,12 @@ auto TextRendererFreetype::DrawChar(TextRenderContext& render_ctx, int target_x,
 
         // Try system fallback, if allowed by fallback policy
         if (glyph_index == 0 && fallback_policy == TextRenderFallbackPolicy::kAutoFallback) {
-            if (FontSlot* sys_slot =
-                    FindOrLoadSystemFallbackSlot(ucs4, font_family_[*main_slot_index_], glyph_index)) {
-                selected_slot = sys_slot;
+            auto sys_slot = FindOrLoadSystemFallbackSlot(ucs4, font_family_[*main_slot_index_], glyph_index);
+            if (sys_slot.is_ok()) {
+                selected_slot = sys_slot.value();
+            } else if (sys_slot.error() != TextRenderStatus::kCodePointNotFound) {
+                log_->e("TextRendererFreetype: System fallback lookup for U+%04X failed", ucs4);
+                return sys_slot.error();
             }
         }
 
@@ -622,9 +625,10 @@ auto TextRendererFreetype::EnsureMainSlot() -> std::optional<FontProviderError> 
 
 auto TextRendererFreetype::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
                                                         std::string_view base_family_name,
-                                                        FT_UInt& out_glyph_index) -> FontSlot* {
+                                                        FT_UInt& out_glyph_index)
+    -> Result<FontSlot*, TextRenderStatus> {
     if (unicode::IsPrivateUseArea(ucs4)) {
-        return nullptr;
+        return Err(TextRenderStatus::kCodePointNotFound);
     }
 
     for (auto& slot : system_fallback_slots_) {
@@ -634,23 +638,24 @@ auto TextRendererFreetype::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
         FT_UInt glyph = FT_Get_Char_Index(slot.face, ucs4);
         if (glyph != 0) {
             out_glyph_index = glyph;
-            return &slot;
+            return Ok(&slot);
         }
     }
 
     auto result = font_provider_.GetFallbackFontFace(ucs4, base_family_name);
     if (result.is_err()) {
-        return nullptr;
+        return Err(result.error() == FontProviderError::kOtherError ? TextRenderStatus::kOtherError
+                                                                     : TextRenderStatus::kCodePointNotFound);
     }
 
     FontSlot loaded_slot;
     if (OpenFTFace(result.value(), loaded_slot)) {
-        return nullptr;
+        return Err(TextRenderStatus::kOtherError);
     }
 
     FT_UInt glyph = FT_Get_Char_Index(loaded_slot.face, ucs4);
     if (glyph == 0 || IsDuplicateSlot(loaded_slot)) {
-        return nullptr;
+        return Err(TextRenderStatus::kCodePointNotFound);
     }
 
     static constexpr size_t kMaxSystemFallbackSlots = 16;
@@ -660,7 +665,7 @@ auto TextRendererFreetype::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
 
     system_fallback_slots_.push_back(std::move(loaded_slot));
     out_glyph_index = glyph;
-    return &system_fallback_slots_.back();
+    return Ok(&system_fallback_slots_.back());
 }
 
 }  // namespace aribcaption

@@ -111,7 +111,7 @@ private:
     auto LoadSlot(size_t slot_index) -> std::optional<FontProviderError>;
     auto EnsureMainSlot() -> std::optional<FontProviderError>;
     auto FindOrLoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name, FT_UInt& out_glyph_index)
-        -> FontSlot*;
+        -> Result<FontSlot*, TextRenderStatus>;
     void ResetFontFaces();
 private:
     std::shared_ptr<Logger> log_;

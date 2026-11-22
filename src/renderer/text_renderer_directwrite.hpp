@@ -73,7 +73,7 @@ private:
                              ColorRGBA color, ColorRGBA stroke_color, float stroke_width,
                              int char_width, int char_height, float aspect_ratio,
                              std::optional<UnderlineInfo> underline_info) -> TextRenderStatus;
-    auto LoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name) -> std::optional<FontSlot>;
+    auto LoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name) -> Result<FontSlot, TextRenderStatus>;
     void CacheSystemFallbackSlot(FontSlot&& slot);
     auto EnsureTextFormat(FontSlot& slot, int char_height) -> IDWriteTextFormat*;
     auto CreateDWriteTextFormat(FontfaceInfo& face_info, float font_size) -> ComPtr<IDWriteTextFormat>;

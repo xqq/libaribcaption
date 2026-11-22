@@ -503,15 +503,19 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
             }
         }
 
-        if (auto new_slot = LoadSystemFallbackSlot(ucs4, font_family_[*main_slot_index_])) {
-            TextRenderStatus status = try_slot(*new_slot);
+        auto new_slot = LoadSystemFallbackSlot(ucs4, font_family_[*main_slot_index_]);
+        if (new_slot.is_ok()) {
+            TextRenderStatus status = try_slot(new_slot.value());
             if (status == TextRenderStatus::kOK) {
-                CacheSystemFallbackSlot(std::move(*new_slot));
+                CacheSystemFallbackSlot(std::move(new_slot.value()));
                 return TextRenderStatus::kOK;
             }
             if (status != TextRenderStatus::kCodePointNotFound) {
                 return status;
             }
+        } else if (new_slot.error() != TextRenderStatus::kCodePointNotFound) {
+            log_->e("TextRendererDirectWrite: System fallback lookup for U+%04X failed", ucs4);
+            return new_slot.error();
         }
     }
 
@@ -777,30 +781,31 @@ auto TextRendererDirectWrite::EnsureMainSlot() -> std::optional<FontProviderErro
 }
 
 auto TextRendererDirectWrite::LoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name)
-    -> std::optional<FontSlot> {
+    -> Result<FontSlot, TextRenderStatus> {
     if (unicode::IsPrivateUseArea(ucs4)) {
-        return std::nullopt;
+        return Err(TextRenderStatus::kCodePointNotFound);
     }
 
     auto result = font_provider_.GetFallbackFontFace(ucs4, base_family_name);
     if (result.is_err()) {
-        return std::nullopt;
+        return Err(result.error() == FontProviderError::kOtherError ? TextRenderStatus::kOtherError
+                                                                     : TextRenderStatus::kCodePointNotFound);
     }
 
     FontfaceInfo& info = result.value();
     if (info.provider_type != FontProviderType::kDirectWrite) {
-        return std::nullopt;
+        return Err(TextRenderStatus::kOtherError);
     }
 
     auto priv = static_cast<FontfaceInfoPrivateDirectWrite*>(info.provider_priv.get());
     if (!priv || !priv->font || !priv->fontface || !FontfaceHasCharacter(info, ucs4) || IsDuplicateFont(info)) {
-        return std::nullopt;
+        return Err(TextRenderStatus::kCodePointNotFound);
     }
 
-    std::optional<FontSlot> slot(std::in_place);
-    slot->faceinfo = std::move(info);
-    slot->state = SlotState::kLoaded;
-    return slot;
+    FontSlot slot;
+    slot.faceinfo = std::move(info);
+    slot.state = SlotState::kLoaded;
+    return Ok(std::move(slot));
 }
 
 void TextRendererDirectWrite::CacheSystemFallbackSlot(FontSlot&& slot) {

@@ -1585,6 +1585,80 @@ void RunDirectWriteTests(Context& ctx) {
 }
 #endif
 
+#if defined(ARIBCC_IS_ANDROID) && defined(ARIBCC_USE_FREETYPE)
+// For jpn / unspecified language, style names resolve to the Japanese fallback group,
+// while other names must resolve to the named family itself or fail
+void RunAndroidNamedFamilyTests(Context& ctx) {
+    printf("Running Android named-family tests...\n");
+
+    auto fp = FontProvider::Create(FontProviderType::kAndroid, ctx);
+    CHECK(fp && fp->Initialize());
+    if (!fp) {
+        return;
+    }
+
+    fp->SetLanguage(ThreeCC("eng"));
+    auto mono_en = fp->GetFontFace("monospace");
+    auto sans_en = fp->GetFontFace("sans-serif");
+    CHECK(mono_en.is_ok());
+    CHECK(sans_en.is_ok());
+
+    for (uint32_t lang : {ThreeCC("jpn"), uint32_t(0)}) {
+        fp->SetLanguage(lang);
+
+        // a. Nonexistent family must not be substituted
+        auto missing = fp->GetFontFace(kNonExistentFont);
+        CHECK(missing.is_err() && missing.error() == FontProviderError::kFontNotFound);
+
+        // b. Named family resolves to itself
+        if (mono_en.is_ok()) {
+            auto mono = fp->GetFontFace("monospace");
+            CHECK(mono.is_ok() && mono.value().filename == mono_en.value().filename &&
+                  mono.value().face_index == mono_en.value().face_index);
+        }
+
+        // c. "sans-serif" still resolves to the Japanese fallback group
+        if (sans_en.is_ok()) {
+            auto sans = fp->GetFontFace("sans-serif");
+            CHECK(sans.is_ok() && sans.value().filename != sans_en.value().filename);
+        }
+    }
+
+    fp->SetLanguage(ThreeCC("jpn"));
+
+    // d. Style names render Japanese with the main font alone
+    for (const char* style : {"sans-serif", "serif"}) {
+        auto tr = TextRenderer::Create(TextRendererType::kFreetype, ctx, *fp);
+        CHECK(tr && tr->Initialize());
+        if (!tr) {
+            continue;
+        }
+        tr->SetLanguage(ThreeCC("jpn"));
+        tr->SetFontFamily({style});
+        Bitmap bmp(64, 64, PixelFormat::kRGBA8888);
+        CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &bmp) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapHasNonZeroPixels(bmp));
+    }
+
+    // e. "monospace" is the main font; Japanese comes only from system fallback
+    {
+        auto tr = TextRenderer::Create(TextRendererType::kFreetype, ctx, *fp);
+        CHECK(tr && tr->Initialize());
+        if (tr) {
+            tr->SetLanguage(ThreeCC("jpn"));
+            tr->SetFontFamily({"monospace"});
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kFailOnCodePointNotFound) ==
+                  TextRenderStatus::kCodePointNotFound);
+            Bitmap bmp(64, 64, PixelFormat::kRGBA8888);
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback, &bmp) ==
+                  TextRenderStatus::kOK);
+            CHECK(BitmapHasNonZeroPixels(bmp));
+        }
+    }
+}
+#endif
+
 }  // namespace
 
 int main() {
@@ -1679,6 +1753,7 @@ int main() {
             RunMockProviderTests(ctx, *fp, TextRendererType::kFreetype, "FreeType+Android");
         }
         RunRealPlatformTests(ctx, FontProviderType::kAndroid, TextRendererType::kFreetype, "FreeType+Android", true);
+        RunAndroidNamedFamilyTests(ctx);
     }
     #endif
 #endif

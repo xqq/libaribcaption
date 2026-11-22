@@ -77,6 +77,7 @@ private:
     internal::FontFamily* FindFamilyByName(std::string_view name);
     internal::FontFamily* FindFallbackFamilyByLanguageAndFallbackFor(std::string_view lang,
                                                                      std::string_view fallback_for);
+    bool IsFallbackGroupName(std::string_view name);
     bool ParseAndroidSystemFonts();
     bool ParseFontsXML(const char* xml_path);
     bool PrepareFontsForGingerbread();

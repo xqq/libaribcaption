@@ -360,8 +360,12 @@ auto FontProviderAndroid::GetFontFace(const std::string& font_name) -> Result<Fo
 
     if (iso6392_language_code_ == ThreeCC("jpn") || iso6392_language_code_ == 0) {
         family = FindFallbackFamilyByLanguageAndFallbackFor("ja", font_name);
-        if (!family) {
+        if (!family && IsFallbackGroupName(font_name)) {
+            // e.g. "serif" without a Japanese serif font: keep Japanese coverage
             family = FindFallbackFamilyByLanguageAndFallbackFor("ja", "sans-serif");
+        }
+        if (!family) {
+            family = FindFamilyByName(font_name);
         }
     } else {
         family = FindFamilyByName(font_name);
@@ -504,6 +508,16 @@ FontFamily* FontProviderAndroid::FindFallbackFamilyByLanguageAndFallbackFor(std:
     }
 
     return nullptr;
+}
+
+bool FontProviderAndroid::IsFallbackGroupName(std::string_view name) {
+    for (auto& family : font_families_) {
+        if (family.is_fallback && family.fallback_for == name) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 bool FontProviderAndroid::ParseAndroidSystemFonts() {

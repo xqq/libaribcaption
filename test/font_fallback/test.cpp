@@ -30,14 +30,20 @@
 #include "base/language_code.hpp"
 #include "renderer/bitmap.hpp"
 #include "renderer/font_provider.hpp"
-#include <TargetConditionals.h>
 #if defined(ARIBCC_USE_CORETEXT)
+    #include <TargetConditionals.h>
     #include <CoreFoundation/CoreFoundation.h>
     #if TARGET_OS_IPHONE
         #include <CoreGraphics/CoreGraphics.h>
     #endif
     #include "base/scoped_cfref.hpp"
     #include "renderer/font_provider_coretext.hpp"
+#endif
+#if defined(ARIBCC_USE_DIRECTWRITE)
+    #ifndef NOMINMAX
+        #define NOMINMAX
+    #endif
+    #include "renderer/font_provider_directwrite.hpp"
 #endif
 #include "renderer/region_renderer.hpp"
 #include "renderer/text_renderer.hpp"
@@ -417,6 +423,37 @@ void RunRealPlatformTests(Context& ctx,
         CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &bmp) ==
               TextRenderStatus::kOK);
         CHECK(BitmapHasNonZeroPixels(bmp));
+    }
+
+    // 2b. Configured family-list fallback works even when OS system fallback is unavailable
+    if (generic_en.is_ok() && generic_jp.is_ok()) {
+        const std::string& en_family = generic_en.value().family_name;
+        const std::string& jp_family = generic_jp.value().family_name;
+        if (!en_family.empty() && !jp_family.empty() && en_family != jp_family) {
+            fp->SetLanguage(ThreeCC("eng"));
+            if (fp->GetFontFace(en_family).is_ok() && fp->GetFontFace(jp_family).is_ok()) {
+                auto tr = TextRenderer::Create(tr_type, ctx, *fp);
+                CHECK(tr && tr->Initialize());
+                if (tr) {
+                    tr->SetLanguage(ThreeCC("eng"));
+                    tr->SetFontFamily({en_family});
+                    if (DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kFailOnCodePointNotFound) ==
+                        TextRenderStatus::kCodePointNotFound) {
+                        tr->SetFontFamily({en_family, jp_family});
+                        Bitmap bmp_list(64, 64, PixelFormat::kRGBA8888);
+                        CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kFontFamilyFallbackOnly,
+                                             &bmp_list) == TextRenderStatus::kOK);
+                        CHECK(BitmapHasNonZeroPixels(bmp_list));
+
+                        Bitmap bmp_auto(64, 64, PixelFormat::kRGBA8888);
+                        CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback, &bmp_auto) ==
+                              TextRenderStatus::kOK);
+                        CHECK(BitmapHasNonZeroPixels(bmp_auto));
+                        CHECK(BitmapsEqual(bmp_list, bmp_auto));
+                    }
+                }
+            }
+        }
     }
 
     // 3. Single-font OS-level fallback for symbols/CJK/non-BMP and PUA bypass
@@ -1136,6 +1173,21 @@ void RunCoreTextMemoryFontTests(Context& ctx) {
 }
 #endif
 
+#if defined(ARIBCC_USE_DIRECTWRITE)
+bool DirectWriteSupportsSystemFallback(FontProviderDirectWrite& fp) {
+    ComPtr<IDWriteFactory> factory = fp.GetDWriteFactory();
+    if (!factory) {
+        return false;
+    }
+    ComPtr<IDWriteFactory2> factory2;
+    if (FAILED(factory.As(&factory2)) || !factory2) {
+        return false;
+    }
+    ComPtr<IDWriteFontFallback> fallback;
+    return SUCCEEDED(factory2->GetSystemFontFallback(&fallback)) && fallback != nullptr;
+}
+#endif
+
 }  // namespace
 
 int main() {
@@ -1159,7 +1211,15 @@ int main() {
 #endif
 
 #if defined(ARIBCC_USE_DIRECTWRITE)
-    RunRealPlatformTests(ctx, FontProviderType::kDirectWrite, TextRendererType::kDirectWrite, "DirectWrite", true);
+    {
+        auto fp = FontProvider::Create(FontProviderType::kDirectWrite, ctx);
+        bool fp_ok = fp && fp->Initialize();
+        CHECK(fp_ok);
+        bool expect_os_fallback =
+            fp_ok && DirectWriteSupportsSystemFallback(static_cast<FontProviderDirectWrite&>(*fp));
+        RunRealPlatformTests(ctx, FontProviderType::kDirectWrite, TextRendererType::kDirectWrite, "DirectWrite",
+                             expect_os_fallback);
+    }
 #endif
 
 #if defined(ARIBCC_USE_FREETYPE)
@@ -1190,12 +1250,15 @@ int main() {
     #if defined(ARIBCC_USE_DIRECTWRITE)
     {
         auto fp = FontProvider::Create(FontProviderType::kDirectWrite, ctx);
-        CHECK(fp && fp->Initialize());
-        if (fp) {
+        bool fp_ok = fp && fp->Initialize();
+        CHECK(fp_ok);
+        bool expect_os_fallback = false;
+        if (fp_ok) {
+            expect_os_fallback = DirectWriteSupportsSystemFallback(static_cast<FontProviderDirectWrite&>(*fp));
             RunMockProviderTests(ctx, *fp, TextRendererType::kFreetype, "FreeType+DirectWrite");
         }
-        RunRealPlatformTests(
-            ctx, FontProviderType::kDirectWrite, TextRendererType::kFreetype, "FreeType+DirectWrite", true);
+        RunRealPlatformTests(ctx, FontProviderType::kDirectWrite, TextRendererType::kFreetype,
+                             "FreeType+DirectWrite", expect_os_fallback);
     }
     #endif
 

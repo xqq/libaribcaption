@@ -418,7 +418,7 @@ auto TextRendererCoreText::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
 
     FontfaceInfo& info = result.value();
     if (info.provider_type != FontProviderType::kCoreText) {
-        return Err(TextRenderStatus::kCodePointNotFound);
+        return Err(TextRenderStatus::kOtherError);
     }
 
     auto priv = static_cast<FontfaceInfoPrivateCoreText*>(info.provider_priv.get());

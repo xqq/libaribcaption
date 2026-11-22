@@ -73,7 +73,8 @@ public:
     auto GetFallbackFontFace(uint32_t ucs4, std::string_view base_family_name)
         -> Result<FontfaceInfo, FontProviderError> override;
 private:
-    bool FontHasCodePoint(const std::string& full_path, int collection_index, uint32_t ucs4);
+    auto FontHasCodePoint(const std::string& full_path, int collection_index, uint32_t ucs4)
+        -> Result<bool, FontProviderError>;
     internal::FontFamily* FindFamilyByName(std::string_view name);
     internal::FontFamily* FindFallbackFamilyByLanguageAndFallbackFor(std::string_view lang,
                                                                      std::string_view fallback_for);

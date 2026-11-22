@@ -18,6 +18,7 @@
 
 #include <unistd.h>
 #include <algorithm>
+#include <cerrno>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -194,20 +195,29 @@ void ParseCmapFormat12(const uint8_t* table, size_t table_size, std::vector<Code
     }
 }
 
-std::vector<CodePointRange> LoadSFNTUnicodeRanges(const std::string& full_path, int collection_index) {
+// Returns std::nullopt on I/O errors that may succeed on retry, so they must not be cached
+std::optional<std::vector<CodePointRange>> LoadSFNTUnicodeRanges(const std::string& full_path, int collection_index) {
     std::vector<CodePointRange> ranges;
     if (collection_index < 0) {
         return ranges;
     }
 
-    ScopedHolder<FILE*> fp(std::fopen(full_path.c_str(), "rb"), [](FILE* f) { std::fclose(f); });
+    FILE* raw_fp = std::fopen(full_path.c_str(), "rb");
+    int open_errno = errno;
+    ScopedHolder<FILE*> fp(raw_fp, [](FILE* f) { std::fclose(f); });
     if (!fp) {
-        return ranges;
+        if (open_errno == ENOENT || open_errno == ENOTDIR || open_errno == EACCES) {
+            return ranges;
+        }
+        return std::nullopt;
     }
     if (fseek(fp, 0, SEEK_END) != 0) {
-        return ranges;
+        return std::nullopt;
     }
     long file_size_long = ftell(fp);
+    if (file_size_long < 0) {
+        return std::nullopt;
+    }
     if (file_size_long < 12) {
         return ranges;
     }
@@ -215,7 +225,7 @@ std::vector<CodePointRange> LoadSFNTUnicodeRanges(const std::string& full_path, 
 
     uint8_t header[12];
     if (!ReadFileAt(fp, 0, header, sizeof(header))) {
-        return ranges;
+        return std::nullopt;
     }
 
     uint32_t sfnt_tag = ReadBE32(header);
@@ -231,11 +241,14 @@ std::vector<CodePointRange> LoadSFNTUnicodeRanges(const std::string& full_path, 
         }
         uint8_t off_buf[4];
         if (!ReadFileAt(fp, entry_off, off_buf, sizeof(off_buf))) {
-            return ranges;
+            return std::nullopt;
         }
         sfnt_offset = ReadBE32(off_buf);
-        if (sfnt_offset + 12 > file_size || !ReadFileAt(fp, sfnt_offset, header, sizeof(header))) {
+        if (sfnt_offset + 12 > file_size) {
             return ranges;
+        }
+        if (!ReadFileAt(fp, sfnt_offset, header, sizeof(header))) {
+            return std::nullopt;
         }
         sfnt_tag = ReadBE32(header);
     }
@@ -252,7 +265,7 @@ std::vector<CodePointRange> LoadSFNTUnicodeRanges(const std::string& full_path, 
 
     std::vector<uint8_t> table_dir(static_cast<size_t>(dir_size));
     if (!ReadFileAt(fp, sfnt_offset + 12, table_dir.data(), table_dir.size())) {
-        return ranges;
+        return std::nullopt;
     }
 
     bool has_outline = false;
@@ -281,7 +294,7 @@ std::vector<CodePointRange> LoadSFNTUnicodeRanges(const std::string& full_path, 
 
     std::vector<uint8_t> cmap(cmap_length);
     if (!ReadFileAt(fp, cmap_offset, cmap.data(), cmap.size())) {
-        return ranges;
+        return std::nullopt;
     }
 
     uint16_t num_subtables = ReadBE16(cmap.data() + 2);
@@ -391,13 +404,19 @@ auto FontProviderAndroid::GetFontFace(const std::string& font_name) -> Result<Fo
     return Ok(std::move(info));
 }
 
-bool FontProviderAndroid::FontHasCodePoint(const std::string& full_path, int collection_index, uint32_t ucs4) {
+auto FontProviderAndroid::FontHasCodePoint(const std::string& full_path, int collection_index, uint32_t ucs4)
+    -> Result<bool, FontProviderError> {
     std::string cache_key = full_path + "#" + std::to_string(collection_index);
     auto iter = cmap_cache_.find(cache_key);
     if (iter == cmap_cache_.end()) {
-        iter = cmap_cache_.emplace(std::move(cache_key), LoadSFNTUnicodeRanges(full_path, collection_index)).first;
+        auto ranges = LoadSFNTUnicodeRanges(full_path, collection_index);
+        if (!ranges) {
+            log_->e("FontProviderAndroid: Failed to read cmap of %s", full_path.c_str());
+            return Err(FontProviderError::kOtherError);
+        }
+        iter = cmap_cache_.emplace(std::move(cache_key), std::move(*ranges)).first;
     }
-    return RangesContainCodePoint(iter->second, ucs4);
+    return Ok(RangesContainCodePoint(iter->second, ucs4));
 }
 
 auto FontProviderAndroid::GetFallbackFontFace(uint32_t ucs4, std::string_view base_family_name)
@@ -406,13 +425,20 @@ auto FontProviderAndroid::GetFallbackFontFace(uint32_t ucs4, std::string_view ba
         return Err(FontProviderError::kCodePointNotFound);
     }
 
+    std::optional<FontProviderError> error;
+
     auto try_family = [&](FontFamily& family) -> std::optional<FontfaceInfo> {
         FontFile* font_file = FindRegularFont(family);
         if (!font_file) {
             return std::nullopt;
         }
         std::string full_path = base_font_path_ + font_file->filename;
-        if (!FontHasCodePoint(full_path, font_file->collection_index, ucs4)) {
+        auto has_codepoint = FontHasCodePoint(full_path, font_file->collection_index, ucs4);
+        if (has_codepoint.is_err()) {
+            error = has_codepoint.error();
+            return std::nullopt;
+        }
+        if (!has_codepoint.value()) {
             return std::nullopt;
         }
         FontfaceInfo info;
@@ -438,6 +464,9 @@ auto FontProviderAndroid::GetFallbackFontFace(uint32_t ucs4, std::string_view ba
             if (auto info = try_family(family)) {
                 return info;
             }
+            if (error) {
+                return std::nullopt;
+            }
         }
         return std::nullopt;
     };
@@ -449,9 +478,15 @@ auto FontProviderAndroid::GetFallbackFontFace(uint32_t ucs4, std::string_view ba
         if (auto info = scan(require_language, target_fallback_for)) {
             return Ok(std::move(*info));
         }
+        if (error) {
+            return Err(*error);
+        }
         if (target_fallback_for != "sans-serif") {
             if (auto info = scan(require_language, "sans-serif")) {
                 return Ok(std::move(*info));
+            }
+            if (error) {
+                return Err(*error);
             }
         }
     }
@@ -464,6 +499,9 @@ auto FontProviderAndroid::GetFallbackFontFace(uint32_t ucs4, std::string_view ba
         if (auto info = try_family(family)) {
             return Ok(std::move(*info));
         }
+        if (error) {
+            return Err(*error);
+        }
     }
 
     // 4. Named families (e.g. sans-serif / Roboto when main font was a CJK fallback)
@@ -473,6 +511,9 @@ auto FontProviderAndroid::GetFallbackFontFace(uint32_t ucs4, std::string_view ba
         }
         if (auto info = try_family(family)) {
             return Ok(std::move(*info));
+        }
+        if (error) {
+            return Err(*error);
         }
     }
 

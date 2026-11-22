@@ -99,8 +99,8 @@ public:
     virtual ~OutlineTextRenderer() = default;
 
     [[nodiscard]]
-    bool HasFontFaceMismatch() const {
-        return fontface_mismatch_;
+    bool HasRejectedGlyphRun() const {
+        return rejected_;
     }
 
     [[nodiscard]]
@@ -138,13 +138,16 @@ public:
                               DWRITE_GLYPH_RUN const* glyph_run,
                               DWRITE_GLYPH_RUN_DESCRIPTION const* glyph_run_description,
                               IUnknown* client_drawing_effect) {
+        if (!glyph_run || glyph_run->glyphCount == 0 || !glyph_run->glyphIndices) {
+            return S_OK;
+        }
         if (!IsSameFontFace(glyph_run->fontFace, expected_fontface_.Get())) {
-            fontface_mismatch_ = true;
+            rejected_ = true;
             return S_OK;
         }
         for (UINT32 i = 0; i < glyph_run->glyphCount; i++) {
             if (glyph_run->glyphIndices[i] == 0) {
-                fontface_mismatch_ = true;
+                rejected_ = true;
                 return S_OK;
             }
         }
@@ -251,7 +254,7 @@ private:
     ComPtr<IDWriteFontFace> expected_fontface_;
     ComPtr<ID2D1Factory> d2d_factory_;
     ComPtr<ID2D1RenderTarget> render_target_;
-    bool fontface_mismatch_ = false;
+    bool rejected_ = false;
     std::vector<ComPtr<ID2D1TransformedGeometry>> geometries_;
     std::vector<DWRITE_UNDERLINE> underlines_;
 };
@@ -441,73 +444,105 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
         return FontProviderErrorToStatus(*err);
     }
 
-    FontSlot* selected_slot = &font_slots_[*main_slot_index_];
+    std::u16string wide_char;
+    utf::UTF16AppendCodePoint(wide_char, ucs4);
 
-    if (!FontfaceHasCharacter(selected_slot->faceinfo, ucs4)) {
-        if (fallback_policy == TextRenderFallbackPolicy::kFailOnCodePointNotFound) {
-            return TextRenderStatus::kCodePointNotFound;
-        }
+    auto try_slot = [&](FontSlot& slot) -> TextRenderStatus {
+        return TryDrawCharWithSlot(render_ctx, slot, wide_char, target_x, target_y, ucs4, style, color, stroke_color,
+                                   stroke_width, char_width, char_height, aspect_ratio, underline_info);
+    };
 
-        if (missing_codepoints_.find(ucs4) != missing_codepoints_.end()) {
-            return TextRenderStatus::kCodePointNotFound;
-        }
-
-        bool found = false;
-
-        // Try fallback fonts in configured font-family list
-        for (size_t i = *main_slot_index_ + 1; i < font_slots_.size(); i++) {
-            FontSlot& slot = font_slots_[i];
-            if (slot.state == SlotState::kUnavailable) {
-                continue;
-            }
-            if (slot.state == SlotState::kUnloaded) {
-                LoadSlot(i);
-                if (slot.state != SlotState::kLoaded) {
-                    continue;
-                }
-            }
-
-            if (FontfaceHasCharacter(slot.faceinfo, ucs4)) {
-                selected_slot = &slot;
-                found = true;
-                break;
-            }
-        }
-
-        // Try system fallback, if allowed by fallback policy
-        if (!found && fallback_policy == TextRenderFallbackPolicy::kAutoFallback) {
-            if (FontSlot* sys_slot = FindOrLoadSystemFallbackSlot(ucs4, font_family_[*main_slot_index_])) {
-                selected_slot = sys_slot;
-                found = true;
-            }
-        }
-
-        if (!found) {
-            // A font-family-only miss may still be served by system fallback later, so don't cache it,
-            // unless it is a PUA codepoint which system fallback never handles
-            if (fallback_policy == TextRenderFallbackPolicy::kAutoFallback || unicode::IsPrivateUseArea(ucs4)) {
-                missing_codepoints_.insert(ucs4);
-                log_->e("TextRendererDirectWrite: Cannot find available fallback font for U+%04X", ucs4);
-            }
-            return TextRenderStatus::kCodePointNotFound;
+    FontSlot& main_slot = font_slots_[*main_slot_index_];
+    if (FontfaceHasCharacter(main_slot.faceinfo, ucs4)) {
+        TextRenderStatus status = try_slot(main_slot);
+        if (status != TextRenderStatus::kCodePointNotFound) {
+            return status;
         }
     }
 
-    IDWriteTextFormat* text_format = EnsureTextFormat(*selected_slot, char_height);
+    if (fallback_policy == TextRenderFallbackPolicy::kFailOnCodePointNotFound) {
+        return TextRenderStatus::kCodePointNotFound;
+    }
+
+    if (missing_codepoints_.find(ucs4) != missing_codepoints_.end()) {
+        return TextRenderStatus::kCodePointNotFound;
+    }
+
+    // Try fallback fonts in configured font-family list
+    for (size_t i = *main_slot_index_ + 1; i < font_slots_.size(); i++) {
+        FontSlot& slot = font_slots_[i];
+        if (slot.state == SlotState::kUnavailable) {
+            continue;
+        }
+        if (slot.state == SlotState::kUnloaded) {
+            LoadSlot(i);
+            if (slot.state != SlotState::kLoaded) {
+                continue;
+            }
+        }
+        if (!FontfaceHasCharacter(slot.faceinfo, ucs4)) {
+            continue;
+        }
+
+        TextRenderStatus status = try_slot(slot);
+        if (status != TextRenderStatus::kCodePointNotFound) {
+            return status;
+        }
+    }
+
+    // Try system fallback, if allowed by fallback policy
+    if (fallback_policy == TextRenderFallbackPolicy::kAutoFallback && !unicode::IsPrivateUseArea(ucs4)) {
+        for (auto& slot : system_fallback_slots_) {
+            if (slot.state != SlotState::kLoaded || !FontfaceHasCharacter(slot.faceinfo, ucs4)) {
+                continue;
+            }
+
+            TextRenderStatus status = try_slot(slot);
+            if (status != TextRenderStatus::kCodePointNotFound) {
+                return status;
+            }
+        }
+
+        if (auto new_slot = LoadSystemFallbackSlot(ucs4, font_family_[*main_slot_index_])) {
+            TextRenderStatus status = try_slot(*new_slot);
+            if (status == TextRenderStatus::kOK) {
+                CacheSystemFallbackSlot(std::move(*new_slot));
+                return TextRenderStatus::kOK;
+            }
+            if (status != TextRenderStatus::kCodePointNotFound) {
+                return status;
+            }
+        }
+    }
+
+    // A font-family-only miss may still be served by system fallback later, so don't cache it,
+    // unless it is a PUA codepoint which system fallback never handles
+    if (fallback_policy == TextRenderFallbackPolicy::kAutoFallback || unicode::IsPrivateUseArea(ucs4)) {
+        missing_codepoints_.insert(ucs4);
+        log_->e("TextRendererDirectWrite: Cannot find available fallback font for U+%04X", ucs4);
+    }
+    return TextRenderStatus::kCodePointNotFound;
+}
+
+auto TextRendererDirectWrite::TryDrawCharWithSlot(TextRenderContext& render_ctx, FontSlot& slot,
+                                                  std::u16string_view wide_char, int target_x, int target_y,
+                                                  uint32_t ucs4, CharStyle style, ColorRGBA color,
+                                                  ColorRGBA stroke_color, float stroke_width, int char_width,
+                                                  int char_height, float aspect_ratio,
+                                                  std::optional<UnderlineInfo> underline_info) -> TextRenderStatus {
+    IDWriteTextFormat* text_format = EnsureTextFormat(slot, char_height);
     if (!text_format) {
         log_->e("TextRendererDirectWrite: Create IDWriteTextFormat failed");
         return TextRenderStatus::kOtherError;
     }
 
-    FontfaceInfo* face_info = &selected_slot->faceinfo;
-
-    std::u16string wide_char;
-    utf::UTF16AppendCodePoint(wide_char, ucs4);
+    FontfaceInfo* face_info = &slot.faceinfo;
+    UINT32 text_length = static_cast<UINT32>(wide_char.length());
 
     // Create DirectWrite TextLayout
     ComPtr<IDWriteTextLayout> text_layout;
-    HRESULT hr = dwrite_factory_->CreateTextLayout(reinterpret_cast<WCHAR*>(wide_char.data()),
-                                                   static_cast<UINT32>(wide_char.length()),
+    HRESULT hr = dwrite_factory_->CreateTextLayout(reinterpret_cast<const WCHAR*>(wide_char.data()),
+                                                   text_length,
                                                    text_format, 16384.0f, 16384.0f, &text_layout);
     if (FAILED(hr) || !text_layout) {
         log_->e("TextRendererDirectWrite: Create IDWriteTextLayout failed");
@@ -516,7 +551,7 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
 
     // Set underline property if required
     if (style & CharStyle::kCharStyleUnderline) {
-        text_layout->SetUnderline(TRUE, DWRITE_TEXT_RANGE{0, 1});
+        text_layout->SetUnderline(TRUE, DWRITE_TEXT_RANGE{0, text_length});
     }
 
     // Get font's metrics
@@ -557,7 +592,7 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
         DWRITE_FONT_FEATURE feature = {DWRITE_FONT_FEATURE_TAG_HALF_WIDTH, 1};
         if (SUCCEEDED(dwrite_factory_->CreateTypography(&typography)) &&
             SUCCEEDED(typography->AddFontFeature(feature)) &&
-            SUCCEEDED(text_layout->SetTypography(typography.Get(), DWRITE_TEXT_RANGE{0, 1}))) {
+            SUCCEEDED(text_layout->SetTypography(typography.Get(), DWRITE_TEXT_RANGE{0, text_length}))) {
             hr = text_layout->GetMetrics(&metrics);
             if (FAILED(hr)) {
                 log_->e("TextRendererDirectWrite: GetMetrics() failed");
@@ -569,7 +604,7 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
                 horizontal_scale = 1.0f;
             } else {
                 if (SUCCEEDED(dwrite_factory_->CreateTypography(&typography))) {
-                    text_layout->SetTypography(typography.Get(), DWRITE_TEXT_RANGE{0, 1});
+                    text_layout->SetTypography(typography.Get(), DWRITE_TEXT_RANGE{0, text_length});
                 }
             }
         }
@@ -592,6 +627,24 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
     auto render_ctx_priv = static_cast<TextRenderContextPrivateDirectWrite*>(render_ctx.GetPrivate());
     Bitmap& target_bmp = render_ctx.GetBitmap();
     ID2D1RenderTarget* render_target = render_ctx_priv->d2d_render_target.Get();
+
+    ComPtr<OutlineTextRenderer> outline_text_renderer(new OutlineTextRenderer(
+        horizontal_scale, 1.0f, face_info_priv->fontface, d2d_factory_, render_target));
+
+    hr = text_layout->Draw(nullptr,
+                           outline_text_renderer.Get(),
+                           static_cast<float>(target_x + margin_x),
+                           static_cast<float>(target_y + margin_y));
+    if (FAILED(hr)) {
+        log_->e("TextRendererDirectWrite: IDWriteTextLayout::Draw() failed");
+        return TextRenderStatus::kOtherError;
+    }
+
+    if (outline_text_renderer->HasRejectedGlyphRun() || outline_text_renderer->GetGeometries().empty()) {
+        log_->w("TextRendererDirectWrite: Rejected glyph run for U+%04X from %s",
+                ucs4, face_info->family_name.c_str());
+        return TextRenderStatus::kCodePointNotFound;
+    }
 
     auto underline_callback = [&](const DWRITE_UNDERLINE* underline) -> void {
         if (!underline_info)
@@ -617,23 +670,6 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
 
     ComPtr<ID2D1SolidColorBrush> outline_brush;
     render_target->CreateSolidColorBrush(RGBAToD2DColor(stroke_color), &outline_brush);
-
-    ComPtr<OutlineTextRenderer> outline_text_renderer(new OutlineTextRenderer(
-        horizontal_scale, 1.0f, face_info_priv->fontface, d2d_factory_, render_target));
-
-    hr = text_layout->Draw(nullptr,
-                           outline_text_renderer.Get(),
-                           static_cast<float>(target_x + margin_x),
-                           static_cast<float>(target_y + margin_y));
-    if (FAILED(hr)) {
-        log_->e("TextRendererDirectWrite: IDWriteTextLayout::Draw() failed");
-        return TextRenderStatus::kOtherError;
-    }
-
-    if (outline_text_renderer->HasFontFaceMismatch() || outline_text_renderer->GetGeometries().empty()) {
-        log_->e("TextRendererDirectWrite: Layout used a different font than selected for U+%04X", ucs4);
-        return TextRenderStatus::kCodePointNotFound;
-    }
 
     bool draw_outline_stroke = style & CharStyle::kCharStyleStroke;
     for (const auto& geometry : outline_text_renderer->GetGeometries()) {
@@ -696,7 +732,7 @@ auto TextRendererDirectWrite::LoadSlot(size_t slot_index) -> std::optional<FontP
     }
 
     auto priv = static_cast<FontfaceInfoPrivateDirectWrite*>(info.provider_priv.get());
-    if (!priv || !priv->font) {
+    if (!priv || !priv->font || !priv->fontface) {
         slot.state = SlotState::kUnavailable;
         return FontProviderError::kFontNotFound;
     }
@@ -740,43 +776,39 @@ auto TextRendererDirectWrite::EnsureMainSlot() -> std::optional<FontProviderErro
     return main_load_error_;
 }
 
-auto TextRendererDirectWrite::FindOrLoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name)
-    -> FontSlot* {
+auto TextRendererDirectWrite::LoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name)
+    -> std::optional<FontSlot> {
     if (unicode::IsPrivateUseArea(ucs4)) {
-        return nullptr;
-    }
-
-    for (auto& slot : system_fallback_slots_) {
-        if (slot.state == SlotState::kLoaded && FontfaceHasCharacter(slot.faceinfo, ucs4)) {
-            return &slot;
-        }
+        return std::nullopt;
     }
 
     auto result = font_provider_.GetFallbackFontFace(ucs4, base_family_name);
     if (result.is_err()) {
-        return nullptr;
+        return std::nullopt;
     }
 
     FontfaceInfo& info = result.value();
     if (info.provider_type != FontProviderType::kDirectWrite) {
-        return nullptr;
+        return std::nullopt;
     }
 
     auto priv = static_cast<FontfaceInfoPrivateDirectWrite*>(info.provider_priv.get());
-    if (!priv || !priv->font || !FontfaceHasCharacter(info, ucs4) || IsDuplicateFont(info)) {
-        return nullptr;
+    if (!priv || !priv->font || !priv->fontface || !FontfaceHasCharacter(info, ucs4) || IsDuplicateFont(info)) {
+        return std::nullopt;
     }
 
+    std::optional<FontSlot> slot(std::in_place);
+    slot->faceinfo = std::move(info);
+    slot->state = SlotState::kLoaded;
+    return slot;
+}
+
+void TextRendererDirectWrite::CacheSystemFallbackSlot(FontSlot&& slot) {
     static constexpr size_t kMaxSystemFallbackSlots = 16;
     if (system_fallback_slots_.size() >= kMaxSystemFallbackSlots) {
         system_fallback_slots_.erase(system_fallback_slots_.begin());
     }
-
-    FontSlot slot;
-    slot.faceinfo = std::move(info);
-    slot.state = SlotState::kLoaded;
     system_fallback_slots_.push_back(std::move(slot));
-    return &system_fallback_slots_.back();
 }
 
 auto TextRendererDirectWrite::EnsureTextFormat(FontSlot& slot, int char_height) -> IDWriteTextFormat* {

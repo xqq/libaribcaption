@@ -24,6 +24,7 @@
 #include <dwrite_2.h>
 #include <wincodec.h>
 #include <optional>
+#include <string_view>
 #include <unordered_set>
 #include "aribcaption/context.hpp"
 #include "base/scoped_com_initializer.hpp"
@@ -67,7 +68,13 @@ private:
     bool IsDuplicateFont(const FontfaceInfo& info) const;
     auto LoadSlot(size_t slot_index) -> std::optional<FontProviderError>;
     auto EnsureMainSlot() -> std::optional<FontProviderError>;
-    auto FindOrLoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name) -> FontSlot*;
+    auto TryDrawCharWithSlot(TextRenderContext& render_ctx, FontSlot& slot, std::u16string_view wide_char,
+                             int target_x, int target_y, uint32_t ucs4, CharStyle style,
+                             ColorRGBA color, ColorRGBA stroke_color, float stroke_width,
+                             int char_width, int char_height, float aspect_ratio,
+                             std::optional<UnderlineInfo> underline_info) -> TextRenderStatus;
+    auto LoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name) -> std::optional<FontSlot>;
+    void CacheSystemFallbackSlot(FontSlot&& slot);
     auto EnsureTextFormat(FontSlot& slot, int char_height) -> IDWriteTextFormat*;
     auto CreateDWriteTextFormat(FontfaceInfo& face_info, float font_size) -> ComPtr<IDWriteTextFormat>;
     auto CreateWICRenderTarget(IWICBitmap* target) -> ComPtr<ID2D1RenderTarget>;

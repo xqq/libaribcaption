@@ -79,7 +79,7 @@ private:
                                       const UniChar* utf16,
                                       CFIndex codeunit_count,
                                       int char_height,
-                                      CGGlyph* out_glyphs) -> CTFontRef;
+                                      CGGlyph* out_glyphs) -> Result<CTFontRef, TextRenderStatus>;
     auto EnsureSizedCTFont(FontSlot& slot, int char_height) -> CTFontRef;
     void ResetFontFaces();
 private:

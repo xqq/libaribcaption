@@ -184,14 +184,18 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
 
         // Try system fallback, if allowed by fallback policy
         if (!has_glyph && fallback_policy == TextRenderFallbackPolicy::kAutoFallback) {
-            if (CTFontRef sys_ctfont = FindOrLoadSystemFallbackSlot(ucs4,
-                                                                    font_family_[*main_slot_index_],
-                                                                    reinterpret_cast<const UniChar*>(utf16.data()),
-                                                                    static_cast<CFIndex>(codeunit_count),
-                                                                    char_height,
-                                                                    glyphs)) {
-                ctfont = sys_ctfont;
+            auto sys_ctfont = FindOrLoadSystemFallbackSlot(ucs4,
+                                                           font_family_[*main_slot_index_],
+                                                           reinterpret_cast<const UniChar*>(utf16.data()),
+                                                           static_cast<CFIndex>(codeunit_count),
+                                                           char_height,
+                                                           glyphs);
+            if (sys_ctfont.is_ok()) {
+                ctfont = sys_ctfont.value();
                 has_glyph = true;
+            } else if (sys_ctfont.error() != TextRenderStatus::kCodePointNotFound) {
+                log_->e("TextRendererCoreText: System fallback lookup for U+%04X failed", ucs4);
+                return sys_ctfont.error();
             }
         }
 
@@ -384,9 +388,10 @@ auto TextRendererCoreText::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
                                                         const UniChar* utf16,
                                                         CFIndex codeunit_count,
                                                         int char_height,
-                                                        CGGlyph* out_glyphs) -> CTFontRef {
+                                                        CGGlyph* out_glyphs)
+    -> Result<CTFontRef, TextRenderStatus> {
     if (unicode::IsPrivateUseArea(ucs4)) {
-        return nullptr;
+        return Err(TextRenderStatus::kCodePointNotFound);
     }
 
     for (auto& slot : system_fallback_slots_) {
@@ -397,24 +402,28 @@ auto TextRendererCoreText::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
             continue;
         }
         CTFontRef sized = EnsureSizedCTFont(slot, char_height);
-        if (sized && CTFontGetGlyphsForCharacters(sized, utf16, out_glyphs, codeunit_count)) {
-            return sized;
+        if (!sized) {
+            return Err(TextRenderStatus::kOtherError);
+        }
+        if (CTFontGetGlyphsForCharacters(sized, utf16, out_glyphs, codeunit_count)) {
+            return Ok(sized);
         }
     }
 
     auto result = font_provider_.GetFallbackFontFace(ucs4, base_family_name);
     if (result.is_err()) {
-        return nullptr;
+        return Err(result.error() == FontProviderError::kOtherError ? TextRenderStatus::kOtherError
+                                                                     : TextRenderStatus::kCodePointNotFound);
     }
 
     FontfaceInfo& info = result.value();
     if (info.provider_type != FontProviderType::kCoreText) {
-        return nullptr;
+        return Err(TextRenderStatus::kCodePointNotFound);
     }
 
     auto priv = static_cast<FontfaceInfoPrivateCoreText*>(info.provider_priv.get());
     if (!priv || !priv->ct_font) {
-        return nullptr;
+        return Err(TextRenderStatus::kCodePointNotFound);
     }
 
     std::string family_name = info.family_name;
@@ -434,7 +443,7 @@ auto TextRendererCoreText::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
     }
 
     if (IsDuplicateFont(family_name, postscript_name)) {
-        return nullptr;
+        return Err(TextRenderStatus::kCodePointNotFound);
     }
 
     FontSlot slot;
@@ -444,8 +453,11 @@ auto TextRendererCoreText::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
     slot.state = SlotState::kLoaded;
 
     CTFontRef sized = EnsureSizedCTFont(slot, char_height);
-    if (!sized || !CTFontGetGlyphsForCharacters(sized, utf16, out_glyphs, codeunit_count)) {
-        return nullptr;
+    if (!sized) {
+        return Err(TextRenderStatus::kOtherError);
+    }
+    if (!CTFontGetGlyphsForCharacters(sized, utf16, out_glyphs, codeunit_count)) {
+        return Err(TextRenderStatus::kCodePointNotFound);
     }
 
     static constexpr size_t kMaxSystemFallbackSlots = 16;
@@ -454,7 +466,7 @@ auto TextRendererCoreText::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
     }
 
     system_fallback_slots_.push_back(std::move(slot));
-    return system_fallback_slots_.back().ctfont_sized.get();
+    return Ok(system_fallback_slots_.back().ctfont_sized.get());
 }
 
 auto TextRendererCoreText::EnsureSizedCTFont(FontSlot& slot, int char_height) -> CTFontRef {

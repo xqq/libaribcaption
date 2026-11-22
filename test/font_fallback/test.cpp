@@ -45,6 +45,12 @@
     #endif
     #include "renderer/font_provider_directwrite.hpp"
 #endif
+#if defined(ARIBCC_IS_ANDROID)
+    #include <fcntl.h>
+    #include <sys/resource.h>
+    #include <unistd.h>
+    #include <cerrno>
+#endif
 #include "renderer/region_renderer.hpp"
 #include "renderer/text_renderer.hpp"
 
@@ -1657,6 +1663,119 @@ void RunAndroidNamedFamilyTests(Context& ctx) {
         }
     }
 }
+
+// Lowers RLIMIT_NOFILE and fills the remaining descriptors, so that fopen() fails with EMFILE
+class ScopedFdExhaustion {
+public:
+    ScopedFdExhaustion() {
+        if (getrlimit(RLIMIT_NOFILE, &original_limit_) != 0) {
+            return;
+        }
+        if (original_limit_.rlim_cur > kSoftLimit) {
+            rlimit lowered = original_limit_;
+            lowered.rlim_cur = kSoftLimit;
+            if (setrlimit(RLIMIT_NOFILE, &lowered) != 0) {
+                return;
+            }
+            limit_lowered_ = true;
+        }
+        while (true) {
+            int fd = open("/dev/null", O_RDONLY | O_CLOEXEC);
+            if (fd < 0) {
+                exhausted_ = (errno == EMFILE);
+                break;
+            }
+            fds_.push_back(fd);
+        }
+    }
+
+    ~ScopedFdExhaustion() {
+        Release();
+    }
+
+    ScopedFdExhaustion(const ScopedFdExhaustion&) = delete;
+    ScopedFdExhaustion& operator=(const ScopedFdExhaustion&) = delete;
+
+    bool IsExhausted() const {
+        return exhausted_;
+    }
+
+    void Release() {
+        for (int fd : fds_) {
+            close(fd);
+        }
+        fds_.clear();
+        if (limit_lowered_) {
+            setrlimit(RLIMIT_NOFILE, &original_limit_);
+            limit_lowered_ = false;
+        }
+        exhausted_ = false;
+    }
+private:
+    static constexpr rlim_t kSoftLimit = 256;
+
+    rlimit original_limit_{};
+    bool limit_lowered_ = false;
+    bool exhausted_ = false;
+    std::vector<int> fds_;
+};
+
+// A failed cmap read must surface as kOtherError and must not be cached by the provider or the renderer
+void RunAndroidReadFailureTests(Context& ctx) {
+    printf("Running Android cmap read-failure tests...\n");
+
+    // 1. Provider level
+    {
+        auto fp = FontProvider::Create(FontProviderType::kAndroid, ctx);
+        CHECK(fp && fp->Initialize());
+        if (!fp) {
+            return;
+        }
+        fp->SetLanguage(ThreeCC("eng"));
+
+        ScopedFdExhaustion exhaustion;
+        CHECK(exhaustion.IsExhausted());
+        auto failed = fp->GetFallbackFontFace(0x3042, "sans-serif");
+        CHECK(failed.is_err() && failed.error() == FontProviderError::kOtherError);
+        exhaustion.Release();
+
+        auto retried = fp->GetFallbackFontFace(0x3042, "sans-serif");
+        CHECK(retried.is_ok() && !retried.value().filename.empty());
+    }
+
+    // 2. Renderer level
+    {
+        auto fp = FontProvider::Create(FontProviderType::kAndroid, ctx);
+        CHECK(fp && fp->Initialize());
+        if (!fp) {
+            return;
+        }
+        fp->SetLanguage(ThreeCC("eng"));
+        auto tr = TextRenderer::Create(TextRendererType::kFreetype, ctx, *fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetLanguage(ThreeCC("eng"));
+        tr->SetFontFamily({"sans-serif"});
+
+        // Loads the main face before descriptors run out
+        CHECK(DrawSingleChar(*tr, 0x0041, TextRenderFallbackPolicy::kFailOnCodePointNotFound) ==
+              TextRenderStatus::kOK);
+        if (DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kFailOnCodePointNotFound) !=
+            TextRenderStatus::kCodePointNotFound) {
+            printf("  Skipped renderer-level check: main font already covers U+3042\n");
+            return;
+        }
+
+        ScopedFdExhaustion exhaustion;
+        CHECK(exhaustion.IsExhausted());
+        CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) ==
+              TextRenderStatus::kOtherError);
+        exhaustion.Release();
+
+        Bitmap bmp(64, 64, PixelFormat::kRGBA8888);
+        CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback, &bmp) == TextRenderStatus::kOK);
+        CHECK(BitmapHasNonZeroPixels(bmp));
+    }
+}
 #endif
 
 }  // namespace
@@ -1754,6 +1873,7 @@ int main() {
         }
         RunRealPlatformTests(ctx, FontProviderType::kAndroid, TextRendererType::kFreetype, "FreeType+Android", true);
         RunAndroidNamedFamilyTests(ctx);
+        RunAndroidReadFailureTests(ctx);
     }
     #endif
 #endif

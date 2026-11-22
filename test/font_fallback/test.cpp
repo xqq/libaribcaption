@@ -1186,6 +1186,302 @@ bool DirectWriteSupportsSystemFallback(FontProviderDirectWrite& fp) {
     ComPtr<IDWriteFontFallback> fallback;
     return SUCCEEDED(factory2->GetSystemFontFallback(&fallback)) && fallback != nullptr;
 }
+
+class DirectWriteMockFontProvider final : public FontProviderDirectWrite {
+public:
+    explicit DirectWriteMockFontProvider(Context& context) : FontProviderDirectWrite(context) {}
+
+    void SetLanguage(uint32_t iso6392_language_code) override {
+        lang_ = iso6392_language_code;
+        FontProviderDirectWrite::SetLanguage(iso6392_language_code);
+    }
+
+    void MapFont(const std::string& virtual_name,
+                 const std::string& real_name,
+                 uint32_t real_lang,
+                 std::string override_family_name = {}) {
+        font_map_[virtual_name] = {real_name, real_lang, std::move(override_family_name)};
+    }
+
+    void SetForcedSystemFallback(const std::string& real_name,
+                                 uint32_t real_lang,
+                                 std::string override_family_name = {}) {
+        forced_fallback_ = {real_name, real_lang, std::move(override_family_name)};
+    }
+
+    void ClearForcedSystemFallback() {
+        forced_fallback_.reset();
+    }
+
+    void ResetCounts() {
+        get_font_calls_.clear();
+        get_fallback_calls_ = 0;
+        last_fallback_base_family_.clear();
+    }
+
+    int GetFontCallCount(const std::string& name) const {
+        auto it = get_font_calls_.find(name);
+        return it == get_font_calls_.end() ? 0 : it->second;
+    }
+
+    int GetFallbackCallCount() const {
+        return get_fallback_calls_;
+    }
+
+    const std::string& GetLastFallbackBaseFamily() const {
+        return last_fallback_base_family_;
+    }
+
+    Result<FontfaceInfo, FontProviderError> GetFontFace(const std::string& font_name) override {
+        get_font_calls_[font_name]++;
+        auto it = font_map_.find(font_name);
+        if (it == font_map_.end()) {
+            return Err(FontProviderError::kFontNotFound);
+        }
+        return ResolveMappedFont(it->second);
+    }
+
+    Result<FontfaceInfo, FontProviderError> GetFallbackFontFace(uint32_t ucs4,
+                                                                std::string_view base_family_name) override {
+        (void)ucs4;
+        get_fallback_calls_++;
+        last_fallback_base_family_ = std::string(base_family_name);
+        if (!forced_fallback_) {
+            return Err(FontProviderError::kCodePointNotFound);
+        }
+        return ResolveMappedFont(*forced_fallback_);
+    }
+private:
+    struct MappedFont {
+        std::string real_name;
+        uint32_t lang = 0;
+        std::string override_family_name;
+    };
+
+    Result<FontfaceInfo, FontProviderError> ResolveMappedFont(const MappedFont& mapped) {
+        FontProviderDirectWrite::SetLanguage(mapped.lang);
+        auto res = FontProviderDirectWrite::GetFontFace(mapped.real_name);
+        FontProviderDirectWrite::SetLanguage(lang_);
+        if (res.is_ok() && !mapped.override_family_name.empty()) {
+            res.value().family_name = mapped.override_family_name;
+        }
+        return res;
+    }
+
+    uint32_t lang_ = 0;
+    std::unordered_map<std::string, MappedFont> font_map_;
+    std::unordered_map<std::string, int> get_font_calls_;
+    std::optional<MappedFont> forced_fallback_;
+    int get_fallback_calls_ = 0;
+    std::string last_fallback_base_family_;
+};
+
+void RunDirectWriteTests(Context& ctx) {
+    printf("Running DirectWrite rejected-glyph-run tests...\n");
+
+    DirectWriteMockFontProvider mock_fp(ctx);
+    bool mock_ok = mock_fp.Initialize();
+    CHECK(mock_ok);
+    if (!mock_ok) {
+        return;
+    }
+
+    FontProviderDirectWrite probe_fp(ctx);
+    bool probe_ok = probe_fp.Initialize();
+    CHECK(probe_ok);
+    if (!probe_ok) {
+        return;
+    }
+    probe_fp.SetLanguage(ThreeCC("eng"));
+    auto sans_en = probe_fp.GetFontFace("sans-serif");
+    auto serif_en = probe_fp.GetFontFace("serif");
+    auto mono_en = probe_fp.GetFontFace("monospace");
+
+    probe_fp.SetLanguage(ThreeCC("jpn"));
+    auto sans_jp = probe_fp.GetFontFace("sans-serif");
+    auto serif_jp = probe_fp.GetFontFace("serif");
+
+    auto is_distinct = [](const FontfaceInfo& a, const FontfaceInfo& b) {
+        return a.filename != b.filename || a.face_index != b.face_index;
+    };
+
+    if (sans_en.is_err() || serif_en.is_err() || mono_en.is_err() ||
+        !is_distinct(sans_en.value(), serif_en.value()) ||
+        !is_distinct(mono_en.value(), serif_en.value()) ||
+        !is_distinct(sans_en.value(), mono_en.value())) {
+        return;
+    }
+
+    mock_fp.MapFont("MainLatin", "sans-serif", ThreeCC("eng"));
+    mock_fp.MapFont("BrokenLatin1", "sans-serif", ThreeCC("eng"), serif_en.value().family_name);
+    mock_fp.MapFont("BrokenLatin2", "monospace", ThreeCC("eng"), serif_en.value().family_name);
+    mock_fp.MapFont("GoodLatin", "serif", ThreeCC("eng"));
+
+    Bitmap ref_good_latin(64, 64, PixelFormat::kRGBA8888);
+    {
+        auto tr = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetLanguage(ThreeCC("eng"));
+        tr->SetFontFamily({"GoodLatin"});
+        CHECK(DrawSingleChar(*tr, 0x0041, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &ref_good_latin) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapHasNonZeroPixels(ref_good_latin));
+    }
+
+    // 1. kFailOnCodePointNotFound stops at rejected main slot without loading fallback slots
+    {
+        mock_fp.ResetCounts();
+        mock_fp.ClearForcedSystemFallback();
+        auto tr = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetLanguage(ThreeCC("eng"));
+        tr->SetFontFamily({"BrokenLatin1", "GoodLatin"});
+        CHECK(DrawSingleChar(*tr, 0x0041, TextRenderFallbackPolicy::kFailOnCodePointNotFound) ==
+              TextRenderStatus::kCodePointNotFound);
+        CHECK(mock_fp.GetFontCallCount("BrokenLatin1") == 1);
+        CHECK(mock_fp.GetFontCallCount("GoodLatin") == 0);
+        CHECK(mock_fp.GetFallbackCallCount() == 0);
+    }
+
+    // 2. Main slot rejected -> advances past consecutive rejected configured slots for an ordinary char
+    {
+        mock_fp.ResetCounts();
+        mock_fp.ClearForcedSystemFallback();
+        auto tr = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetLanguage(ThreeCC("eng"));
+        tr->SetFontFamily({"BrokenLatin1", "BrokenLatin2", "GoodLatin"});
+
+        Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+        CHECK(DrawSingleChar(*tr, 0x0041, TextRenderFallbackPolicy::kFontFamilyFallbackOnly, &actual) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapsEqual(actual, ref_good_latin));
+        CHECK(mock_fp.GetFontCallCount("BrokenLatin1") == 1);
+        CHECK(mock_fp.GetFontCallCount("BrokenLatin2") == 1);
+        CHECK(mock_fp.GetFontCallCount("GoodLatin") == 1);
+        CHECK(mock_fp.GetFallbackCallCount() == 0);
+    }
+    {
+        mock_fp.ResetCounts();
+        mock_fp.ClearForcedSystemFallback();
+        auto tr = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetLanguage(ThreeCC("eng"));
+        tr->SetFontFamily({"BrokenLatin1", "BrokenLatin2", "GoodLatin"});
+
+        Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+        CHECK(DrawSingleChar(*tr, 0x0041, TextRenderFallbackPolicy::kAutoFallback, &actual) == TextRenderStatus::kOK);
+        CHECK(BitmapsEqual(actual, ref_good_latin));
+        CHECK(mock_fp.GetFallbackCallCount() == 0);
+    }
+
+    // 3. Configured fallback slot rejected -> continues to next configured fallback slot (even without OS fallback)
+    if (sans_jp.is_ok() && serif_jp.is_ok() &&
+        is_distinct(sans_jp.value(), serif_jp.value()) &&
+        is_distinct(sans_en.value(), sans_jp.value()) &&
+        is_distinct(sans_en.value(), serif_jp.value())) {
+        mock_fp.MapFont("BrokenCJK", "serif", ThreeCC("jpn"), sans_jp.value().family_name);
+        mock_fp.MapFont("GoodCJK", "sans-serif", ThreeCC("jpn"));
+
+        bool main_lacks_hiragana = false;
+        {
+            auto tr = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+            CHECK(tr && tr->Initialize());
+            tr->SetLanguage(ThreeCC("eng"));
+            tr->SetFontFamily({"MainLatin"});
+            main_lacks_hiragana =
+                (DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kFailOnCodePointNotFound) ==
+                 TextRenderStatus::kCodePointNotFound);
+        }
+
+        if (main_lacks_hiragana) {
+            Bitmap ref_good_cjk(64, 64, PixelFormat::kRGBA8888);
+            {
+                auto tr = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+                CHECK(tr && tr->Initialize());
+                tr->SetLanguage(ThreeCC("eng"));
+                tr->SetFontFamily({"GoodCJK"});
+                CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &ref_good_cjk) ==
+                      TextRenderStatus::kOK);
+                CHECK(BitmapHasNonZeroPixels(ref_good_cjk));
+            }
+
+            {
+                mock_fp.ResetCounts();
+                mock_fp.ClearForcedSystemFallback();
+                auto tr = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+                CHECK(tr && tr->Initialize());
+                tr->SetLanguage(ThreeCC("eng"));
+                tr->SetFontFamily({"MainLatin", "BrokenCJK", "GoodCJK"});
+
+                Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+                CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kFontFamilyFallbackOnly, &actual) ==
+                      TextRenderStatus::kOK);
+                CHECK(BitmapsEqual(actual, ref_good_cjk));
+                CHECK(mock_fp.GetFallbackCallCount() == 0);
+            }
+            {
+                mock_fp.ResetCounts();
+                mock_fp.ClearForcedSystemFallback();
+                auto tr = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+                CHECK(tr && tr->Initialize());
+                tr->SetLanguage(ThreeCC("eng"));
+                tr->SetFontFamily({"MainLatin", "BrokenCJK", "GoodCJK"});
+
+                Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+                CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback, &actual) ==
+                      TextRenderStatus::kOK);
+                CHECK(BitmapsEqual(actual, ref_good_cjk));
+                CHECK(mock_fp.GetFallbackCallCount() == 0);
+            }
+        }
+    }
+
+    // 4. Main slot rejected -> system fallback recovers and caches under kAutoFallback
+    {
+        mock_fp.ResetCounts();
+        mock_fp.SetForcedSystemFallback("serif", ThreeCC("eng"));
+        auto tr = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetLanguage(ThreeCC("eng"));
+        tr->SetFontFamily({"BrokenLatin1"});
+
+        Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+        CHECK(DrawSingleChar(*tr, 0x0041, TextRenderFallbackPolicy::kAutoFallback, &actual) == TextRenderStatus::kOK);
+        CHECK(BitmapsEqual(actual, ref_good_latin));
+        CHECK(mock_fp.GetFallbackCallCount() == 1);
+        CHECK(mock_fp.GetLastFallbackBaseFamily() == "BrokenLatin1");
+
+        Bitmap actual_b(64, 64, PixelFormat::kRGBA8888);
+        CHECK(DrawSingleChar(*tr, 0x0042, TextRenderFallbackPolicy::kAutoFallback, &actual_b) == TextRenderStatus::kOK);
+        CHECK(BitmapHasNonZeroPixels(actual_b));
+        CHECK(mock_fp.GetFallbackCallCount() == 1);
+    }
+
+    // 5. Rejected system fallback is not cached and negative cache suppresses repeat queries
+    {
+        mock_fp.ResetCounts();
+        mock_fp.SetForcedSystemFallback("monospace", ThreeCC("eng"), serif_en.value().family_name);
+        auto tr = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetLanguage(ThreeCC("eng"));
+        tr->SetFontFamily({"BrokenLatin1"});
+
+        CHECK(DrawSingleChar(*tr, 0x0041, TextRenderFallbackPolicy::kAutoFallback) ==
+              TextRenderStatus::kCodePointNotFound);
+        CHECK(mock_fp.GetFallbackCallCount() == 1);
+
+        CHECK(DrawSingleChar(*tr, 0x0041, TextRenderFallbackPolicy::kAutoFallback) ==
+              TextRenderStatus::kCodePointNotFound);
+        CHECK(mock_fp.GetFallbackCallCount() == 1);
+
+        mock_fp.SetForcedSystemFallback("serif", ThreeCC("eng"));
+        Bitmap actual_b(64, 64, PixelFormat::kRGBA8888);
+        CHECK(DrawSingleChar(*tr, 0x0042, TextRenderFallbackPolicy::kAutoFallback, &actual_b) == TextRenderStatus::kOK);
+        CHECK(BitmapHasNonZeroPixels(actual_b));
+        CHECK(mock_fp.GetFallbackCallCount() == 2);
+    }
+}
 #endif
 
 }  // namespace
@@ -1219,6 +1515,7 @@ int main() {
             fp_ok && DirectWriteSupportsSystemFallback(static_cast<FontProviderDirectWrite&>(*fp));
         RunRealPlatformTests(ctx, FontProviderType::kDirectWrite, TextRendererType::kDirectWrite, "DirectWrite",
                              expect_os_fallback);
+        RunDirectWriteTests(ctx);
     }
 #endif
 

@@ -127,6 +127,14 @@ public:
         forced_fallback_ = {real_name, real_lang};
     }
 
+    void SetFallbackError(std::optional<FontProviderError> error) {
+        fallback_error_ = error;
+    }
+
+    void SetFallbackFilenameOverride(std::optional<std::string> filename) {
+        fallback_filename_override_ = std::move(filename);
+    }
+
     void ResetCounts() {
         get_font_calls_.clear();
         get_fallback_calls_ = 0;
@@ -164,13 +172,22 @@ public:
         if (!allow_system_fallback_) {
             return Err(FontProviderError::kCodePointNotFound);
         }
+        if (fallback_error_) {
+            return Err(FontProviderError(*fallback_error_));
+        }
+        Result<FontfaceInfo, FontProviderError> res = Err(FontProviderError::kCodePointNotFound);
         if (forced_fallback_) {
             backing_.SetLanguage(forced_fallback_->lang);
-            auto res = backing_.GetFontFace(forced_fallback_->real_name);
+            res = backing_.GetFontFace(forced_fallback_->real_name);
             backing_.SetLanguage(lang_);
-            return res;
+        } else {
+            res = backing_.GetFallbackFontFace(ucs4, base_family_name);
         }
-        return backing_.GetFallbackFontFace(ucs4, base_family_name);
+        if (res.is_ok() && fallback_filename_override_) {
+            res.value().filename = *fallback_filename_override_;
+            res.value().font_data.clear();
+        }
+        return res;
     }
 private:
     struct MappedFont {
@@ -184,6 +201,8 @@ private:
     std::unordered_map<std::string, int> get_font_calls_;
     bool allow_system_fallback_ = false;
     std::optional<MappedFont> forced_fallback_;
+    std::optional<FontProviderError> fallback_error_;
+    std::optional<std::string> fallback_filename_override_;
     int get_fallback_calls_ = 0;
     std::string last_fallback_base_family_;
 };
@@ -384,6 +403,54 @@ void RunMockProviderTests(Context& ctx, FontProvider& backing, TextRendererType 
             CHECK(proxy.GetFontCallCount("MockCJK") == 1);
             CHECK(proxy.GetFallbackCallCount() == 0);
         }
+    }
+
+    // 9. System fallback errors are not negatively cached, the next occurrence retries
+    if (latin_lacks_hiragana) {
+        proxy.SetAllowSystemFallback(true);
+        proxy.SetForcedSystemFallback("sans-serif", ThreeCC("jpn"));
+
+        proxy.ResetCounts();
+        proxy.SetFallbackError(FontProviderError::kOtherError);
+        {
+            auto tr = TextRenderer::Create(renderer_type, ctx, proxy);
+            CHECK(tr && tr->Initialize());
+            tr->SetFontFamily({"MockLatin"});
+
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) ==
+                  TextRenderStatus::kOtherError);
+            CHECK(proxy.GetFallbackCallCount() == 1);
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) ==
+                  TextRenderStatus::kOtherError);
+            CHECK(proxy.GetFallbackCallCount() == 2);
+
+            proxy.SetFallbackError(std::nullopt);
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+            CHECK(proxy.GetFallbackCallCount() == 3);
+        }
+
+        // FreeType: provider returns a face that cannot be opened
+        if (renderer_type == TextRendererType::kFreetype) {
+            proxy.ResetCounts();
+            proxy.SetFallbackFilenameOverride("aribcc-nonexistent-dir/aribcc-nonexistent-font.ttf");
+            auto tr = TextRenderer::Create(renderer_type, ctx, proxy);
+            CHECK(tr && tr->Initialize());
+            tr->SetFontFamily({"MockLatin"});
+
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) ==
+                  TextRenderStatus::kOtherError);
+            CHECK(proxy.GetFallbackCallCount() == 1);
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) ==
+                  TextRenderStatus::kOtherError);
+            CHECK(proxy.GetFallbackCallCount() == 2);
+
+            proxy.SetFallbackFilenameOverride(std::nullopt);
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+            CHECK(proxy.GetFallbackCallCount() == 3);
+        }
+
+        proxy.SetFallbackError(std::nullopt);
+        proxy.SetFallbackFilenameOverride(std::nullopt);
     }
 }
 #endif
@@ -1213,6 +1280,10 @@ public:
         forced_fallback_.reset();
     }
 
+    void SetFallbackError(std::optional<FontProviderError> error) {
+        fallback_error_ = error;
+    }
+
     void ResetCounts() {
         get_font_calls_.clear();
         get_fallback_calls_ = 0;
@@ -1246,6 +1317,9 @@ public:
         (void)ucs4;
         get_fallback_calls_++;
         last_fallback_base_family_ = std::string(base_family_name);
+        if (fallback_error_) {
+            return Err(FontProviderError(*fallback_error_));
+        }
         if (!forced_fallback_) {
             return Err(FontProviderError::kCodePointNotFound);
         }
@@ -1272,6 +1346,7 @@ private:
     std::unordered_map<std::string, MappedFont> font_map_;
     std::unordered_map<std::string, int> get_font_calls_;
     std::optional<MappedFont> forced_fallback_;
+    std::optional<FontProviderError> fallback_error_;
     int get_fallback_calls_ = 0;
     std::string last_fallback_base_family_;
 };
@@ -1480,6 +1555,32 @@ void RunDirectWriteTests(Context& ctx) {
         CHECK(DrawSingleChar(*tr, 0x0042, TextRenderFallbackPolicy::kAutoFallback, &actual_b) == TextRenderStatus::kOK);
         CHECK(BitmapHasNonZeroPixels(actual_b));
         CHECK(mock_fp.GetFallbackCallCount() == 2);
+    }
+
+    // 6. System fallback errors are not negatively cached, the next occurrence retries
+    {
+        mock_fp.ResetCounts();
+        mock_fp.SetForcedSystemFallback("sans-serif", ThreeCC("jpn"));
+        auto tr = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetLanguage(ThreeCC("eng"));
+        tr->SetFontFamily({"MainLatin"});
+
+        if (DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kFailOnCodePointNotFound) ==
+            TextRenderStatus::kCodePointNotFound) {
+            mock_fp.SetFallbackError(FontProviderError::kOtherError);
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) ==
+                  TextRenderStatus::kOtherError);
+            CHECK(mock_fp.GetFallbackCallCount() == 1);
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) ==
+                  TextRenderStatus::kOtherError);
+            CHECK(mock_fp.GetFallbackCallCount() == 2);
+
+            mock_fp.SetFallbackError(std::nullopt);
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+            CHECK(mock_fp.GetFallbackCallCount() == 3);
+        }
+        mock_fp.SetFallbackError(std::nullopt);
     }
 }
 #endif

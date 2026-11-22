@@ -25,6 +25,10 @@ namespace aribcaption {
 
 class ScopedCOMInitializer {
 public:
+    // Disallow copy and assign
+    explicit ScopedCOMInitializer(const ScopedCOMInitializer&) = delete;
+    ScopedCOMInitializer& operator=(const ScopedCOMInitializer&) = delete;
+public:
     ScopedCOMInitializer() {
         HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
         init_succeeded_ = SUCCEEDED(hr);

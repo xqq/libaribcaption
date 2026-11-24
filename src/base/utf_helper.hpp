@@ -72,10 +72,10 @@ inline size_t UTF8AppendCodePoint(char* buf, uint32_t ucs4) {
         buf[2] = static_cast<char>(0x80 | (ucs4 & 0x3F));         // 10xxxxxx
         bytes = 3;
     } else if (ucs4 < 0x110000) {
-        buf[0] = static_cast<char>(0xF0 | (ucs4 >> 18)),           // 11110xxx
-        buf[1] = static_cast<char>(0x80 | ((ucs4 >> 12) & 0x3F)),  // 10xxxxxx
-        buf[2] = static_cast<char>(0x80 | ((ucs4 >> 6) & 0x3F)),   // 10xxxxxx
-        buf[3] = static_cast<char>(0x80 | (ucs4 & 0x3F)),          // 10xxxxxx
+        buf[0] = static_cast<char>(0xF0 | (ucs4 >> 18));           // 11110xxx
+        buf[1] = static_cast<char>(0x80 | ((ucs4 >> 12) & 0x3F));  // 10xxxxxx
+        buf[2] = static_cast<char>(0x80 | ((ucs4 >> 6) & 0x3F));   // 10xxxxxx
+        buf[3] = static_cast<char>(0x80 | (ucs4 & 0x3F));          // 10xxxxxx
         bytes = 4;
     }
 

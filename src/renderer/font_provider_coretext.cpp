@@ -45,6 +45,11 @@ bool FontProviderCoreText::Initialize() {
 }
 
 void FontProviderCoreText::SetLanguage(uint32_t iso6392_language_code) {
+    if (iso6392_language_code_ != iso6392_language_code) {
+        cached_base_font_.reset();
+        cached_base_family_name_.clear();
+        cached_base_language_code_ = 0;
+    }
     iso6392_language_code_ = iso6392_language_code;
 }
 
@@ -203,18 +208,29 @@ auto FontProviderCoreText::GetFallbackFontFace(uint32_t ucs4, std::string_view b
         return Err(FontProviderError::kCodePointNotFound);
     }
 
-    ScopedCFRef<CTFontRef> base_font;
-    if (!base_family_name.empty()) {
-        base_font = ResolveCTFontByName(ConvertFamilyName(base_family_name, iso6392_language_code_));
-    }
-    if (!base_font) {
-        base_font = ResolveCTFontByName(ConvertFamilyName("sans-serif", iso6392_language_code_));
-    }
-    if (!base_font) {
-        base_font.reset(CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, 0, nullptr));
-    }
-    if (!base_font) {
-        return Err(FontProviderError::kCodePointNotFound);
+    CTFontRef base_font = nullptr;
+    if (cached_base_font_ &&
+        cached_base_language_code_ == iso6392_language_code_ &&
+        cached_base_family_name_ == base_family_name) {
+        base_font = cached_base_font_.get();
+    } else {
+        ScopedCFRef<CTFontRef> resolved;
+        if (!base_family_name.empty()) {
+            resolved = ResolveCTFontByName(ConvertFamilyName(base_family_name, iso6392_language_code_));
+        }
+        if (!resolved) {
+            resolved = ResolveCTFontByName(ConvertFamilyName("sans-serif", iso6392_language_code_));
+        }
+        if (!resolved) {
+            resolved.reset(CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, 0, nullptr));
+        }
+        if (!resolved) {
+            return Err(FontProviderError::kCodePointNotFound);
+        }
+        cached_base_family_name_ = base_family_name;
+        cached_base_language_code_ = iso6392_language_code_;
+        cached_base_font_ = std::move(resolved);
+        base_font = cached_base_font_.get();
     }
 
     std::u16string utf16;
@@ -231,7 +247,7 @@ auto FontProviderCoreText::GetFallbackFontFace(uint32_t ucs4, std::string_view b
         cf_lang = cfstr::StdStringToCFString(ISO6392ToISO6391LanguageString(iso6392_language_code_));
     }
 
-    ScopedCFRef<CTFontRef> fallback_font(CTFontCreateForStringWithLanguage(base_font.get(),
+    ScopedCFRef<CTFontRef> fallback_font(CTFontCreateForStringWithLanguage(base_font,
                                                                            cf_str.get(),
                                                                            CFRangeMake(0, static_cast<CFIndex>(count)),
                                                                            cf_lang.get()));

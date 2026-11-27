@@ -25,7 +25,9 @@
 #else
     #include <ApplicationServices/ApplicationServices.h>
 #endif
+#include <cstdint>
 #include <memory>
+#include <string>
 #include "aribcaption/context.hpp"
 #include "base/logger.hpp"
 #include "base/scoped_cfref.hpp"
@@ -57,6 +59,10 @@ private:
     std::shared_ptr<Logger> log_;
 
     uint32_t iso6392_language_code_ = 0;
+
+    std::string cached_base_family_name_;
+    uint32_t cached_base_language_code_ = 0;
+    ScopedCFRef<CTFontRef> cached_base_font_;
 };
 
 }  // namespace aribcaption

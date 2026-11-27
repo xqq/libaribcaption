@@ -218,6 +218,7 @@ if(NOT ARIBCC_NO_RENDERER)
         src/renderer/canvas.hpp
         src/renderer/drcs_renderer.cpp
         src/renderer/drcs_renderer.hpp
+        src/renderer/fallback_codepoint_cache.hpp
         src/renderer/font_provider.cpp
         src/renderer/font_provider.hpp
         $<$<BOOL:${ARIBCC_IS_ANDROID}>:src/renderer/font_provider_android.cpp>

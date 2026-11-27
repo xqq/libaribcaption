@@ -64,6 +64,9 @@ void TextRendererCoreText::ResetFontFaces() {
     main_slot_index_.reset();
     main_load_error_ = FontProviderError::kFontNotFound;
     missing_codepoints_.clear();
+    fallback_codepoint_cache_.Clear();
+    next_fallback_slot_id_ = 1;
+    fallback_lru_counter_ = 0;
 }
 
 struct TextRenderContextPrivateCoreText : public TextRenderContext::ContextPrivate {
@@ -280,25 +283,76 @@ auto TextRendererCoreText::DrawChar(TextRenderContext& render_ctx, int target_x,
     return TextRenderStatus::kOK;
 }
 
-bool TextRendererCoreText::IsDuplicateFont(const std::string& family_name,
-                                           const std::string& postscript_name) const {
-    auto matches_list = [&](const std::vector<FontSlot>& slots) -> bool {
-        for (const auto& existing : slots) {
-            if (existing.state != SlotState::kLoaded) {
-                continue;
-            }
-            if (!postscript_name.empty() && !existing.postscript_name.empty()) {
-                if (postscript_name == existing.postscript_name) {
-                    return true;
-                }
-            } else if (!family_name.empty() && family_name == existing.family_name) {
-                return true;
+bool TextRendererCoreText::MatchesFontIdentity(const FontSlot& slot,
+                                                 const std::string& family_name,
+                                                 const std::string& postscript_name) {
+    if (slot.state != SlotState::kLoaded) {
+        return false;
+    }
+    if (!postscript_name.empty() && !slot.postscript_name.empty()) {
+        return postscript_name == slot.postscript_name;
+    }
+    if (!family_name.empty() && !slot.family_name.empty()) {
+        return family_name == slot.family_name;
+    }
+    return false;
+}
+
+bool TextRendererCoreText::MatchesConfiguredSlot(const std::string& family_name,
+                                                 const std::string& postscript_name) const {
+    for (const auto& existing : font_slots_) {
+        if (MatchesFontIdentity(existing, family_name, postscript_name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+auto TextRendererCoreText::FindSystemFallbackSlotById(uint32_t slot_id) -> FontSlot* {
+    if (slot_id == 0) {
+        return nullptr;
+    }
+    for (auto& slot : system_fallback_slots_) {
+        if (slot.state == SlotState::kLoaded && slot.slot_id == slot_id) {
+            return &slot;
+        }
+    }
+    return nullptr;
+}
+
+auto TextRendererCoreText::FindSystemFallbackSlot(const std::string& family_name,
+                                                  const std::string& postscript_name) -> FontSlot* {
+    for (auto& slot : system_fallback_slots_) {
+        if (MatchesFontIdentity(slot, family_name, postscript_name)) {
+            return &slot;
+        }
+    }
+    return nullptr;
+}
+
+auto TextRendererCoreText::StoreSystemFallbackSlot(FontSlot&& slot) -> FontSlot* {
+    uint32_t slot_id = next_fallback_slot_id_++;
+    if (next_fallback_slot_id_ == 0) {
+        next_fallback_slot_id_ = 1;
+    }
+    slot.slot_id = slot_id;
+    slot.last_used = ++fallback_lru_counter_;
+
+    static constexpr size_t kMaxSystemFallbackSlots = 16;
+    if (system_fallback_slots_.size() >= kMaxSystemFallbackSlots) {
+        auto victim = system_fallback_slots_.begin();
+        for (auto it = victim + 1; it != system_fallback_slots_.end(); ++it) {
+            if (it->last_used < victim->last_used) {
+                victim = it;
             }
         }
-        return false;
-    };
+        fallback_codepoint_cache_.InvalidateSlot(victim->slot_id);
+        *victim = std::move(slot);
+        return &(*victim);
+    }
 
-    return matches_list(font_slots_) || matches_list(system_fallback_slots_);
+    system_fallback_slots_.push_back(std::move(slot));
+    return &system_fallback_slots_.back();
 }
 
 auto TextRendererCoreText::LoadSlot(size_t slot_index) -> std::optional<FontProviderError> {
@@ -342,7 +396,7 @@ auto TextRendererCoreText::LoadSlot(size_t slot_index) -> std::optional<FontProv
         }
     }
 
-    if (IsDuplicateFont(family_name, postscript_name)) {
+    if (MatchesConfiguredSlot(family_name, postscript_name)) {
         slot.state = SlotState::kUnavailable;
         return std::nullopt;
     }
@@ -394,19 +448,16 @@ auto TextRendererCoreText::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
         return Err(TextRenderStatus::kCodePointNotFound);
     }
 
-    for (auto& slot : system_fallback_slots_) {
-        if (slot.state != SlotState::kLoaded) {
-            continue;
-        }
-        if (!CTFontGetGlyphsForCharacters(slot.ctfont.get(), utf16, out_glyphs, codeunit_count)) {
-            continue;
-        }
-        CTFontRef sized = EnsureSizedCTFont(slot, char_height);
-        if (!sized) {
-            return Err(TextRenderStatus::kOtherError);
-        }
-        if (CTFontGetGlyphsForCharacters(sized, utf16, out_glyphs, codeunit_count)) {
-            return Ok(sized);
+    if (auto cached_slot_id = fallback_codepoint_cache_.Find(ucs4)) {
+        if (FontSlot* cached = FindSystemFallbackSlotById(*cached_slot_id)) {
+            CTFontRef sized = EnsureSizedCTFont(*cached, char_height);
+            if (!sized) {
+                return Err(TextRenderStatus::kOtherError);
+            }
+            if (CTFontGetGlyphsForCharacters(sized, utf16, out_glyphs, codeunit_count)) {
+                cached->last_used = ++fallback_lru_counter_;
+                return Ok(sized);
+            }
         }
     }
 
@@ -442,8 +493,23 @@ auto TextRendererCoreText::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
         }
     }
 
-    if (IsDuplicateFont(family_name, postscript_name)) {
+    // Every configured slot in font_slots_ was already checked and lacked ucs4;
+    // reject any duplicate so font_slots_ and system_fallback_slots_ stay disjoint.
+    if (MatchesConfiguredSlot(family_name, postscript_name)) {
         return Err(TextRenderStatus::kCodePointNotFound);
+    }
+
+    if (FontSlot* existing = FindSystemFallbackSlot(family_name, postscript_name)) {
+        CTFontRef sized = EnsureSizedCTFont(*existing, char_height);
+        if (!sized) {
+            return Err(TextRenderStatus::kOtherError);
+        }
+        if (!CTFontGetGlyphsForCharacters(sized, utf16, out_glyphs, codeunit_count)) {
+            return Err(TextRenderStatus::kCodePointNotFound);
+        }
+        existing->last_used = ++fallback_lru_counter_;
+        fallback_codepoint_cache_.Insert(ucs4, existing->slot_id);
+        return Ok(sized);
     }
 
     FontSlot slot;
@@ -460,13 +526,9 @@ auto TextRendererCoreText::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
         return Err(TextRenderStatus::kCodePointNotFound);
     }
 
-    static constexpr size_t kMaxSystemFallbackSlots = 16;
-    if (system_fallback_slots_.size() >= kMaxSystemFallbackSlots) {
-        system_fallback_slots_.erase(system_fallback_slots_.begin());
-    }
-
-    system_fallback_slots_.push_back(std::move(slot));
-    return Ok(system_fallback_slots_.back().ctfont_sized.get());
+    FontSlot* stored = StoreSystemFallbackSlot(std::move(slot));
+    fallback_codepoint_cache_.Insert(ucs4, stored->slot_id);
+    return Ok(stored->ctfont_sized.get());
 }
 
 auto TextRendererCoreText::EnsureSizedCTFont(FontSlot& slot, int char_height) -> CTFontRef {

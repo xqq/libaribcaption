@@ -26,6 +26,7 @@
 #else
     #include <ApplicationServices/ApplicationServices.h>
 #endif
+#include <cstdint>
 #include <vector>
 #include <string>
 #include <memory>
@@ -35,6 +36,7 @@
 #include "base/logger.hpp"
 #include "base/scoped_cfref.hpp"
 #include "renderer/bitmap.hpp"
+#include "renderer/fallback_codepoint_cache.hpp"
 #include "renderer/font_provider.hpp"
 #include "renderer/text_renderer.hpp"
 
@@ -69,9 +71,17 @@ private:
         int pixel_height = 0;
         std::string family_name;
         std::string postscript_name;
+        uint32_t slot_id = 0;
+        uint64_t last_used = 0;
     };
 private:
-    bool IsDuplicateFont(const std::string& family_name, const std::string& postscript_name) const;
+    static bool MatchesFontIdentity(const FontSlot& slot,
+                                    const std::string& family_name,
+                                    const std::string& postscript_name);
+    bool MatchesConfiguredSlot(const std::string& family_name, const std::string& postscript_name) const;
+    FontSlot* FindSystemFallbackSlotById(uint32_t slot_id);
+    FontSlot* FindSystemFallbackSlot(const std::string& family_name, const std::string& postscript_name);
+    FontSlot* StoreSystemFallbackSlot(FontSlot&& slot);
     auto LoadSlot(size_t slot_index) -> std::optional<FontProviderError>;
     auto EnsureMainSlot() -> std::optional<FontProviderError>;
     auto FindOrLoadSystemFallbackSlot(uint32_t ucs4,
@@ -98,6 +108,9 @@ private:
     std::optional<size_t> main_slot_index_;
     FontProviderError main_load_error_ = FontProviderError::kFontNotFound;
     std::unordered_set<uint32_t> missing_codepoints_;
+    FallbackCodepointCache fallback_codepoint_cache_;
+    uint32_t next_fallback_slot_id_ = 1;
+    uint64_t fallback_lru_counter_ = 0;
 };
 
 }  // namespace aribcaption

@@ -29,6 +29,7 @@
 #include "aribcc_config.h"
 #include "base/language_code.hpp"
 #include "renderer/bitmap.hpp"
+#include "renderer/fallback_codepoint_cache.hpp"
 #include "renderer/font_provider.hpp"
 #if defined(ARIBCC_USE_CORETEXT)
     #include <TargetConditionals.h>
@@ -103,6 +104,67 @@ bool BitmapHasNonZeroPixels(const Bitmap& bmp) {
     return false;
 }
 
+void RunFallbackCodepointCacheTests() {
+    printf("Running FallbackCodepointCache unit tests...\n");
+
+    FallbackCodepointCache cache;
+    CHECK(!cache.Find(0).has_value());
+    CHECK(!cache.Find(0x3042).has_value());
+
+    // Zero codepoint and zero slot_id are ignored
+    cache.Insert(0, 1);
+    cache.Insert(0x3042, 0);
+    CHECK(!cache.Find(0).has_value());
+    CHECK(!cache.Find(0x3042).has_value());
+
+    cache.Insert(0x3042, 1);
+    auto found = cache.Find(0x3042);
+    CHECK(found.has_value() && *found == 1);
+
+    // Pick three distinct non-zero codepoints mapping to set 0
+    std::vector<uint32_t> same_set_cps;
+    for (uint32_t cp = 1; same_set_cps.size() < 3 && cp < 0x110000u; cp++) {
+        size_t set_idx = static_cast<size_t>((cp * 2654435761u) >> (32 - FallbackCodepointCache::kSetBits)) &
+                         (FallbackCodepointCache::kNumSets - 1);
+        if (set_idx == 0) {
+            same_set_cps.push_back(cp);
+        }
+    }
+    CHECK(same_set_cps.size() == 3);
+    uint32_t cp_a = same_set_cps[0];
+    uint32_t cp_b = same_set_cps[1];
+    uint32_t cp_c = same_set_cps[2];
+
+    cache.Clear();
+    cache.Insert(cp_a, 1);
+    cache.Insert(cp_b, 2);
+    CHECK(cache.Find(cp_a) == std::optional<uint32_t>(1));
+    CHECK(cache.Find(cp_b) == std::optional<uint32_t>(2));
+
+    // Promote cp_a to MRU (way 0), leaving cp_b in LRU (way 1), then insert cp_c to evict cp_b
+    CHECK(cache.Find(cp_a) == std::optional<uint32_t>(1));
+    cache.Insert(cp_c, 3);
+    CHECK(cache.Find(cp_c) == std::optional<uint32_t>(3));
+    CHECK(cache.Find(cp_a) == std::optional<uint32_t>(1));
+    CHECK(!cache.Find(cp_b).has_value());
+
+    // Invalidating slot 1 removes cp_a while preserving cp_c
+    cache.InvalidateSlot(1);
+    CHECK(!cache.Find(cp_a).has_value());
+    CHECK(cache.Find(cp_c) == std::optional<uint32_t>(3));
+
+    // Invalidating way 0 promotes way 1 cleanly
+    cache.Clear();
+    cache.Insert(cp_a, 10);
+    cache.Insert(cp_b, 20);
+    cache.InvalidateSlot(20);
+    CHECK(!cache.Find(cp_b).has_value());
+    CHECK(cache.Find(cp_a) == std::optional<uint32_t>(10));
+
+    cache.Clear();
+    CHECK(!cache.Find(cp_a).has_value());
+}
+
 #if defined(ARIBCC_USE_FREETYPE) || defined(ARIBCC_USE_CORETEXT)
 class ProxyFontProvider : public FontProvider {
 public:
@@ -131,6 +193,14 @@ public:
 
     void SetForcedSystemFallback(const std::string& real_name, uint32_t real_lang) {
         forced_fallback_ = {real_name, real_lang};
+    }
+
+    void SetCodePointSystemFallback(uint32_t ucs4, const std::string& real_name, uint32_t real_lang) {
+        codepoint_fallback_map_[ucs4] = {real_name, real_lang};
+    }
+
+    void ClearCodePointSystemFallbacks() {
+        codepoint_fallback_map_.clear();
     }
 
     void SetFallbackError(std::optional<FontProviderError> error) {
@@ -182,7 +252,12 @@ public:
             return Err(FontProviderError(*fallback_error_));
         }
         Result<FontfaceInfo, FontProviderError> res = Err(FontProviderError::kCodePointNotFound);
-        if (forced_fallback_) {
+        auto cp_it = codepoint_fallback_map_.find(ucs4);
+        if (cp_it != codepoint_fallback_map_.end()) {
+            backing_.SetLanguage(cp_it->second.lang);
+            res = backing_.GetFontFace(cp_it->second.real_name);
+            backing_.SetLanguage(lang_);
+        } else if (forced_fallback_) {
             backing_.SetLanguage(forced_fallback_->lang);
             res = backing_.GetFontFace(forced_fallback_->real_name);
             backing_.SetLanguage(lang_);
@@ -207,6 +282,7 @@ private:
     std::unordered_map<std::string, int> get_font_calls_;
     bool allow_system_fallback_ = false;
     std::optional<MappedFont> forced_fallback_;
+    std::unordered_map<uint32_t, MappedFont> codepoint_fallback_map_;
     std::optional<FontProviderError> fallback_error_;
     std::optional<std::string> fallback_filename_override_;
     int get_fallback_calls_ = 0;
@@ -365,9 +441,15 @@ void RunMockProviderTests(Context& ctx, FontProvider& backing, TextRendererType 
         // base_family_name must be the requested font family entry, not the loaded face's family name
         CHECK(proxy.GetLastFallbackBaseFamily() == "MockLatin");
 
-        // Second character covered by the cached system fallback must NOT call GetFallbackFontFace again
-        CHECK(DrawSingleChar(*tr, 0x3044, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+        // Repeat of the same codepoint hits FallbackCodepointCache without querying the provider
+        CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
         CHECK(proxy.GetFallbackCallCount() == 1);
+
+        // Different unseen codepoint queries the provider (reusing the open slot) and then caches it
+        CHECK(DrawSingleChar(*tr, 0x3044, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+        CHECK(proxy.GetFallbackCallCount() == 2);
+        CHECK(DrawSingleChar(*tr, 0x3044, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+        CHECK(proxy.GetFallbackCallCount() == 2);
     }
 
     // 8. kFontFamilyFallbackOnly searches the font family list but never system fallback,
@@ -457,6 +539,55 @@ void RunMockProviderTests(Context& ctx, FontProvider& backing, TextRendererType 
 
         proxy.SetFallbackError(std::nullopt);
         proxy.SetFallbackFilenameOverride(std::nullopt);
+    }
+
+    // 10. System fallback draw-order independence and ResetFontFaces() cache invalidation
+    if (latin_lacks_hiragana) {
+        Bitmap ref_cjk(64, 64, PixelFormat::kRGBA8888);
+        Bitmap ref_serif(64, 64, PixelFormat::kRGBA8888);
+        bool serif_differs_from_cjk = false;
+        {
+            proxy.SetAllowSystemFallback(false);
+            auto tr1 = TextRenderer::Create(renderer_type, ctx, proxy);
+            auto tr2 = TextRenderer::Create(renderer_type, ctx, proxy);
+            CHECK(tr1 && tr1->Initialize() && tr2 && tr2->Initialize());
+            tr1->SetFontFamily({"MockCJK"});
+            tr2->SetFontFamily({"MockSerif"});
+            if (DrawSingleChar(*tr1, 0x3042, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &ref_cjk) ==
+                    TextRenderStatus::kOK &&
+                DrawSingleChar(*tr2, 0x3042, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &ref_serif) ==
+                    TextRenderStatus::kOK) {
+                serif_differs_from_cjk = !BitmapsEqual(ref_cjk, ref_serif);
+            }
+        }
+        if (serif_differs_from_cjk) {
+            proxy.ResetCounts();
+            proxy.SetAllowSystemFallback(true);
+            proxy.SetCodePointSystemFallback(0x3044, "serif", ThreeCC("jpn"));
+            proxy.SetCodePointSystemFallback(0x3042, "sans-serif", ThreeCC("jpn"));
+            auto tr = TextRenderer::Create(renderer_type, ctx, proxy);
+            CHECK(tr && tr->Initialize());
+            tr->SetLanguage(ThreeCC("eng"));
+            tr->SetFontFamily({"MockLatin"});
+
+            CHECK(DrawSingleChar(*tr, 0x3044, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+            Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback, &actual) ==
+                  TextRenderStatus::kOK);
+            CHECK(BitmapsEqual(actual, ref_cjk));
+            CHECK(proxy.GetFallbackCallCount() == 2);
+
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+            CHECK(DrawSingleChar(*tr, 0x3044, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+            CHECK(proxy.GetFallbackCallCount() == 2);
+
+            // Language change resets loaded faces and clears FallbackCodepointCache
+            tr->SetLanguage(ThreeCC("jpn"));
+            CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+            CHECK(proxy.GetFallbackCallCount() == 3);
+
+            proxy.ClearCodePointSystemFallbacks();
+        }
     }
 }
 #endif
@@ -1286,6 +1417,17 @@ public:
         forced_fallback_.reset();
     }
 
+    void SetCodePointSystemFallback(uint32_t ucs4,
+                                    const std::string& real_name,
+                                    uint32_t real_lang,
+                                    std::string override_family_name = {}) {
+        codepoint_fallback_map_[ucs4] = {real_name, real_lang, std::move(override_family_name)};
+    }
+
+    void ClearCodePointSystemFallbacks() {
+        codepoint_fallback_map_.clear();
+    }
+
     void SetFallbackError(std::optional<FontProviderError> error) {
         fallback_error_ = error;
     }
@@ -1320,11 +1462,14 @@ public:
 
     Result<FontfaceInfo, FontProviderError> GetFallbackFontFace(uint32_t ucs4,
                                                                 std::string_view base_family_name) override {
-        (void)ucs4;
         get_fallback_calls_++;
         last_fallback_base_family_ = std::string(base_family_name);
         if (fallback_error_) {
             return Err(FontProviderError(*fallback_error_));
+        }
+        auto cp_it = codepoint_fallback_map_.find(ucs4);
+        if (cp_it != codepoint_fallback_map_.end()) {
+            return ResolveMappedFont(cp_it->second);
         }
         if (!forced_fallback_) {
             return Err(FontProviderError::kCodePointNotFound);
@@ -1352,6 +1497,7 @@ private:
     std::unordered_map<std::string, MappedFont> font_map_;
     std::unordered_map<std::string, int> get_font_calls_;
     std::optional<MappedFont> forced_fallback_;
+    std::unordered_map<uint32_t, MappedFont> codepoint_fallback_map_;
     std::optional<FontProviderError> fallback_error_;
     int get_fallback_calls_ = 0;
     std::string last_fallback_base_family_;
@@ -1533,10 +1679,18 @@ void RunDirectWriteTests(Context& ctx) {
         CHECK(mock_fp.GetFallbackCallCount() == 1);
         CHECK(mock_fp.GetLastFallbackBaseFamily() == "BrokenLatin1");
 
+        // Repeated same codepoint hits FallbackCodepointCache
+        CHECK(DrawSingleChar(*tr, 0x0041, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+        CHECK(mock_fp.GetFallbackCallCount() == 1);
+
+        // Different unseen codepoint queries the provider and caches the new mapping
         Bitmap actual_b(64, 64, PixelFormat::kRGBA8888);
         CHECK(DrawSingleChar(*tr, 0x0042, TextRenderFallbackPolicy::kAutoFallback, &actual_b) == TextRenderStatus::kOK);
         CHECK(BitmapHasNonZeroPixels(actual_b));
-        CHECK(mock_fp.GetFallbackCallCount() == 1);
+        CHECK(mock_fp.GetFallbackCallCount() == 2);
+
+        CHECK(DrawSingleChar(*tr, 0x0042, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+        CHECK(mock_fp.GetFallbackCallCount() == 2);
     }
 
     // 5. Rejected system fallback is not cached and negative cache suppresses repeat queries
@@ -1587,6 +1741,74 @@ void RunDirectWriteTests(Context& ctx) {
             CHECK(mock_fp.GetFallbackCallCount() == 3);
         }
         mock_fp.SetFallbackError(std::nullopt);
+    }
+
+    // 7. System fallback draw-order independence and ResetFontFaces() cache invalidation
+    if (sans_jp.is_ok() && serif_jp.is_ok() &&
+        is_distinct(sans_jp.value(), serif_jp.value()) &&
+        is_distinct(sans_en.value(), sans_jp.value()) &&
+        is_distinct(sans_en.value(), serif_jp.value())) {
+        bool main_lacks_hiragana = false;
+        {
+            auto tr = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+            CHECK(tr && tr->Initialize());
+            tr->SetLanguage(ThreeCC("eng"));
+            tr->SetFontFamily({"MainLatin"});
+            main_lacks_hiragana =
+                (DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kFailOnCodePointNotFound) ==
+                 TextRenderStatus::kCodePointNotFound);
+        }
+
+        if (main_lacks_hiragana) {
+            mock_fp.MapFont("FallbackSansJP", "sans-serif", ThreeCC("jpn"));
+            mock_fp.MapFont("FallbackSerifJP", "serif", ThreeCC("jpn"));
+            Bitmap ref_sans_jp(64, 64, PixelFormat::kRGBA8888);
+            Bitmap ref_serif_jp(64, 64, PixelFormat::kRGBA8888);
+            bool serif_differs_from_sans = false;
+            {
+                auto tr1 = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+                auto tr2 = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+                CHECK(tr1 && tr1->Initialize() && tr2 && tr2->Initialize());
+                tr1->SetLanguage(ThreeCC("eng"));
+                tr2->SetLanguage(ThreeCC("eng"));
+                tr1->SetFontFamily({"FallbackSansJP"});
+                tr2->SetFontFamily({"FallbackSerifJP"});
+                if (DrawSingleChar(*tr1, 0x3042, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &ref_sans_jp) ==
+                        TextRenderStatus::kOK &&
+                    DrawSingleChar(*tr2, 0x3042, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &ref_serif_jp) ==
+                        TextRenderStatus::kOK) {
+                    serif_differs_from_sans = !BitmapsEqual(ref_sans_jp, ref_serif_jp);
+                }
+            }
+
+            if (serif_differs_from_sans) {
+                mock_fp.ResetCounts();
+                mock_fp.ClearForcedSystemFallback();
+                mock_fp.SetCodePointSystemFallback(0x3044, "serif", ThreeCC("jpn"));
+                mock_fp.SetCodePointSystemFallback(0x3042, "sans-serif", ThreeCC("jpn"));
+                auto tr = TextRenderer::Create(TextRendererType::kDirectWrite, ctx, mock_fp);
+                CHECK(tr && tr->Initialize());
+                tr->SetLanguage(ThreeCC("eng"));
+                tr->SetFontFamily({"MainLatin"});
+
+                CHECK(DrawSingleChar(*tr, 0x3044, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+                Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+                CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback, &actual) ==
+                      TextRenderStatus::kOK);
+                CHECK(BitmapsEqual(actual, ref_sans_jp));
+                CHECK(mock_fp.GetFallbackCallCount() == 2);
+
+                CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+                CHECK(DrawSingleChar(*tr, 0x3044, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+                CHECK(mock_fp.GetFallbackCallCount() == 2);
+
+                tr->SetLanguage(ThreeCC("jpn"));
+                CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+                CHECK(mock_fp.GetFallbackCallCount() == 3);
+
+                mock_fp.ClearCodePointSystemFallbacks();
+            }
+        }
     }
 }
 #endif
@@ -1778,6 +2000,114 @@ void RunAndroidReadFailureTests(Context& ctx) {
 }
 #endif
 
+#if defined(ARIBCC_USE_CORETEXT)
+void RunCoreTextDrawOrderTests(Context& ctx) {
+    printf("Running CoreText draw-order independence tests...\n");
+
+    auto fp = FontProvider::Create(FontProviderType::kCoreText, ctx);
+    CHECK(fp && fp->Initialize());
+    if (!fp) {
+        return;
+    }
+    fp->SetLanguage(ThreeCC("jpn"));
+    if (fp->GetFontFace("Verdana").is_err()) {
+        return;
+    }
+
+    {
+        auto tr_probe = TextRenderer::Create(TextRendererType::kCoreText, ctx, *fp);
+        CHECK(tr_probe && tr_probe->Initialize());
+        tr_probe->SetLanguage(ThreeCC("jpn"));
+        tr_probe->SetFontFamily({"Verdana"});
+        if (DrawSingleChar(*tr_probe, 0x2600, TextRenderFallbackPolicy::kFailOnCodePointNotFound) !=
+                TextRenderStatus::kCodePointNotFound ||
+            DrawSingleChar(*tr_probe, 0x1F4FA, TextRenderFallbackPolicy::kFailOnCodePointNotFound) !=
+                TextRenderStatus::kCodePointNotFound) {
+            return;
+        }
+    }
+
+    Bitmap ref_sun(64, 64, PixelFormat::kRGBA8888);
+    {
+        auto tr_ref = TextRenderer::Create(TextRendererType::kCoreText, ctx, *fp);
+        CHECK(tr_ref && tr_ref->Initialize());
+        tr_ref->SetLanguage(ThreeCC("jpn"));
+        tr_ref->SetFontFamily({"Verdana"});
+        CHECK(DrawSingleChar(*tr_ref, 0x2600, TextRenderFallbackPolicy::kAutoFallback, &ref_sun) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapHasNonZeroPixels(ref_sun));
+    }
+
+    Bitmap actual_sun(64, 64, PixelFormat::kRGBA8888);
+    {
+        auto tr_seq = TextRenderer::Create(TextRendererType::kCoreText, ctx, *fp);
+        CHECK(tr_seq && tr_seq->Initialize());
+        tr_seq->SetLanguage(ThreeCC("jpn"));
+        tr_seq->SetFontFamily({"Verdana"});
+        // Drawing U+1F4FA first (Apple Color Emoji) must not hijack subsequent U+2600
+        CHECK(DrawSingleChar(*tr_seq, 0x1F4FA, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
+        CHECK(DrawSingleChar(*tr_seq, 0x2600, TextRenderFallbackPolicy::kAutoFallback, &actual_sun) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapsEqual(actual_sun, ref_sun));
+    }
+}
+#endif
+
+#if defined(ARIBCC_USE_FREETYPE) && defined(ARIBCC_USE_FONTCONFIG)
+void RunFontconfigDrawOrderTests(Context& ctx) {
+    printf("Running FreeType+Fontconfig draw-order consistency tests...\n");
+
+    auto fp = FontProvider::Create(FontProviderType::kFontconfig, ctx);
+    CHECK(fp && fp->Initialize());
+    if (!fp) {
+        return;
+    }
+
+    static constexpr uint32_t kTestCodePoints[] = {0x266C, 0x301C, 0x3042, 0x20BB7};
+    Bitmap bmp_fwd[4] = {
+        Bitmap(64, 64, PixelFormat::kRGBA8888),
+        Bitmap(64, 64, PixelFormat::kRGBA8888),
+        Bitmap(64, 64, PixelFormat::kRGBA8888),
+        Bitmap(64, 64, PixelFormat::kRGBA8888),
+    };
+    Bitmap bmp_rev[4] = {
+        Bitmap(64, 64, PixelFormat::kRGBA8888),
+        Bitmap(64, 64, PixelFormat::kRGBA8888),
+        Bitmap(64, 64, PixelFormat::kRGBA8888),
+        Bitmap(64, 64, PixelFormat::kRGBA8888),
+    };
+
+    auto tr_fwd = TextRenderer::Create(TextRendererType::kFreetype, ctx, *fp);
+    auto tr_rev = TextRenderer::Create(TextRendererType::kFreetype, ctx, *fp);
+    CHECK(tr_fwd && tr_fwd->Initialize() && tr_rev && tr_rev->Initialize());
+
+    fp->SetLanguage(ThreeCC("eng"));
+    tr_fwd->SetLanguage(ThreeCC("eng"));
+    tr_fwd->SetFontFamily({"sans-serif"});
+    tr_rev->SetLanguage(ThreeCC("eng"));
+    tr_rev->SetFontFamily({"sans-serif"});
+
+    for (size_t i = 0; i < 4; i++) {
+        CHECK(DrawSingleChar(*tr_fwd, kTestCodePoints[i], TextRenderFallbackPolicy::kAutoFallback, &bmp_fwd[i]) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapHasNonZeroPixels(bmp_fwd[i]));
+    }
+    for (size_t idx = 4; idx > 0; idx--) {
+        size_t i = idx - 1;
+        CHECK(DrawSingleChar(*tr_rev, kTestCodePoints[i], TextRenderFallbackPolicy::kAutoFallback, &bmp_rev[i]) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapsEqual(bmp_fwd[i], bmp_rev[i]));
+    }
+
+    // Switching language invalidates FontProviderFontconfig's cached FcFontSort cascade
+    fp->SetLanguage(ThreeCC("jpn"));
+    tr_fwd->SetLanguage(ThreeCC("jpn"));
+    Bitmap bmp_jp(64, 64, PixelFormat::kRGBA8888);
+    CHECK(DrawSingleChar(*tr_fwd, 0x3042, TextRenderFallbackPolicy::kAutoFallback, &bmp_jp) == TextRenderStatus::kOK);
+    CHECK(BitmapHasNonZeroPixels(bmp_jp));
+}
+#endif
+
 }  // namespace
 
 int main() {
@@ -1788,6 +2118,8 @@ int main() {
         }
     });
 
+    RunFallbackCodepointCacheTests();
+
 #if defined(ARIBCC_USE_CORETEXT)
     {
         auto fp = FontProvider::Create(FontProviderType::kCoreText, ctx);
@@ -1797,6 +2129,7 @@ int main() {
         }
         RunRealPlatformTests(ctx, FontProviderType::kCoreText, TextRendererType::kCoreText, "CoreText", true);
         RunCoreTextMemoryFontTests(ctx);
+        RunCoreTextDrawOrderTests(ctx);
     }
 #endif
 
@@ -1835,6 +2168,7 @@ int main() {
         }
         RunRealPlatformTests(
             ctx, FontProviderType::kFontconfig, TextRendererType::kFreetype, "FreeType+Fontconfig", true);
+        RunFontconfigDrawOrderTests(ctx);
     }
     #endif
 

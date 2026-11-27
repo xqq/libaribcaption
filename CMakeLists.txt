@@ -92,7 +92,7 @@ function(import_embedded_freetype)
     include(FetchContent)
     FetchContent_Declare(freetype
         GIT_REPOSITORY https://github.com/freetype/freetype.git
-        GIT_TAG VER-2-14-3
+        GIT_TAG VER-2-15-0
         GIT_SHALLOW TRUE             # Get only target tag version
         GIT_PROGRESS TRUE            # Show download progress
         USES_TERMINAL_DOWNLOAD TRUE  # show download progress in ninja

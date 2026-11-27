@@ -50,6 +50,13 @@ bool FontProviderFontconfig::Initialize() {
 }
 
 void FontProviderFontconfig::SetLanguage(uint32_t iso6392_language_code) {
+    if (iso6392_language_code_ != iso6392_language_code) {
+        has_cached_fallback_ = false;
+        cached_fallback_base_family_.clear();
+        cached_fallback_lang_ = 0;
+        fallback_candidates_.clear();
+        fallback_sort_set_.Reset();
+    }
     iso6392_language_code_ = iso6392_language_code;
 }
 
@@ -238,36 +245,28 @@ auto FontProviderFontconfig::GetFontFace(const std::string& font_name) -> Result
     return BuildFontfaceInfo(best, *log_, font_name);
 }
 
-auto FontProviderFontconfig::GetFallbackFontFace(uint32_t ucs4, std::string_view base_family_name)
-    -> Result<FontfaceInfo, FontProviderError> {
-    assert(config_);
-
-    if (ucs4 == 0 || unicode::IsPrivateUseArea(ucs4)) {
-        return Err(FontProviderError::kCodePointNotFound);
+auto FontProviderFontconfig::EnsureFallbackCandidates(std::string_view base_family)
+    -> std::optional<FontProviderError> {
+    if (has_cached_fallback_ &&
+        cached_fallback_lang_ == iso6392_language_code_ &&
+        cached_fallback_base_family_ == base_family) {
+        return std::nullopt;
     }
 
     ScopedHolder<FcPattern*> pattern(FcPatternCreate(), FcPatternDestroy);
     if (!pattern) {
-        return Err(FontProviderError::kOtherError);
+        return FontProviderError::kOtherError;
     }
 
-    // base_family_name may be a pattern string such as "Family:style=Regular", keep only the family part.
-    // FcNameParse() is not used because it also treats '-' as a size separator ("sans-serif" -> "sans").
-    std::string base_family(base_family_name.substr(0, base_family_name.find(':')));
     if (!base_family.empty()) {
-        FcPatternAddString(pattern, FC_FAMILY, reinterpret_cast<const FcChar8*>(base_family.c_str()));
+        std::string base_family_str(base_family);
+        FcPatternAddString(pattern, FC_FAMILY, reinterpret_cast<const FcChar8*>(base_family_str.c_str()));
     }
     FcPatternAddBool(pattern, FC_OUTLINE, FcTrue);
 
-    ScopedHolder<FcCharSet*> request_charset(FcCharSetCreate(), FcCharSetDestroy);
-    if (!request_charset || !FcCharSetAddChar(request_charset, ucs4)) {
-        return Err(FontProviderError::kOtherError);
-    }
-    FcPatternAddCharSet(pattern, FC_CHARSET, request_charset);
-
     if (FcTrue != FcConfigSubstitute(config_, pattern, FcMatchPattern)) {
         log_->e("Fontconfig: Substitution cannot be performed");
-        return Err(FontProviderError::kOtherError);
+        return FontProviderError::kOtherError;
     }
     FcDefaultSubstitute(pattern);
 
@@ -279,30 +278,86 @@ auto FontProviderFontconfig::GetFallbackFontFace(uint32_t ucs4, std::string_view
         FcPatternAddLangSet(pattern, FC_LANG, fc_langset);
     }
 
+    // Request an untrimmed sort so earlier bitmap-only or placeholder fonts (e.g. .LastResort)
+    // cannot trim away valid outline fonts behind them before we filter by FC_OUTLINE.
     FcResult result = FcResultMatch;
-    FcPattern* matched = FcFontMatch(config_, pattern, &result);
-    if (!matched || result != FcResultMatch) {
+    FcFontSet* raw_sorted = FcFontSort(config_, pattern, FcFalse, nullptr, &result);
+    ScopedHolder<FcFontSet*> sorted(raw_sorted, FcFontSetDestroy);
+    if (!sorted || result != FcResultMatch) {
+        return FontProviderError::kCodePointNotFound;
+    }
+
+    ScopedHolder<FcCharSet*> covered(FcCharSetCreate(), FcCharSetDestroy);
+    if (!covered) {
+        return FontProviderError::kOtherError;
+    }
+
+    std::vector<FallbackCandidate> candidates;
+    for (int i = 0; i < sorted->nfont; i++) {
+        FcPattern* font = sorted->fonts[i];
+        if (!font) {
+            continue;
+        }
+
+        FcBool is_outline = FcTrue;
+        if (FcPatternGetBool(font, FC_OUTLINE, 0, &is_outline) == FcResultMatch && is_outline != FcTrue) {
+            continue;
+        }
+
+        FcChar8* fc_family_name = nullptr;
+        if (FcResultMatch == FcPatternGetString(font, FC_FAMILY, 0, &fc_family_name) &&
+            fc_family_name &&
+            IsLastResortFont(reinterpret_cast<const char*>(fc_family_name))) {
+            continue;
+        }
+
+        FcCharSet* charset = nullptr;
+        if (FcResultMatch != FcPatternGetCharSet(font, FC_CHARSET, 0, &charset) || !charset) {
+            continue;
+        }
+
+        FcBool changed = FcFalse;
+        if (FcTrue != FcCharSetMerge(covered, charset, &changed)) {
+            return FontProviderError::kOtherError;
+        }
+        if (!changed) {
+            continue;
+        }
+
+        candidates.push_back({font, charset});
+    }
+
+    fallback_candidates_.clear();
+    fallback_sort_set_ = std::move(sorted);
+    fallback_candidates_ = std::move(candidates);
+    cached_fallback_base_family_ = base_family;
+    cached_fallback_lang_ = iso6392_language_code_;
+    has_cached_fallback_ = true;
+    return std::nullopt;
+}
+
+auto FontProviderFontconfig::GetFallbackFontFace(uint32_t ucs4, std::string_view base_family_name)
+    -> Result<FontfaceInfo, FontProviderError> {
+    assert(config_);
+
+    if (ucs4 == 0 || unicode::IsPrivateUseArea(ucs4)) {
         return Err(FontProviderError::kCodePointNotFound);
     }
 
-    ScopedHolder<FcPattern*> best(matched, FcPatternDestroy);
-
-    FcCharSet* best_charset = nullptr;
-    if (FcResultMatch != FcPatternGetCharSet(best, FC_CHARSET, 0, &best_charset) ||
-        !best_charset ||
-        FcTrue != FcCharSetHasChar(best_charset, ucs4)) {
-        return Err(FontProviderError::kCodePointNotFound);
+    // base_family_name may be a pattern string such as "Family:style=Regular", keep only the family part.
+    // FcNameParse() is not used because it also treats '-' as a size separator ("sans-serif" -> "sans").
+    std::string_view base_family = base_family_name.substr(0, base_family_name.find(':'));
+    if (auto err = EnsureFallbackCandidates(base_family)) {
+        return Err(*err);
     }
 
-    FcChar8* fc_family_name = nullptr;
-    if (FcResultMatch == FcPatternGetString(best, FC_FAMILY, 0, &fc_family_name) &&
-        fc_family_name &&
-        IsLastResortFont(reinterpret_cast<const char*>(fc_family_name))) {
-        // Reject placeholder fonts (e.g. macOS LastResort) so callers can fall back to DRCS bitmaps
-        return Err(FontProviderError::kCodePointNotFound);
+    for (const auto& candidate : fallback_candidates_) {
+        if (FcTrue == FcCharSetHasChar(candidate.charset, ucs4)) {
+            return BuildFontfaceInfo(candidate.pattern, *log_, "fallback");
+        }
     }
 
-    return BuildFontfaceInfo(best, *log_, "fallback");
+    return Err(FontProviderError::kCodePointNotFound);
 }
 
 }  // namespace aribcaption

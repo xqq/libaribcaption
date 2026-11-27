@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "aribcaption/context.hpp"
 #include "base/logger.hpp"
@@ -43,10 +44,23 @@ public:
     Result<FontfaceInfo, FontProviderError> GetFallbackFontFace(uint32_t ucs4,
                                                                 std::string_view base_family_name) override;
 private:
+    struct FallbackCandidate {
+        FcPattern* pattern = nullptr;
+        FcCharSet* charset = nullptr;
+    };
+
+    std::optional<FontProviderError> EnsureFallbackCandidates(std::string_view base_family);
+private:
     std::shared_ptr<Logger> log_;
 
     ScopedHolder<FcConfig*> config_;
     uint32_t iso6392_language_code_ = 0;
+
+    bool has_cached_fallback_ = false;
+    std::string cached_fallback_base_family_;
+    uint32_t cached_fallback_lang_ = 0;
+    ScopedHolder<FcFontSet*> fallback_sort_set_;
+    std::vector<FallbackCandidate> fallback_candidates_;
 };
 
 }  // namespace aribcaption

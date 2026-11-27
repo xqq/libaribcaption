@@ -35,6 +35,7 @@
 #include "base/result.hpp"
 #include "base/scoped_holder.hpp"
 #include "renderer/bitmap.hpp"
+#include "renderer/fallback_codepoint_cache.hpp"
 #include "renderer/font_provider.hpp"
 #include "renderer/text_renderer.hpp"
 
@@ -102,12 +103,20 @@ private:
         std::string postscript_name;
         std::optional<std::unordered_map<uint32_t, uint32_t>> halfwidth_subst_map;
         std::unordered_map<uint64_t, std::optional<int>> baseline_cache;
+        uint32_t slot_id = 0;
+        uint64_t last_used = 0;
     };
 private:
     static Bitmap FTBitmapToColoredBitmap(const FT_Bitmap& ft_bmp, ColorRGBA color);
+    static bool MatchesFontInfo(const FontSlot& existing, const FontfaceInfo& info);
+    static bool IsSameLoadedSlot(const FontSlot& a, const FontSlot& b);
     auto OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) -> std::optional<FontProviderError>;
     bool IsDuplicateFontInfo(const FontfaceInfo& info) const;
-    bool IsDuplicateSlot(const FontSlot& candidate) const;
+    bool MatchesConfiguredSlot(const FontSlot& candidate) const;
+    FontSlot* FindSystemFallbackSlotById(uint32_t slot_id);
+    FontSlot* FindSystemFallbackSlot(const FontfaceInfo& info);
+    FontSlot* FindSystemFallbackSlot(const FontSlot& candidate);
+    FontSlot* StoreSystemFallbackSlot(FontSlot&& slot);
     auto LoadSlot(size_t slot_index) -> std::optional<FontProviderError>;
     auto EnsureMainSlot() -> std::optional<FontProviderError>;
     auto FindOrLoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name, FT_UInt& out_glyph_index)
@@ -126,6 +135,9 @@ private:
     std::optional<size_t> main_slot_index_;
     FontProviderError main_load_error_ = FontProviderError::kFontNotFound;
     std::unordered_set<uint32_t> missing_codepoints_;
+    FallbackCodepointCache fallback_codepoint_cache_;
+    uint32_t next_fallback_slot_id_ = 1;
+    uint64_t fallback_lru_counter_ = 0;
 
     bool replace_msz_halfwidth_glyph_ = true;
 };

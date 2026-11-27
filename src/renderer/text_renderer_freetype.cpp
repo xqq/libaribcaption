@@ -82,6 +82,9 @@ void TextRendererFreetype::ResetFontFaces() {
     main_slot_index_.reset();
     main_load_error_ = FontProviderError::kFontNotFound;
     missing_codepoints_.clear();
+    fallback_codepoint_cache_.Clear();
+    next_fallback_slot_id_ = 1;
+    fallback_lru_counter_ = 0;
 }
 
 void TextRendererFreetype::SetReplaceMSZHalfWidthGlyph(bool replace) {
@@ -515,50 +518,109 @@ auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) ->
     return std::nullopt;
 }
 
-bool TextRendererFreetype::IsDuplicateFontInfo(const FontfaceInfo& info) const {
-    if (info.filename.empty()) {
+bool TextRendererFreetype::MatchesFontInfo(const FontSlot& existing, const FontfaceInfo& info) {
+    // Pre-open matching only handles file-backed fonts where filename + face_index (or postscript_name)
+    // already identifies the face. Memory-backed fonts (font_data non-empty) and filename-less fonts
+    // are declined here so OpenFTFace() can resolve their real face_index and SFNT names first.
+    if (existing.state != SlotState::kLoaded || !info.font_data.empty() || info.filename.empty()) {
         return false;
     }
+    if (existing.filename != info.filename) {
+        return false;
+    }
+    if (info.face_index >= 0) {
+        return existing.face_index == info.face_index;
+    }
+    return !info.postscript_name.empty() && existing.postscript_name == info.postscript_name;
+}
 
+bool TextRendererFreetype::IsSameLoadedSlot(const FontSlot& a, const FontSlot& b) {
+    if (a.state != SlotState::kLoaded || b.state != SlotState::kLoaded) {
+        return false;
+    }
+    if (!a.filename.empty() && !b.filename.empty()) {
+        return a.filename == b.filename && a.face_index == b.face_index;
+    }
+    if (!a.postscript_name.empty() && !b.postscript_name.empty()) {
+        return a.postscript_name == b.postscript_name;
+    }
+    if (!a.family_name.empty() && !b.family_name.empty()) {
+        return a.family_name == b.family_name && a.face_index == b.face_index;
+    }
+    return false;
+}
+
+bool TextRendererFreetype::IsDuplicateFontInfo(const FontfaceInfo& info) const {
     for (const auto& existing : font_slots_) {
-        if (existing.state != SlotState::kLoaded || existing.filename != info.filename) {
-            continue;
-        }
-        if (info.face_index >= 0) {
-            if (existing.face_index == info.face_index) {
-                return true;
-            }
-        } else if (!info.postscript_name.empty() && existing.postscript_name == info.postscript_name) {
+        if (existing.state == SlotState::kLoaded && MatchesFontInfo(existing, info)) {
             return true;
         }
     }
     return false;
 }
 
-bool TextRendererFreetype::IsDuplicateSlot(const FontSlot& candidate) const {
-    auto matches_list = [&](const std::vector<FontSlot>& slots) -> bool {
-        for (const auto& existing : slots) {
-            if (existing.state != SlotState::kLoaded) {
-                continue;
-            }
-            if (!candidate.filename.empty() && !existing.filename.empty()) {
-                if (candidate.filename == existing.filename && candidate.face_index == existing.face_index) {
-                    return true;
-                }
-            } else if (!candidate.postscript_name.empty() && !existing.postscript_name.empty()) {
-                if (candidate.postscript_name == existing.postscript_name) {
-                    return true;
-                }
-            } else if (!candidate.family_name.empty() &&
-                       candidate.family_name == existing.family_name &&
-                       candidate.face_index == existing.face_index) {
-                return true;
+bool TextRendererFreetype::MatchesConfiguredSlot(const FontSlot& candidate) const {
+    for (const auto& existing : font_slots_) {
+        if (IsSameLoadedSlot(candidate, existing)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+auto TextRendererFreetype::FindSystemFallbackSlotById(uint32_t slot_id) -> FontSlot* {
+    if (slot_id == 0) {
+        return nullptr;
+    }
+    for (auto& slot : system_fallback_slots_) {
+        if (slot.state == SlotState::kLoaded && slot.slot_id == slot_id) {
+            return &slot;
+        }
+    }
+    return nullptr;
+}
+
+auto TextRendererFreetype::FindSystemFallbackSlot(const FontfaceInfo& info) -> FontSlot* {
+    for (auto& slot : system_fallback_slots_) {
+        if (slot.state == SlotState::kLoaded && MatchesFontInfo(slot, info)) {
+            return &slot;
+        }
+    }
+    return nullptr;
+}
+
+auto TextRendererFreetype::FindSystemFallbackSlot(const FontSlot& candidate) -> FontSlot* {
+    for (auto& slot : system_fallback_slots_) {
+        if (IsSameLoadedSlot(candidate, slot)) {
+            return &slot;
+        }
+    }
+    return nullptr;
+}
+
+auto TextRendererFreetype::StoreSystemFallbackSlot(FontSlot&& slot) -> FontSlot* {
+    uint32_t slot_id = next_fallback_slot_id_++;
+    if (next_fallback_slot_id_ == 0) {
+        next_fallback_slot_id_ = 1;
+    }
+    slot.slot_id = slot_id;
+    slot.last_used = ++fallback_lru_counter_;
+
+    static constexpr size_t kMaxSystemFallbackSlots = 16;
+    if (system_fallback_slots_.size() >= kMaxSystemFallbackSlots) {
+        auto victim = system_fallback_slots_.begin();
+        for (auto it = victim + 1; it != system_fallback_slots_.end(); ++it) {
+            if (it->last_used < victim->last_used) {
+                victim = it;
             }
         }
-        return false;
-    };
+        fallback_codepoint_cache_.InvalidateSlot(victim->slot_id);
+        *victim = std::move(slot);
+        return &(*victim);
+    }
 
-    return matches_list(font_slots_) || matches_list(system_fallback_slots_);
+    system_fallback_slots_.push_back(std::move(slot));
+    return &system_fallback_slots_.back();
 }
 
 auto TextRendererFreetype::LoadSlot(size_t slot_index) -> std::optional<FontProviderError> {
@@ -585,7 +647,7 @@ auto TextRendererFreetype::LoadSlot(size_t slot_index) -> std::optional<FontProv
         return err;
     }
 
-    if (IsDuplicateSlot(loaded_slot)) {
+    if (MatchesConfiguredSlot(loaded_slot)) {
         slot.state = SlotState::kUnavailable;
         return std::nullopt;
     }
@@ -631,14 +693,14 @@ auto TextRendererFreetype::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
         return Err(TextRenderStatus::kCodePointNotFound);
     }
 
-    for (auto& slot : system_fallback_slots_) {
-        if (slot.state != SlotState::kLoaded) {
-            continue;
-        }
-        FT_UInt glyph = FT_Get_Char_Index(slot.face, ucs4);
-        if (glyph != 0) {
-            out_glyph_index = glyph;
-            return Ok(&slot);
+    if (auto cached_slot_id = fallback_codepoint_cache_.Find(ucs4)) {
+        if (FontSlot* cached = FindSystemFallbackSlotById(*cached_slot_id)) {
+            FT_UInt glyph = FT_Get_Char_Index(cached->face, ucs4);
+            if (glyph != 0) {
+                cached->last_used = ++fallback_lru_counter_;
+                out_glyph_index = glyph;
+                return Ok(cached);
+            }
         }
     }
 
@@ -648,24 +710,51 @@ auto TextRendererFreetype::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
                                                                      : TextRenderStatus::kCodePointNotFound);
     }
 
+    FontfaceInfo& info = result.value();
+    // Pre-open fast path: if the provider returned a file-backed face whose identity already matches an
+    // open fallback slot, reuse it directly and skip OpenFTFace() (avoiding disk I/O and TTC scans).
+    if (FontSlot* existing = FindSystemFallbackSlot(info)) {
+        FT_UInt glyph = FT_Get_Char_Index(existing->face, ucs4);
+        if (glyph == 0) {
+            return Err(TextRenderStatus::kCodePointNotFound);
+        }
+        existing->last_used = ++fallback_lru_counter_;
+        fallback_codepoint_cache_.Insert(ucs4, existing->slot_id);
+        out_glyph_index = glyph;
+        return Ok(existing);
+    }
+
+    if (IsDuplicateFontInfo(info)) {
+        return Err(TextRenderStatus::kCodePointNotFound);
+    }
+
     FontSlot loaded_slot;
-    if (OpenFTFace(result.value(), loaded_slot)) {
+    if (OpenFTFace(info, loaded_slot)) {
         return Err(TextRenderStatus::kOtherError);
     }
 
     FT_UInt glyph = FT_Get_Char_Index(loaded_slot.face, ucs4);
-    if (glyph == 0 || IsDuplicateSlot(loaded_slot)) {
+    if (glyph == 0 || MatchesConfiguredSlot(loaded_slot)) {
         return Err(TextRenderStatus::kCodePointNotFound);
     }
 
-    static constexpr size_t kMaxSystemFallbackSlots = 16;
-    if (system_fallback_slots_.size() >= kMaxSystemFallbackSlots) {
-        system_fallback_slots_.erase(system_fallback_slots_.begin());
+    // Post-open match: catches cases the pre-open check declined (memory-backed fonts, or collections
+    // with face_index < 0 and no postscript_name) once OpenFTFace() has resolved the real face identity.
+    if (FontSlot* existing = FindSystemFallbackSlot(loaded_slot)) {
+        FT_UInt existing_glyph = FT_Get_Char_Index(existing->face, ucs4);
+        if (existing_glyph == 0) {
+            return Err(TextRenderStatus::kCodePointNotFound);
+        }
+        existing->last_used = ++fallback_lru_counter_;
+        fallback_codepoint_cache_.Insert(ucs4, existing->slot_id);
+        out_glyph_index = existing_glyph;
+        return Ok(existing);
     }
 
-    system_fallback_slots_.push_back(std::move(loaded_slot));
+    FontSlot* stored = StoreSystemFallbackSlot(std::move(loaded_slot));
+    fallback_codepoint_cache_.Insert(ucs4, stored->slot_id);
     out_glyph_index = glyph;
-    return Ok(&system_fallback_slots_.back());
+    return Ok(stored);
 }
 
 }  // namespace aribcaption

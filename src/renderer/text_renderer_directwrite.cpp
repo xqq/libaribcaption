@@ -360,6 +360,9 @@ void TextRendererDirectWrite::ResetFontFaces() {
     main_slot_index_.reset();
     main_load_error_ = FontProviderError::kFontNotFound;
     missing_codepoints_.clear();
+    fallback_codepoint_cache_.Clear();
+    next_fallback_slot_id_ = 1;
+    fallback_lru_counter_ = 0;
 }
 
 void TextRendererDirectWrite::SetReplaceMSZHalfWidthGlyph(bool replace) {
@@ -492,30 +495,43 @@ auto TextRendererDirectWrite::DrawChar(TextRenderContext& render_ctx, int target
 
     // Try system fallback, if allowed by fallback policy
     if (fallback_policy == TextRenderFallbackPolicy::kAutoFallback && !unicode::IsPrivateUseArea(ucs4)) {
-        for (auto& slot : system_fallback_slots_) {
-            if (slot.state != SlotState::kLoaded || !FontfaceHasCharacter(slot.faceinfo, ucs4)) {
-                continue;
-            }
-
-            TextRenderStatus status = try_slot(slot);
-            if (status != TextRenderStatus::kCodePointNotFound) {
-                return status;
+        if (auto cached_slot_id = fallback_codepoint_cache_.Find(ucs4)) {
+            if (FontSlot* cached = FindSystemFallbackSlotById(*cached_slot_id)) {
+                if (FontfaceHasCharacter(cached->faceinfo, ucs4)) {
+                    TextRenderStatus status = try_slot(*cached);
+                    if (status == TextRenderStatus::kOK) {
+                        cached->last_used = ++fallback_lru_counter_;
+                        return TextRenderStatus::kOK;
+                    }
+                    if (status != TextRenderStatus::kCodePointNotFound) {
+                        return status;
+                    }
+                }
             }
         }
 
-        auto new_slot = LoadSystemFallbackSlot(ucs4, font_family_[*main_slot_index_]);
-        if (new_slot.is_ok()) {
-            TextRenderStatus status = try_slot(new_slot.value());
+        auto lookup = LoadSystemFallbackSlot(ucs4, font_family_[*main_slot_index_]);
+        if (lookup.is_ok()) {
+            FontSlot* existing = lookup.value().existing_slot;
+            FontSlot& target_slot = existing ? *existing : lookup.value().new_slot;
+            TextRenderStatus status = try_slot(target_slot);
             if (status == TextRenderStatus::kOK) {
-                CacheSystemFallbackSlot(std::move(new_slot.value()));
+                uint32_t slot_id = 0;
+                if (existing) {
+                    existing->last_used = ++fallback_lru_counter_;
+                    slot_id = existing->slot_id;
+                } else {
+                    slot_id = CacheSystemFallbackSlot(std::move(lookup.value().new_slot));
+                }
+                fallback_codepoint_cache_.Insert(ucs4, slot_id);
                 return TextRenderStatus::kOK;
             }
             if (status != TextRenderStatus::kCodePointNotFound) {
                 return status;
             }
-        } else if (new_slot.error() != TextRenderStatus::kCodePointNotFound) {
+        } else if (lookup.error() != TextRenderStatus::kCodePointNotFound) {
             log_->e("TextRendererDirectWrite: System fallback lookup for U+%04X failed", ucs4);
-            return new_slot.error();
+            return lookup.error();
         }
     }
 
@@ -690,30 +706,68 @@ auto TextRendererDirectWrite::TryDrawCharWithSlot(TextRenderContext& render_ctx,
     return TextRenderStatus::kOK;
 }
 
-bool TextRendererDirectWrite::IsDuplicateFont(const FontfaceInfo& info) const {
-    auto matches_list = [&](const std::vector<FontSlot>& slots) -> bool {
-        for (const auto& existing : slots) {
-            if (existing.state != SlotState::kLoaded) {
-                continue;
-            }
-            if (!info.filename.empty() && !existing.faceinfo.filename.empty()) {
-                if (info.filename == existing.faceinfo.filename && info.face_index == existing.faceinfo.face_index) {
-                    return true;
-                }
-            } else if (!info.postscript_name.empty() && !existing.faceinfo.postscript_name.empty()) {
-                if (info.postscript_name == existing.faceinfo.postscript_name) {
-                    return true;
-                }
-            } else if (!info.family_name.empty() &&
-                       info.family_name == existing.faceinfo.family_name &&
-                       info.face_index == existing.faceinfo.face_index) {
-                return true;
-            }
-        }
+bool TextRendererDirectWrite::MatchesFontInfo(const FontSlot& existing,
+                                              const FontfaceInfo& info,
+                                              bool compare_scale) {
+    if (existing.state != SlotState::kLoaded) {
         return false;
-    };
+    }
 
-    return matches_list(font_slots_) || matches_list(system_fallback_slots_);
+    bool same_font = false;
+    if (!info.filename.empty() && !existing.faceinfo.filename.empty()) {
+        same_font = (info.filename == existing.faceinfo.filename && info.face_index == existing.faceinfo.face_index);
+    } else if (!info.postscript_name.empty() && !existing.faceinfo.postscript_name.empty()) {
+        same_font = (info.postscript_name == existing.faceinfo.postscript_name);
+    } else if (!info.family_name.empty() && !existing.faceinfo.family_name.empty()) {
+        same_font = (info.family_name == existing.faceinfo.family_name && info.face_index == existing.faceinfo.face_index);
+    }
+    if (!same_font) {
+        return false;
+    }
+
+    if (compare_scale) {
+        // EnsureTextFormat() bakes char_height * scale into IDWriteTextFormat, so only reuse
+        // a fallback slot when the provider's suggested scale also matches.
+        auto existing_priv = static_cast<const FontfaceInfoPrivateDirectWrite*>(existing.faceinfo.provider_priv.get());
+        auto info_priv = static_cast<const FontfaceInfoPrivateDirectWrite*>(info.provider_priv.get());
+        float existing_scale = existing_priv ? existing_priv->scale : 1.0f;
+        float info_scale = info_priv ? info_priv->scale : 1.0f;
+        if (!floating::AlmostEquals(existing_scale, info_scale, 1e-4f)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool TextRendererDirectWrite::MatchesConfiguredSlot(const FontfaceInfo& info) const {
+    for (const auto& existing : font_slots_) {
+        if (MatchesFontInfo(existing, info, false)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+auto TextRendererDirectWrite::FindSystemFallbackSlotById(uint32_t slot_id) -> FontSlot* {
+    if (slot_id == 0) {
+        return nullptr;
+    }
+    for (auto& slot : system_fallback_slots_) {
+        if (slot.state == SlotState::kLoaded && slot.slot_id == slot_id) {
+            return &slot;
+        }
+    }
+    return nullptr;
+}
+
+auto TextRendererDirectWrite::FindSystemFallbackSlot(const FontfaceInfo& info) -> FontSlot* {
+    for (auto& slot : system_fallback_slots_) {
+        if (MatchesFontInfo(slot, info, true)) {
+            return &slot;
+        }
+    }
+    return nullptr;
 }
 
 auto TextRendererDirectWrite::LoadSlot(size_t slot_index) -> std::optional<FontProviderError> {
@@ -741,7 +795,7 @@ auto TextRendererDirectWrite::LoadSlot(size_t slot_index) -> std::optional<FontP
         return FontProviderError::kFontNotFound;
     }
 
-    if (IsDuplicateFont(info)) {
+    if (MatchesConfiguredSlot(info)) {
         slot.state = SlotState::kUnavailable;
         return std::nullopt;
     }
@@ -781,7 +835,7 @@ auto TextRendererDirectWrite::EnsureMainSlot() -> std::optional<FontProviderErro
 }
 
 auto TextRendererDirectWrite::LoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name)
-    -> Result<FontSlot, TextRenderStatus> {
+    -> Result<SystemFallbackLookup, TextRenderStatus> {
     if (unicode::IsPrivateUseArea(ucs4)) {
         return Err(TextRenderStatus::kCodePointNotFound);
     }
@@ -798,22 +852,50 @@ auto TextRendererDirectWrite::LoadSystemFallbackSlot(uint32_t ucs4, std::string_
     }
 
     auto priv = static_cast<FontfaceInfoPrivateDirectWrite*>(info.provider_priv.get());
-    if (!priv || !priv->font || !priv->fontface || !FontfaceHasCharacter(info, ucs4) || IsDuplicateFont(info)) {
+    if (!priv || !priv->font || !priv->fontface || !FontfaceHasCharacter(info, ucs4)) {
         return Err(TextRenderStatus::kCodePointNotFound);
     }
 
-    FontSlot slot;
-    slot.faceinfo = std::move(info);
-    slot.state = SlotState::kLoaded;
-    return Ok(std::move(slot));
+    // Every configured slot in font_slots_ was already checked (or rejected by OutlineTextRenderer);
+    // reject any duplicate so font_slots_ and system_fallback_slots_ stay disjoint.
+    if (MatchesConfiguredSlot(info)) {
+        return Err(TextRenderStatus::kCodePointNotFound);
+    }
+
+    SystemFallbackLookup lookup;
+    if (FontSlot* existing = FindSystemFallbackSlot(info); existing && FontfaceHasCharacter(existing->faceinfo, ucs4)) {
+        lookup.existing_slot = existing;
+        return Ok(std::move(lookup));
+    }
+
+    lookup.new_slot.faceinfo = std::move(info);
+    lookup.new_slot.state = SlotState::kLoaded;
+    return Ok(std::move(lookup));
 }
 
-void TextRendererDirectWrite::CacheSystemFallbackSlot(FontSlot&& slot) {
+uint32_t TextRendererDirectWrite::CacheSystemFallbackSlot(FontSlot&& slot) {
+    uint32_t slot_id = next_fallback_slot_id_++;
+    if (next_fallback_slot_id_ == 0) {
+        next_fallback_slot_id_ = 1;
+    }
+    slot.slot_id = slot_id;
+    slot.last_used = ++fallback_lru_counter_;
+
     static constexpr size_t kMaxSystemFallbackSlots = 16;
     if (system_fallback_slots_.size() >= kMaxSystemFallbackSlots) {
-        system_fallback_slots_.erase(system_fallback_slots_.begin());
+        auto victim = system_fallback_slots_.begin();
+        for (auto it = victim + 1; it != system_fallback_slots_.end(); ++it) {
+            if (it->last_used < victim->last_used) {
+                victim = it;
+            }
+        }
+        fallback_codepoint_cache_.InvalidateSlot(victim->slot_id);
+        *victim = std::move(slot);
+        return victim->slot_id;
     }
+
     system_fallback_slots_.push_back(std::move(slot));
+    return system_fallback_slots_.back().slot_id;
 }
 
 auto TextRendererDirectWrite::EnsureTextFormat(FontSlot& slot, int char_height) -> IDWriteTextFormat* {

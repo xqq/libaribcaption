@@ -23,11 +23,14 @@
 #include <d2d1.h>
 #include <dwrite_2.h>
 #include <wincodec.h>
+#include <cstdint>
 #include <optional>
 #include <string_view>
 #include <unordered_set>
+#include <vector>
 #include "aribcaption/context.hpp"
 #include "base/scoped_com_initializer.hpp"
+#include "renderer/fallback_codepoint_cache.hpp"
 #include "renderer/font_provider.hpp"
 #include "renderer/text_renderer.hpp"
 
@@ -63,9 +66,19 @@ private:
         FontfaceInfo faceinfo;
         ComPtr<IDWriteTextFormat> text_format;
         int pixel_height = 0;
+        uint32_t slot_id = 0;
+        uint64_t last_used = 0;
+    };
+
+    struct SystemFallbackLookup {
+        FontSlot* existing_slot = nullptr;
+        FontSlot new_slot;
     };
 private:
-    bool IsDuplicateFont(const FontfaceInfo& info) const;
+    static bool MatchesFontInfo(const FontSlot& existing, const FontfaceInfo& info, bool compare_scale);
+    bool MatchesConfiguredSlot(const FontfaceInfo& info) const;
+    FontSlot* FindSystemFallbackSlotById(uint32_t slot_id);
+    FontSlot* FindSystemFallbackSlot(const FontfaceInfo& info);
     auto LoadSlot(size_t slot_index) -> std::optional<FontProviderError>;
     auto EnsureMainSlot() -> std::optional<FontProviderError>;
     auto TryDrawCharWithSlot(TextRenderContext& render_ctx, FontSlot& slot, std::u16string_view wide_char,
@@ -73,8 +86,9 @@ private:
                              ColorRGBA color, ColorRGBA stroke_color, float stroke_width,
                              int char_width, int char_height, float aspect_ratio,
                              std::optional<UnderlineInfo> underline_info) -> TextRenderStatus;
-    auto LoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name) -> Result<FontSlot, TextRenderStatus>;
-    void CacheSystemFallbackSlot(FontSlot&& slot);
+    auto LoadSystemFallbackSlot(uint32_t ucs4, std::string_view base_family_name)
+        -> Result<SystemFallbackLookup, TextRenderStatus>;
+    uint32_t CacheSystemFallbackSlot(FontSlot&& slot);
     auto EnsureTextFormat(FontSlot& slot, int char_height) -> IDWriteTextFormat*;
     auto CreateDWriteTextFormat(FontfaceInfo& face_info, float font_size) -> ComPtr<IDWriteTextFormat>;
     auto CreateWICRenderTarget(IWICBitmap* target) -> ComPtr<ID2D1RenderTarget>;
@@ -103,6 +117,9 @@ private:
     std::optional<size_t> main_slot_index_;
     FontProviderError main_load_error_ = FontProviderError::kFontNotFound;
     std::unordered_set<uint32_t> missing_codepoints_;
+    FallbackCodepointCache fallback_codepoint_cache_;
+    uint32_t next_fallback_slot_id_ = 1;
+    uint64_t fallback_lru_counter_ = 0;
 
     bool replace_msz_halfwidth_glyph_ = true;
 };

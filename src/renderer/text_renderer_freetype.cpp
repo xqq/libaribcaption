@@ -724,6 +724,8 @@ auto TextRendererFreetype::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
         return Ok(existing);
     }
 
+    // Every configured slot in font_slots_ was already checked and lacked ucs4;
+    // reject any duplicate so font_slots_ and system_fallback_slots_ stay disjoint.
     if (IsDuplicateFontInfo(info)) {
         return Err(TextRenderStatus::kCodePointNotFound);
     }

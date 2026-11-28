@@ -81,6 +81,11 @@ static bool IsSameFontFace(IDWriteFontFace* a, IDWriteFontFace* b) {
     return true;
 }
 
+struct CollectedUnderline {
+    DWRITE_UNDERLINE underline;
+    float baseline_origin_y;
+};
+
 // Collects glyph run outlines instead of drawing them, so the caller can verify the layout
 // used the selected font face before anything reaches the render target
 class OutlineTextRenderer : public IDWriteTextRenderer {
@@ -109,7 +114,7 @@ public:
     }
 
     [[nodiscard]]
-    const std::vector<DWRITE_UNDERLINE>& GetUnderlines() const {
+    const std::vector<CollectedUnderline>& GetUnderlines() const {
         return underlines_;
     }
 
@@ -199,7 +204,7 @@ public:
                                float baseline_origin_y,
                                DWRITE_UNDERLINE const* underline,
                                IUnknown* client_drawing_effect) {
-        underlines_.push_back(*underline);
+        underlines_.push_back(CollectedUnderline{*underline, baseline_origin_y});
         return S_OK;
     }
 
@@ -256,7 +261,7 @@ private:
     ComPtr<ID2D1RenderTarget> render_target_;
     bool rejected_ = false;
     std::vector<ComPtr<ID2D1TransformedGeometry>> geometries_;
-    std::vector<DWRITE_UNDERLINE> underlines_;
+    std::vector<CollectedUnderline> underlines_;
 };
 
 
@@ -666,11 +671,11 @@ auto TextRendererDirectWrite::TryDrawCharWithSlot(TextRenderContext& render_ctx,
         return TextRenderStatus::kCodePointNotFound;
     }
 
-    auto underline_callback = [&](const DWRITE_UNDERLINE* underline) -> void {
+    auto underline_callback = [&](const DWRITE_UNDERLINE* underline, float baseline_y) -> void {
         if (!underline_info)
             return;
 
-        int underline_y = target_y + ascent + static_cast<int>(underline->offset);
+        int underline_y = static_cast<int>(std::lround(baseline_y + underline->offset));
         Rect underline_rect(underline_info->start_x,
                             underline_y,
                             underline_info->start_x + underline_info->width,
@@ -699,8 +704,8 @@ auto TextRendererDirectWrite::TryDrawCharWithSlot(TextRenderContext& render_ctx,
         render_target->FillGeometry(geometry.Get(), fill_brush.Get());
     }
 
-    for (const DWRITE_UNDERLINE& underline : outline_text_renderer->GetUnderlines()) {
-        underline_callback(&underline);
+    for (const CollectedUnderline& underline : outline_text_renderer->GetUnderlines()) {
+        underline_callback(&underline.underline, underline.baseline_origin_y);
     }
 
     return TextRenderStatus::kOK;

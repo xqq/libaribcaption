@@ -775,11 +775,13 @@ public:
     StaticFontProvider(std::string filename,
                        std::string family_name,
                        std::string postscript_name,
-                       int face_index)
+                       int face_index,
+                       int named_instance = 0)
         : filename_(std::move(filename)),
           family_name_(std::move(family_name)),
           postscript_name_(std::move(postscript_name)),
-          face_index_(face_index) {}
+          face_index_(face_index),
+          named_instance_(named_instance) {}
 
     FontProviderType GetType() override {
         return FontProviderType::kCoreText;
@@ -800,6 +802,7 @@ public:
         info.family_name = family_name_;
         info.postscript_name = postscript_name_;
         info.face_index = face_index_;
+        info.named_instance = named_instance_;
         info.provider_type = FontProviderType::kCoreText;
         return Ok(std::move(info));
     }
@@ -808,6 +811,7 @@ private:
     std::string family_name_;
     std::string postscript_name_;
     int face_index_ = 0;
+    int named_instance_ = 0;
 };
 
 void RunFreeTypeCollectionScanTests(Context& ctx, FontProvider& coretext_fp) {
@@ -912,6 +916,131 @@ void RunFreeTypeCollectionScanTests(Context& ctx, FontProvider& coretext_fp) {
         tr->SetFontFamily({"StaticTest"});
         CHECK(DrawSingleChar(*tr, 0x0041, TextRenderFallbackPolicy::kFailOnCodePointNotFound) ==
               TextRenderStatus::kFontNotFound);
+    }
+}
+
+bool IsVariableCoreTextFont(const FontfaceInfo& info) {
+    auto priv = static_cast<FontfaceInfoPrivateCoreText*>(info.provider_priv.get());
+    if (!priv || !priv->ct_font) {
+        return false;
+    }
+    ScopedCFRef<CFArrayRef> axes(CTFontCopyVariationAxes(priv->ct_font.get()));
+    return axes && CFArrayGetCount(axes.get()) > 0;
+}
+
+TextRenderStatus DrawSingleCharFreeType(Context& ctx,
+                                        FontProvider& fp,
+                                        const std::string& family,
+                                        uint32_t ucs4,
+                                        TextRenderFallbackPolicy policy,
+                                        Bitmap* out_bitmap) {
+    auto tr = TextRenderer::Create(TextRendererType::kFreetype, ctx, fp);
+    CHECK(tr && tr->Initialize());
+    if (!tr) {
+        return TextRenderStatus::kOtherError;
+    }
+    tr->SetLanguage(ThreeCC("jpn"));
+    tr->SetFontFamily({family});
+    return DrawSingleChar(*tr, ucs4, policy, out_bitmap);
+}
+
+// CoreText selects a named instance of a variable font by PostScript name or through system fallback.
+// FreeType must draw that instance, not the font's default instance.
+void RunFreeTypeVariableInstanceTests(Context& ctx, FontProvider& coretext_fp) {
+    printf("Running FreeType variable font instance tests (FreeType+CoreText)...\n");
+
+    constexpr auto kFailOnMissing = TextRenderFallbackPolicy::kFailOnCodePointNotFound;
+    coretext_fp.SetLanguage(ThreeCC("jpn"));
+
+    auto kefa_regular_res = coretext_fp.GetFontFace("Kefa III");
+    auto kefa_bold_res = coretext_fp.GetFontFace("KefaIII-Bold");
+    if (kefa_regular_res.is_err() || kefa_bold_res.is_err() || kefa_bold_res.value().filename.empty() ||
+        !IsVariableCoreTextFont(kefa_bold_res.value())) {
+        printf("Variable font \"Kefa III\" not available, skipped\n");
+    } else {
+        const FontfaceInfo& regular = kefa_regular_res.value();
+        const FontfaceInfo& bold = kefa_bold_res.value();
+        const int instance = bold.named_instance;
+
+        // 1. Provider reports the named instance only for non-default instances
+        CHECK(regular.named_instance == 0);
+        CHECK(bold.face_index == -1 && instance > 0);
+
+        // 2. Renderer applies named_instance after the face_index < 0 scan, same as an explicit instance index
+        Bitmap default_bmp(64, 64, PixelFormat::kRGBA8888);
+        Bitmap instance_bmp(64, 64, PixelFormat::kRGBA8888);
+        {
+            StaticFontProvider fp(bold.filename, bold.family_name, "", 0);
+            CHECK(DrawSingleCharFreeType(ctx, fp, "StaticTest", 0x1200, kFailOnMissing, &default_bmp) ==
+                  TextRenderStatus::kOK);
+        }
+        {
+            StaticFontProvider fp(bold.filename, bold.family_name, "", instance << 16);
+            CHECK(DrawSingleCharFreeType(ctx, fp, "StaticTest", 0x1200, kFailOnMissing, &instance_bmp) ==
+                  TextRenderStatus::kOK);
+        }
+        CHECK(BitmapHasNonZeroPixels(instance_bmp));
+        CHECK(!BitmapsEqual(default_bmp, instance_bmp));
+        {
+            StaticFontProvider fp(bold.filename, bold.family_name, "", -1, instance);
+            Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+            CHECK(DrawSingleCharFreeType(ctx, fp, "StaticTest", 0x1200, kFailOnMissing, &actual) ==
+                  TextRenderStatus::kOK);
+            CHECK(BitmapsEqual(actual, instance_bmp));
+        }
+
+        // 3. End to end: family name draws the default instance, PostScript name draws the Bold instance
+        {
+            Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+            CHECK(DrawSingleCharFreeType(ctx, coretext_fp, "Kefa III", 0x1200, kFailOnMissing, &actual) ==
+                  TextRenderStatus::kOK);
+            CHECK(BitmapsEqual(actual, default_bmp));
+        }
+        {
+            Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+            CHECK(DrawSingleCharFreeType(ctx, coretext_fp, "KefaIII-Bold", 0x1200, kFailOnMissing, &actual) ==
+                  TextRenderStatus::kOK);
+            CHECK(BitmapsEqual(actual, instance_bmp));
+        }
+
+        // 4. System fallback from Hiragino Sans W4 picks the Bold instance (fallback choice is OS-dependent)
+        auto fallback_res = coretext_fp.GetFallbackFontFace(0x1200, "Hiragino Sans W4");
+        if (fallback_res.is_ok() && fallback_res.value().postscript_name == bold.postscript_name) {
+            CHECK(fallback_res.value().named_instance == instance);
+            Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+            CHECK(DrawSingleCharFreeType(ctx, coretext_fp, "Hiragino Sans W4", 0x1200,
+                                         TextRenderFallbackPolicy::kAutoFallback, &actual) == TextRenderStatus::kOK);
+            CHECK(BitmapsEqual(actual, instance_bmp));
+        } else {
+            printf("System fallback for U+1200 is not \"%s\", skipped\n", bold.postscript_name.c_str());
+        }
+    }
+
+    // 5. CoreText's instance PostScript name (STIXTwoText_Bold) differs from FreeType's (STIXTwoTextRoman-Bold)
+    auto stix_res = coretext_fp.GetFontFace("STIXTwoText-Bold");
+    if (stix_res.is_err() || stix_res.value().filename.empty() || !IsVariableCoreTextFont(stix_res.value())) {
+        printf("Variable font \"STIX Two Text\" not available, skipped\n");
+    } else {
+        const FontfaceInfo& stix = stix_res.value();
+        CHECK(stix.face_index == -1 && stix.named_instance > 0);
+
+        Bitmap default_bmp(64, 64, PixelFormat::kRGBA8888);
+        Bitmap instance_bmp(64, 64, PixelFormat::kRGBA8888);
+        Bitmap actual(64, 64, PixelFormat::kRGBA8888);
+        {
+            StaticFontProvider fp(stix.filename, stix.family_name, "", 0);
+            CHECK(DrawSingleCharFreeType(ctx, fp, "StaticTest", 0x0041, kFailOnMissing, &default_bmp) ==
+                  TextRenderStatus::kOK);
+        }
+        {
+            StaticFontProvider fp(stix.filename, stix.family_name, "", stix.named_instance << 16);
+            CHECK(DrawSingleCharFreeType(ctx, fp, "StaticTest", 0x0041, kFailOnMissing, &instance_bmp) ==
+                  TextRenderStatus::kOK);
+        }
+        CHECK(!BitmapsEqual(default_bmp, instance_bmp));
+        CHECK(DrawSingleCharFreeType(ctx, coretext_fp, "STIXTwoText-Bold", 0x0041, kFailOnMissing, &actual) ==
+              TextRenderStatus::kOK);
+        CHECK(BitmapsEqual(actual, instance_bmp));
     }
 }
 #endif
@@ -2363,6 +2492,7 @@ int main() {
         if (fp) {
             RunMockProviderTests(ctx, *fp, TextRendererType::kFreetype, "FreeType+CoreText");
             RunFreeTypeCollectionScanTests(ctx, *fp);
+            RunFreeTypeVariableInstanceTests(ctx, *fp);
         }
         RunRealPlatformTests(ctx, FontProviderType::kCoreText, TextRendererType::kFreetype, "FreeType+CoreText", true);
         RunFreeTypeUnusableFallbackTests(ctx);

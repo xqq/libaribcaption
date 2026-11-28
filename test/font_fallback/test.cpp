@@ -211,6 +211,14 @@ public:
         fallback_filename_override_ = std::move(filename);
     }
 
+    void SetFallbackEmptySource(bool empty) {
+        fallback_empty_source_ = empty;
+    }
+
+    void SetFallbackFontDataOverride(std::optional<std::vector<uint8_t>> data) {
+        fallback_font_data_override_ = std::move(data);
+    }
+
     void ResetCounts() {
         get_font_calls_.clear();
         get_fallback_calls_ = 0;
@@ -264,9 +272,17 @@ public:
         } else {
             res = backing_.GetFallbackFontFace(ucs4, base_family_name);
         }
-        if (res.is_ok() && fallback_filename_override_) {
-            res.value().filename = *fallback_filename_override_;
-            res.value().font_data.clear();
+        if (res.is_ok()) {
+            if (fallback_empty_source_) {
+                res.value().filename.clear();
+                res.value().font_data.clear();
+            } else if (fallback_font_data_override_) {
+                res.value().filename.clear();
+                res.value().font_data = *fallback_font_data_override_;
+            } else if (fallback_filename_override_) {
+                res.value().filename = *fallback_filename_override_;
+                res.value().font_data.clear();
+            }
         }
         return res;
     }
@@ -285,6 +301,8 @@ private:
     std::unordered_map<uint32_t, MappedFont> codepoint_fallback_map_;
     std::optional<FontProviderError> fallback_error_;
     std::optional<std::string> fallback_filename_override_;
+    bool fallback_empty_source_ = false;
+    std::optional<std::vector<uint8_t>> fallback_font_data_override_;
     int get_fallback_calls_ = 0;
     std::string last_fallback_base_family_;
 };
@@ -535,10 +553,42 @@ void RunMockProviderTests(Context& ctx, FontProvider& backing, TextRendererType 
             proxy.SetFallbackFilenameOverride(std::nullopt);
             CHECK(DrawSingleChar(*tr, 0x3042, TextRenderFallbackPolicy::kAutoFallback) == TextRenderStatus::kOK);
             CHECK(proxy.GetFallbackCallCount() == 3);
+
+            // Empty source (no filename and no memory data) -> kCodePointNotFound and negatively cached
+            proxy.ResetCounts();
+            proxy.SetFallbackEmptySource(true);
+            {
+                auto tr_empty = TextRenderer::Create(renderer_type, ctx, proxy);
+                CHECK(tr_empty && tr_empty->Initialize());
+                tr_empty->SetFontFamily({"MockLatin"});
+                CHECK(DrawSingleChar(*tr_empty, 0x3042, TextRenderFallbackPolicy::kAutoFallback) ==
+                      TextRenderStatus::kCodePointNotFound);
+                CHECK(DrawSingleChar(*tr_empty, 0x3042, TextRenderFallbackPolicy::kAutoFallback) ==
+                      TextRenderStatus::kCodePointNotFound);
+                CHECK(proxy.GetFallbackCallCount() == 1);
+            }
+            proxy.SetFallbackEmptySource(false);
+
+            // Unsupported font format bytes -> kCodePointNotFound and negatively cached
+            proxy.ResetCounts();
+            proxy.SetFallbackFontDataOverride(std::vector<uint8_t>(4096, 0xAB));
+            {
+                auto tr_badfmt = TextRenderer::Create(renderer_type, ctx, proxy);
+                CHECK(tr_badfmt && tr_badfmt->Initialize());
+                tr_badfmt->SetFontFamily({"MockLatin"});
+                CHECK(DrawSingleChar(*tr_badfmt, 0x3042, TextRenderFallbackPolicy::kAutoFallback) ==
+                      TextRenderStatus::kCodePointNotFound);
+                CHECK(DrawSingleChar(*tr_badfmt, 0x3042, TextRenderFallbackPolicy::kAutoFallback) ==
+                      TextRenderStatus::kCodePointNotFound);
+                CHECK(proxy.GetFallbackCallCount() == 1);
+            }
+            proxy.SetFallbackFontDataOverride(std::nullopt);
         }
 
         proxy.SetFallbackError(std::nullopt);
         proxy.SetFallbackFilenameOverride(std::nullopt);
+        proxy.SetFallbackEmptySource(false);
+        proxy.SetFallbackFontDataOverride(std::nullopt);
     }
 
     // 10. System fallback draw-order independence and ResetFontFaces() cache invalidation
@@ -2108,6 +2158,106 @@ void RunFontconfigDrawOrderTests(Context& ctx) {
 }
 #endif
 
+#if defined(ARIBCC_USE_FREETYPE) && defined(ARIBCC_USE_CORETEXT)
+void RunFreeTypeUnusableFallbackTests(Context& ctx) {
+    printf("Running FreeType+CoreText unusable-fallback tests...\n");
+
+    auto fp = FontProvider::Create(FontProviderType::kCoreText, ctx);
+    CHECK(fp && fp->Initialize());
+    if (!fp) {
+        return;
+    }
+    fp->SetLanguage(ThreeCC("eng"));
+    auto fb = fp->GetFallbackFontFace(0x2B55, "sans-serif");
+    if (fb.is_err() || fb.value().family_name != "Apple Color Emoji") {
+        return;
+    }
+
+    // 1. TextRendererFreetype returns kCodePointNotFound (not kOtherError) on repeated draws
+    {
+        auto tr = TextRenderer::Create(TextRendererType::kFreetype, ctx, *fp);
+        CHECK(tr && tr->Initialize());
+        tr->SetLanguage(ThreeCC("eng"));
+        tr->SetFontFamily({"sans-serif"});
+        CHECK(DrawSingleChar(*tr, 0x2B55, TextRenderFallbackPolicy::kAutoFallback) ==
+              TextRenderStatus::kCodePointNotFound);
+        CHECK(DrawSingleChar(*tr, 0x2B55, TextRenderFallbackPolicy::kAutoFallback) ==
+              TextRenderStatus::kCodePointNotFound);
+    }
+
+    auto make_region = [](uint32_t cp, int y) {
+        CaptionRegion region;
+        region.x = 60;
+        region.y = y;
+        region.width = 80;
+        region.height = 80;
+
+        CaptionChar ch;
+        ch.type = CaptionCharType::kText;
+        ch.codepoint = cp;
+        ch.x = 60;
+        ch.y = y;
+        ch.char_width = 36;
+        ch.char_height = 36;
+        ch.char_horizontal_spacing = 4;
+        ch.char_vertical_spacing = 24;
+        ch.char_horizontal_scale = 1.0f;
+        ch.char_vertical_scale = 1.0f;
+        ch.text_color = kWhite;
+        ch.back_color = ColorRGBA(0, 0, 0, 128);
+        region.chars.push_back(ch);
+        return region;
+    };
+
+    // 2. RegionRenderer returns kCodePointNotFound for a region containing only U+2B55
+    {
+        RegionRenderer rr(ctx);
+        CHECK(rr.Initialize(FontProviderType::kCoreText, TextRendererType::kFreetype));
+        rr.SetFontLanguage(ThreeCC("eng"));
+        rr.SetFontFamily({"sans-serif"});
+        rr.SetOriginalPlaneSize(960, 540);
+        rr.SetTargetCaptionAreaRect(aribcaption::Rect(0, 0, 960, 540));
+
+        std::unordered_map<uint32_t, DRCS> empty_drcs;
+        auto rendered = rr.RenderCaptionRegion(make_region(0x2B55, 60), empty_drcs);
+        CHECK(rendered.is_err() && rendered.error() == RegionRenderError::kCodePointNotFound);
+    }
+
+    // 3. Renderer skips the U+2B55 region cleanly instead of failing the caption with kError
+    {
+        Renderer renderer(ctx);
+        CHECK(renderer.Initialize(CaptionType::kCaption, FontProviderType::kCoreText, TextRendererType::kFreetype));
+        CHECK(renderer.SetFrameSize(960, 540));
+        CHECK(renderer.SetDefaultFontFamily({"sans-serif"}, true));
+
+        Caption cap_only;
+        cap_only.pts = 1000;
+        cap_only.wait_duration = DURATION_INDEFINITE;
+        cap_only.plane_width = 960;
+        cap_only.plane_height = 540;
+        cap_only.iso6392_language_code = ThreeCC("eng");
+        cap_only.regions.push_back(make_region(0x2B55, 60));
+        CHECK(renderer.AppendCaption(std::move(cap_only)));
+
+        RenderResult result;
+        CHECK(renderer.Render(1000, result) == RenderStatus::kNoImage);
+
+        Caption cap_mixed;
+        cap_mixed.pts = 2000;
+        cap_mixed.wait_duration = DURATION_INDEFINITE;
+        cap_mixed.plane_width = 960;
+        cap_mixed.plane_height = 540;
+        cap_mixed.iso6392_language_code = ThreeCC("eng");
+        cap_mixed.regions.push_back(make_region(0x2B55, 60));
+        cap_mixed.regions.push_back(make_region(0x0041, 160));
+        CHECK(renderer.AppendCaption(std::move(cap_mixed)));
+
+        CHECK(renderer.Render(2000, result) == RenderStatus::kGotImage);
+        CHECK(result.images.size() == 1);
+    }
+}
+#endif
+
 }  // namespace
 
 int main() {
@@ -2156,6 +2306,7 @@ int main() {
             RunFreeTypeCollectionScanTests(ctx, *fp);
         }
         RunRealPlatformTests(ctx, FontProviderType::kCoreText, TextRendererType::kFreetype, "FreeType+CoreText", true);
+        RunFreeTypeUnusableFallbackTests(ctx);
     }
     #endif
 

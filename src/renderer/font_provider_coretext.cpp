@@ -18,7 +18,11 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <TargetConditionals.h>
+#include <cmath>
+#include <cstdint>
+#include <algorithm>
 #include <string_view>
+#include <vector>
 #if TARGET_OS_IPHONE
     #include <CoreText/CoreText.h>
 #else
@@ -123,6 +127,92 @@ static auto MatchFontDescriptor(CFStringRef font_name, CFStringRef name_attribut
                                                                                          mandatory.get()));
 }
 
+static uint16_t ReadU16BE(const uint8_t* p) {
+    return static_cast<uint16_t>((p[0] << 8) | p[1]);
+}
+
+static uint32_t ReadU32BE(const uint8_t* p) {
+    return (static_cast<uint32_t>(p[0]) << 24) | (static_cast<uint32_t>(p[1]) << 16) |
+           (static_cast<uint32_t>(p[2]) << 8) | static_cast<uint32_t>(p[3]);
+}
+
+// Returns the 1-based fvar named instance matching the font's variation,
+// or 0 if the font is at its default instance or matches no named instance
+static int FindNamedInstance(CTFontRef ct_font) {
+    ScopedCFRef<CFDictionaryRef> variation(CTFontCopyVariation(ct_font));
+    CFIndex value_count = variation ? CFDictionaryGetCount(variation.get()) : 0;
+    if (value_count <= 0) {
+        return 0;
+    }
+    std::vector<const void*> keys(static_cast<size_t>(value_count));
+    std::vector<const void*> values(static_cast<size_t>(value_count));
+    CFDictionaryGetKeysAndValues(variation.get(), keys.data(), values.data());
+
+    ScopedCFRef<CFDataRef> fvar(CTFontCopyTable(ct_font, kCTFontTableFvar, kCTFontTableOptionNoOptions));
+    size_t fvar_size = fvar ? static_cast<size_t>(CFDataGetLength(fvar.get())) : 0;
+    if (fvar_size < 16) {
+        return 0;
+    }
+
+    const uint8_t* p = CFDataGetBytePtr(fvar.get());
+    size_t axes_offset = ReadU16BE(p + 4);
+    size_t axis_count = ReadU16BE(p + 8);
+    size_t axis_size = ReadU16BE(p + 10);
+    size_t instance_count = std::min<size_t>(ReadU16BE(p + 12), 0x7FFF);
+    size_t instance_size = ReadU16BE(p + 14);
+    if (axis_count == 0 || axis_size < 20 || instance_size < 4 + 4 * axis_count ||
+        axes_offset + axis_count * axis_size + instance_count * instance_size > fvar_size) {
+        return 0;
+    }
+
+    // CoreText omits axes at their default, and derives opsz from the point size rather than from an instance
+    constexpr uint32_t kOpszTag = (uint32_t{'o'} << 24) | (uint32_t{'p'} << 16) | (uint32_t{'s'} << 8) | uint32_t{'z'};
+    constexpr double kTolerance = 0.01;
+    std::vector<double> targets(axis_count);
+    std::vector<bool> compared(axis_count);
+    bool at_default = true;
+    for (size_t a = 0; a < axis_count; a++) {
+        const uint8_t* axis = p + axes_offset + a * axis_size;
+        uint32_t tag = ReadU32BE(axis);
+        double default_value = static_cast<double>(static_cast<int32_t>(ReadU32BE(axis + 8))) / 65536.0;
+        targets[a] = default_value;
+        compared[a] = (tag != kOpszTag);
+        for (size_t i = 0; i < keys.size(); i++) {
+            auto key = static_cast<CFNumberRef>(keys[i]);
+            auto value = static_cast<CFNumberRef>(values[i]);
+            int64_t key_tag = 0;
+            double axis_value = 0.0;
+            if (CFGetTypeID(key) == CFNumberGetTypeID() && CFGetTypeID(value) == CFNumberGetTypeID() &&
+                CFNumberGetValue(key, kCFNumberSInt64Type, &key_tag) && static_cast<uint32_t>(key_tag) == tag &&
+                CFNumberGetValue(value, kCFNumberDoubleType, &axis_value)) {
+                targets[a] = axis_value;
+                break;
+            }
+        }
+        if (compared[a] && std::fabs(targets[a] - default_value) >= kTolerance) {
+            at_default = false;
+        }
+    }
+    if (at_default) {
+        return 0;
+    }
+
+    const uint8_t* instances = p + axes_offset + axis_count * axis_size;
+    for (size_t i = 0; i < instance_count; i++) {
+        const uint8_t* coords = instances + i * instance_size + 4;
+        bool matched = true;
+        for (size_t a = 0; a < axis_count && matched; a++) {
+            double coord = static_cast<double>(static_cast<int32_t>(ReadU32BE(coords + a * 4))) / 65536.0;
+            matched = !compared[a] || std::fabs(coord - targets[a]) < kTolerance;
+        }
+        if (matched) {
+            return static_cast<int>(i + 1);
+        }
+    }
+
+    return 0;
+}
+
 static auto BuildFontfaceInfo(ScopedCFRef<CTFontRef> ct_font) -> Result<FontfaceInfo, FontProviderError> {
     ScopedCFRef<CTFontDescriptorRef> ct_font_descriptor(CTFontCopyFontDescriptor(ct_font.get()));
 
@@ -165,6 +255,7 @@ static auto BuildFontfaceInfo(ScopedCFRef<CTFontRef> ct_font) -> Result<Fontface
     info.postscript_name = cfstr::CFStringToStdString(cf_postscript_name.get());
     info.filename = std::move(filename);
     info.face_index = -1;
+    info.named_instance = FindNamedInstance(ct_font.get());
     info.provider_type = FontProviderType::kCoreText;
 
     auto priv = std::make_unique<FontfaceInfoPrivateCoreText>();

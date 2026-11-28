@@ -514,6 +514,18 @@ auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) ->
         if (!face) {
             return OpenFaceError::kUnsupportedFace;
         }
+
+        // The scan above only sees default instances; switch to the provider's named instance
+        if (info.named_instance > 0 && info.named_instance <= (face->style_flags >> 16)) {
+            FT_Long instance_index = (face->face_index & 0xFFFF) | (static_cast<FT_Long>(info.named_instance) << 16);
+            ScopedHolder<FT_Face> instance = create_face(instance_index, ft_err);
+            if (instance) {
+                face = std::move(instance);
+            } else {
+                log_->w("TextRendererFreetype: Cannot open named instance %d of font %s (FT_Error: %d)",
+                        info.named_instance, font_label, ft_err);
+            }
+        }
     }
 
     if (!FT_IS_SCALABLE(face)) {
@@ -546,7 +558,8 @@ bool TextRendererFreetype::MatchesFontInfo(const FontSlot& existing, const Fontf
     if (info.face_index >= 0) {
         return existing.face_index == info.face_index;
     }
-    return !info.postscript_name.empty() && existing.postscript_name == info.postscript_name;
+    return !info.postscript_name.empty() && existing.postscript_name == info.postscript_name &&
+           (existing.face_index >> 16) == info.named_instance;
 }
 
 bool TextRendererFreetype::IsSameLoadedSlot(const FontSlot& a, const FontSlot& b) {

@@ -18,8 +18,13 @@
 
 #include <windows.h>
 #include <initguid.h>
+#include <dwrite_3.h>
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <optional>
 #include <string_view>
+#include <vector>
 #include "base/unicode_helper.hpp"
 #include "base/utf_helper.hpp"
 #include "base/wchar_helper.hpp"
@@ -117,6 +122,103 @@ const wchar_t* ISO6392ToWindowsLocaleName(uint32_t iso6392_language_code) {
         default:
             return L"ja-JP";
     }
+}
+
+uint16_t ReadU16(const uint8_t* p) {
+    return static_cast<uint16_t>((p[0] << 8) | p[1]);
+}
+
+uint32_t ReadU32(const uint8_t* p) {
+    return (static_cast<uint32_t>(p[0]) << 24) | (static_cast<uint32_t>(p[1]) << 16) |
+           (static_cast<uint32_t>(p[2]) << 8) | static_cast<uint32_t>(p[3]);
+}
+
+class ScopedFontTable {
+public:
+    explicit ScopedFontTable(IDWriteFontFace* face) : face_(face) {}
+    ~ScopedFontTable() {
+        if (context_) {
+            face_->ReleaseFontTable(context_);
+        }
+    }
+
+    ScopedFontTable(const ScopedFontTable&) = delete;
+    ScopedFontTable& operator=(const ScopedFontTable&) = delete;
+
+    bool Load(UINT32 tag) {
+        BOOL exists = FALSE;
+        HRESULT hr = face_->TryGetFontTable(tag, &data_, &size_, &context_, &exists);
+        return SUCCEEDED(hr) && exists && data_;
+    }
+
+    const uint8_t* data() const { return static_cast<const uint8_t*>(data_); }
+    UINT32 size() const { return size_; }
+private:
+    IDWriteFontFace* face_ = nullptr;
+    const void* data_ = nullptr;
+    UINT32 size_ = 0;
+    void* context_ = nullptr;
+};
+
+// Returns the fvar named instance index + 1 whose coordinates match the face's axis values
+// (the value FreeType expects in face_index bits 16-30), or 0 if there is none
+uint32_t FindNamedInstanceIndex(IDWriteFontFace* face) {
+    ComPtr<IDWriteFontFace5> face5;
+    if (FAILED(face->QueryInterface(IID_PPV_ARGS(face5.GetAddressOf()))) || !face5 || !face5->HasVariations()) {
+        return 0;
+    }
+
+    UINT32 value_count = face5->GetFontAxisValueCount();
+    std::vector<DWRITE_FONT_AXIS_VALUE> values(value_count);
+    if (value_count == 0 || FAILED(face5->GetFontAxisValues(values.data(), value_count))) {
+        return 0;
+    }
+
+    ScopedFontTable fvar(face);
+    if (!fvar.Load(DWRITE_MAKE_OPENTYPE_TAG('f', 'v', 'a', 'r')) || fvar.size() < 16) {
+        return 0;
+    }
+
+    const uint8_t* p = fvar.data();
+    size_t axes_offset = ReadU16(p + 4);
+    size_t axis_count = ReadU16(p + 8);
+    size_t axis_size = ReadU16(p + 10);
+    size_t instance_count = std::min<size_t>(ReadU16(p + 12), 0x7FFF);
+    size_t instance_size = ReadU16(p + 14);
+    if (axis_count == 0 || axis_size < 20 || instance_size < 4 + 4 * axis_count ||
+        axes_offset + axis_count * axis_size + instance_count * instance_size > fvar.size()) {
+        return 0;
+    }
+
+    // DirectWrite also reports registered axes the font lacks; only fvar axes are compared,
+    // falling back to the axis default when DirectWrite omits one
+    std::vector<float> targets(axis_count);
+    for (size_t a = 0; a < axis_count; a++) {
+        const uint8_t* axis = p + axes_offset + a * axis_size;
+        auto tag = static_cast<DWRITE_FONT_AXIS_TAG>(DWRITE_MAKE_OPENTYPE_TAG(axis[0], axis[1], axis[2], axis[3]));
+        targets[a] = static_cast<float>(static_cast<int32_t>(ReadU32(axis + 8))) / 65536.0f;
+        for (const DWRITE_FONT_AXIS_VALUE& value : values) {
+            if (value.axisTag == tag) {
+                targets[a] = value.value;
+                break;
+            }
+        }
+    }
+
+    const uint8_t* instances = p + axes_offset + axis_count * axis_size;
+    for (size_t i = 0; i < instance_count; i++) {
+        const uint8_t* coords = instances + i * instance_size + 4;
+        bool matched = true;
+        for (size_t a = 0; a < axis_count && matched; a++) {
+            float coord = static_cast<float>(static_cast<int32_t>(ReadU32(coords + a * 4))) / 65536.0f;
+            matched = std::fabs(coord - targets[a]) < 0.01f;
+        }
+        if (matched) {
+            return static_cast<uint32_t>(i + 1);
+        }
+    }
+
+    return 0;
 }
 
 }  // namespace
@@ -426,7 +528,9 @@ auto FontProviderDirectWrite::BuildFontfaceInfo(ComPtr<IDWriteFont> dwrite_font)
     fontface_info.filename = wchar::WideStringToUTF8(file_path);
     fontface_info.family_name = DWriteLocalizedStringsToUTF8(localized_family_names.Get());
     fontface_info.postscript_name = std::move(postscript_name);
-    fontface_info.face_index = static_cast<int>(dwrite_fontface->GetIndex());
+    // Bits 16-30 select the variable font's named instance for FreeType, as fontconfig's FC_INDEX does
+    fontface_info.face_index =
+        static_cast<int>(dwrite_fontface->GetIndex() | (FindNamedInstanceIndex(dwrite_fontface.Get()) << 16));
     fontface_info.provider_type = FontProviderType::kDirectWrite;
 
     auto fontface_info_private = std::make_unique<FontfaceInfoPrivateDirectWrite>();

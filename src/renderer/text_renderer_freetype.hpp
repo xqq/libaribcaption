@@ -64,6 +64,12 @@ private:
         kUnavailable
     };
 
+    enum class OpenFaceError {
+        kUnsupportedFace,  // Unusable by FreeType (no path/data, non-scalable, unsupported format, no subface match)
+        kOpenError,        // File/stream open or I/O failure (e.g. FT_Err_Cannot_Open_Resource, transient EMFILE)
+        kInvalidInfo,      // Missing family_name and postscript_name when face_index < 0
+    };
+
     // Owns an FT_Face and the memory buffer it may reference
     // The face is always closed before the buffer is freed
     struct FTFaceHolder {
@@ -110,7 +116,7 @@ private:
     static Bitmap FTBitmapToColoredBitmap(const FT_Bitmap& ft_bmp, ColorRGBA color);
     static bool MatchesFontInfo(const FontSlot& existing, const FontfaceInfo& info);
     static bool IsSameLoadedSlot(const FontSlot& a, const FontSlot& b);
-    auto OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) -> std::optional<FontProviderError>;
+    auto OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) -> std::optional<OpenFaceError>;
     bool IsDuplicateFontInfo(const FontfaceInfo& info) const;
     bool MatchesConfiguredSlot(const FontSlot& candidate) const;
     FontSlot* FindSystemFallbackSlotById(uint32_t slot_id);

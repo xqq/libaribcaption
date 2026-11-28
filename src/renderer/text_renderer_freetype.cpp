@@ -420,13 +420,20 @@ static bool MatchFontFamilyName(FT_Face face, std::string_view family_name) {
     return false;
 }
 
-auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) -> std::optional<FontProviderError> {
+static bool IsUnsupportedFormatError(FT_Error err) {
+    return err == FT_Err_Unknown_File_Format ||
+           err == FT_Err_Invalid_File_Format ||
+           err == FT_Err_Unimplemented_Feature;
+}
+
+auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) -> std::optional<OpenFaceError> {
     bool use_memory_data = !info.font_data.empty();
+    const char* font_label = !info.postscript_name.empty()
+                                 ? info.postscript_name.c_str()
+                                 : (!info.family_name.empty() ? info.family_name.c_str() : "<unknown>");
     if (!use_memory_data && info.filename.empty()) {
-        log_->w("TextRendererFreetype: Skipping font %s with neither file path nor memory data",
-                !info.postscript_name.empty() ? info.postscript_name.c_str()
-                                              : (!info.family_name.empty() ? info.family_name.c_str() : "<unknown>"));
-        return FontProviderError::kFontNotFound;
+        log_->w("TextRendererFreetype: Skipping font %s with neither file path nor memory data", font_label);
+        return OpenFaceError::kUnsupportedFace;
     }
 
     std::vector<uint8_t> face_data;
@@ -434,27 +441,35 @@ auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) ->
         face_data = std::move(info.font_data);
     }
 
-    auto create_face = [&](FT_Long index) -> ScopedHolder<FT_Face> {
+    auto create_face = [&](FT_Long index, FT_Error& out_err) -> ScopedHolder<FT_Face> {
         FT_Face raw_face = nullptr;
-        FT_Error err = 0;
         if (!use_memory_data) {
-            err = FT_New_Face(library_, info.filename.c_str(), index, &raw_face);
+            out_err = FT_New_Face(library_, info.filename.c_str(), index, &raw_face);
         } else {
-            err = FT_New_Memory_Face(library_,
-                                     face_data.data(),
-                                     static_cast<FT_Long>(face_data.size()),
-                                     index,
-                                     &raw_face);
+            out_err = FT_New_Memory_Face(library_,
+                                         face_data.data(),
+                                         static_cast<FT_Long>(face_data.size()),
+                                         index,
+                                         &raw_face);
         }
-        if (err || !raw_face) {
+        if (out_err || !raw_face) {
             return {};
         }
         return ScopedHolder<FT_Face>(raw_face, FT_Done_Face);
     };
 
-    ScopedHolder<FT_Face> face = create_face(info.face_index);
+    auto handle_create_failure = [&](FT_Error ft_err) -> OpenFaceError {
+        if (IsUnsupportedFormatError(ft_err)) {
+            log_->w("TextRendererFreetype: Skipping unsupported font %s (FT_Error: %d)", font_label, ft_err);
+            return OpenFaceError::kUnsupportedFace;
+        }
+        return OpenFaceError::kOpenError;
+    };
+
+    FT_Error ft_err = 0;
+    ScopedHolder<FT_Face> face = create_face(info.face_index, ft_err);
     if (!face) {
-        return FontProviderError::kFontNotFound;
+        return handle_create_failure(ft_err);
     }
 
     if (info.face_index < 0) {
@@ -462,7 +477,7 @@ auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) ->
         // falling back to the first family-name match only if no face matched the PostScript name
         if (info.family_name.empty() && info.postscript_name.empty()) {
             log_->e("TextRendererFreetype: Missing Family name / PostScript name for cases that face_index < 0");
-            return FontProviderError::kOtherError;
+            return OpenFaceError::kInvalidInfo;
         }
 
         FT_Long num_faces = face->num_faces;
@@ -471,9 +486,9 @@ auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) ->
         ScopedHolder<FT_Face> family_match;
 
         for (FT_Long i = 0; i < num_faces; i++) {
-            ScopedHolder<FT_Face> candidate = create_face(i);
+            ScopedHolder<FT_Face> candidate = create_face(i, ft_err);
             if (!candidate) {
-                return FontProviderError::kFontNotFound;
+                return handle_create_failure(ft_err);
             }
 
             if (!info.postscript_name.empty()) {
@@ -497,7 +512,7 @@ auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) ->
         }
 
         if (!face) {
-            return FontProviderError::kFontNotFound;
+            return OpenFaceError::kUnsupportedFace;
         }
     }
 
@@ -505,7 +520,7 @@ auto TextRendererFreetype::OpenFTFace(FontfaceInfo& info, FontSlot& out_slot) ->
         // FT_LOAD_NO_BITMAP + FT_Stroker require scalable outlines
         log_->w("TextRendererFreetype: Skipping non-scalable font %s",
                 face->family_name ? face->family_name : info.family_name.c_str());
-        return FontProviderError::kFontNotFound;
+        return OpenFaceError::kUnsupportedFace;
     }
 
     out_slot.face = FTFaceHolder(std::move(face_data), std::move(face));
@@ -644,7 +659,8 @@ auto TextRendererFreetype::LoadSlot(size_t slot_index) -> std::optional<FontProv
     FontSlot loaded_slot;
     if (auto err = OpenFTFace(info, loaded_slot)) {
         slot.state = SlotState::kUnavailable;
-        return err;
+        return *err == OpenFaceError::kInvalidInfo ? FontProviderError::kOtherError
+                                                   : FontProviderError::kFontNotFound;
     }
 
     if (MatchesConfiguredSlot(loaded_slot)) {
@@ -731,8 +747,9 @@ auto TextRendererFreetype::FindOrLoadSystemFallbackSlot(uint32_t ucs4,
     }
 
     FontSlot loaded_slot;
-    if (OpenFTFace(info, loaded_slot)) {
-        return Err(TextRenderStatus::kOtherError);
+    if (auto err = OpenFTFace(info, loaded_slot)) {
+        return Err(*err == OpenFaceError::kUnsupportedFace ? TextRenderStatus::kCodePointNotFound
+                                                           : TextRenderStatus::kOtherError);
     }
 
     FT_UInt glyph = FT_Get_Char_Index(loaded_slot.face, ucs4);

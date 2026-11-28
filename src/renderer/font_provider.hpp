@@ -41,6 +41,7 @@ struct FontfaceInfo {
     std::string postscript_name;
     std::string filename;
     int face_index = 0;
+    int named_instance = 0;  // 1-based fvar named instance; FreeType applies it when face_index < 0
     std::vector<uint8_t> font_data;
     FontProviderType provider_type = FontProviderType::kAuto;
     std::unique_ptr<FontfaceInfoPrivate> provider_priv;

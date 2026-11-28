@@ -19,9 +19,9 @@
 #include <windows.h>
 #include <initguid.h>
 #include <dwrite_3.h>
-#include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <algorithm>
 #include <optional>
 #include <string_view>
 #include <vector>
@@ -124,11 +124,11 @@ const wchar_t* ISO6392ToWindowsLocaleName(uint32_t iso6392_language_code) {
     }
 }
 
-uint16_t ReadU16(const uint8_t* p) {
+uint16_t ReadU16BE(const uint8_t* p) {
     return static_cast<uint16_t>((p[0] << 8) | p[1]);
 }
 
-uint32_t ReadU32(const uint8_t* p) {
+uint32_t ReadU32BE(const uint8_t* p) {
     return (static_cast<uint32_t>(p[0]) << 24) | (static_cast<uint32_t>(p[1]) << 16) |
            (static_cast<uint32_t>(p[2]) << 8) | static_cast<uint32_t>(p[3]);
 }
@@ -180,11 +180,11 @@ uint32_t FindNamedInstanceIndex(IDWriteFontFace* face) {
     }
 
     const uint8_t* p = fvar.data();
-    size_t axes_offset = ReadU16(p + 4);
-    size_t axis_count = ReadU16(p + 8);
-    size_t axis_size = ReadU16(p + 10);
-    size_t instance_count = std::min<size_t>(ReadU16(p + 12), 0x7FFF);
-    size_t instance_size = ReadU16(p + 14);
+    size_t axes_offset = ReadU16BE(p + 4);
+    size_t axis_count = ReadU16BE(p + 8);
+    size_t axis_size = ReadU16BE(p + 10);
+    size_t instance_count = std::min<size_t>(ReadU16BE(p + 12), 0x7FFF);
+    size_t instance_size = ReadU16BE(p + 14);
     if (axis_count == 0 || axis_size < 20 || instance_size < 4 + 4 * axis_count ||
         axes_offset + axis_count * axis_size + instance_count * instance_size > fvar.size()) {
         return 0;
@@ -196,7 +196,7 @@ uint32_t FindNamedInstanceIndex(IDWriteFontFace* face) {
     for (size_t a = 0; a < axis_count; a++) {
         const uint8_t* axis = p + axes_offset + a * axis_size;
         auto tag = static_cast<DWRITE_FONT_AXIS_TAG>(DWRITE_MAKE_OPENTYPE_TAG(axis[0], axis[1], axis[2], axis[3]));
-        targets[a] = static_cast<float>(static_cast<int32_t>(ReadU32(axis + 8))) / 65536.0f;
+        targets[a] = static_cast<float>(static_cast<int32_t>(ReadU32BE(axis + 8))) / 65536.0f;
         for (const DWRITE_FONT_AXIS_VALUE& value : values) {
             if (value.axisTag == tag) {
                 targets[a] = value.value;
@@ -210,7 +210,7 @@ uint32_t FindNamedInstanceIndex(IDWriteFontFace* face) {
         const uint8_t* coords = instances + i * instance_size + 4;
         bool matched = true;
         for (size_t a = 0; a < axis_count && matched; a++) {
-            float coord = static_cast<float>(static_cast<int32_t>(ReadU32(coords + a * 4))) / 65536.0f;
+            float coord = static_cast<float>(static_cast<int32_t>(ReadU32BE(coords + a * 4))) / 65536.0f;
             matched = std::fabs(coord - targets[a]) < 0.01f;
         }
         if (matched) {

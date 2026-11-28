@@ -80,11 +80,11 @@ namespace {
 
 using CodePointRange = std::pair<uint32_t, uint32_t>;
 
-inline uint16_t ReadBE16(const uint8_t* p) {
+inline uint16_t ReadU16BE(const uint8_t* p) {
     return static_cast<uint16_t>((static_cast<uint16_t>(p[0]) << 8) | p[1]);
 }
 
-inline uint32_t ReadBE32(const uint8_t* p) {
+inline uint32_t ReadU32BE(const uint8_t* p) {
     return (static_cast<uint32_t>(p[0]) << 24) |
            (static_cast<uint32_t>(p[1]) << 16) |
            (static_cast<uint32_t>(p[2]) << 8) |
@@ -108,7 +108,7 @@ void ParseCmapFormat4(const uint8_t* table, size_t table_size, std::vector<CodeP
     if (table_size < 14) {
         return;
     }
-    uint16_t seg_count_x2 = ReadBE16(table + 6);
+    uint16_t seg_count_x2 = ReadU16BE(table + 6);
     if (seg_count_x2 < 2 || (seg_count_x2 & 1) != 0) {
         return;
     }
@@ -122,17 +122,17 @@ void ParseCmapFormat4(const uint8_t* table, size_t table_size, std::vector<CodeP
     }
 
     for (size_t i = 0; i < seg_count; i++) {
-        uint16_t end_code = ReadBE16(table + end_code_off + i * 2);
-        uint16_t start_code = ReadBE16(table + start_code_off + i * 2);
+        uint16_t end_code = ReadU16BE(table + end_code_off + i * 2);
+        uint16_t start_code = ReadU16BE(table + start_code_off + i * 2);
         if (start_code == 0xFFFF && end_code == 0xFFFF) {
             break;
         }
         if (start_code > end_code) {
             continue;
         }
-        uint16_t id_delta = ReadBE16(table + id_delta_off + i * 2);
+        uint16_t id_delta = ReadU16BE(table + id_delta_off + i * 2);
         size_t range_entry_off = id_range_off + i * 2;
-        uint16_t range_offset = ReadBE16(table + range_entry_off);
+        uint16_t range_offset = ReadU16BE(table + range_entry_off);
 
         if (range_offset == 0) {
             uint32_t zero_cp = static_cast<uint16_t>(0u - id_delta);
@@ -154,7 +154,7 @@ void ParseCmapFormat4(const uint8_t* table, size_t table_size, std::vector<CodeP
                 if (glyph_off + 2 > table_size) {
                     break;
                 }
-                uint16_t glyph_id = ReadBE16(table + glyph_off);
+                uint16_t glyph_id = ReadU16BE(table + glyph_off);
                 bool mapped = glyph_id != 0 && static_cast<uint16_t>(glyph_id + id_delta) != 0;
                 if (mapped && !in_run) {
                     run_start = cp;
@@ -175,7 +175,7 @@ void ParseCmapFormat12(const uint8_t* table, size_t table_size, std::vector<Code
     if (table_size < 16) {
         return;
     }
-    uint32_t num_groups = ReadBE32(table + 12);
+    uint32_t num_groups = ReadU32BE(table + 12);
     size_t max_groups = (table_size - 16) / 12;
     if (num_groups > max_groups) {
         num_groups = static_cast<uint32_t>(max_groups);
@@ -183,9 +183,9 @@ void ParseCmapFormat12(const uint8_t* table, size_t table_size, std::vector<Code
 
     for (uint32_t i = 0; i < num_groups; i++) {
         const uint8_t* g = table + 16 + static_cast<size_t>(i) * 12;
-        uint32_t start_cp = ReadBE32(g);
-        uint32_t end_cp = ReadBE32(g + 4);
-        uint32_t start_glyph = ReadBE32(g + 8);
+        uint32_t start_cp = ReadU32BE(g);
+        uint32_t end_cp = ReadU32BE(g + 4);
+        uint32_t start_glyph = ReadU32BE(g + 8);
         if (start_glyph == 0 && start_cp < end_cp) {
             start_cp++;
         } else if (start_glyph == 0) {
@@ -228,10 +228,10 @@ std::optional<std::vector<CodePointRange>> LoadSFNTUnicodeRanges(const std::stri
         return std::nullopt;
     }
 
-    uint32_t sfnt_tag = ReadBE32(header);
+    uint32_t sfnt_tag = ReadU32BE(header);
     uint64_t sfnt_offset = 0;
     if (sfnt_tag == 0x74746366u) {  // 'ttcf'
-        uint32_t num_fonts = ReadBE32(header + 8);
+        uint32_t num_fonts = ReadU32BE(header + 8);
         if (static_cast<uint32_t>(collection_index) >= num_fonts) {
             return ranges;
         }
@@ -243,21 +243,21 @@ std::optional<std::vector<CodePointRange>> LoadSFNTUnicodeRanges(const std::stri
         if (!ReadFileAt(fp, entry_off, off_buf, sizeof(off_buf))) {
             return std::nullopt;
         }
-        sfnt_offset = ReadBE32(off_buf);
+        sfnt_offset = ReadU32BE(off_buf);
         if (sfnt_offset + 12 > file_size) {
             return ranges;
         }
         if (!ReadFileAt(fp, sfnt_offset, header, sizeof(header))) {
             return std::nullopt;
         }
-        sfnt_tag = ReadBE32(header);
+        sfnt_tag = ReadU32BE(header);
     }
 
     if (sfnt_tag != 0x00010000u && sfnt_tag != 0x4F54544Fu && sfnt_tag != 0x74727565u) {
         return ranges;
     }
 
-    uint16_t num_tables = ReadBE16(header + 4);
+    uint16_t num_tables = ReadU16BE(header + 4);
     uint64_t dir_size = static_cast<uint64_t>(num_tables) * 16;
     if (sfnt_offset + 12 + dir_size > file_size) {
         return ranges;
@@ -274,14 +274,14 @@ std::optional<std::vector<CodePointRange>> LoadSFNTUnicodeRanges(const std::stri
     uint32_t cmap_length = 0;
     for (uint16_t i = 0; i < num_tables; i++) {
         const uint8_t* rec = table_dir.data() + static_cast<size_t>(i) * 16;
-        uint32_t tag = ReadBE32(rec);
+        uint32_t tag = ReadU32BE(rec);
         if (tag == 0x676C7966u || tag == 0x43464620u || tag == 0x43464632u) {  // 'glyf', 'CFF ', 'CFF2'
             has_outline = true;
         } else if (tag == 0x43424454u || tag == 0x73626978u) {  // 'CBDT', 'sbix'
             has_color_bitmap = true;
         } else if (tag == 0x636D6170u) {  // 'cmap'
-            cmap_offset = ReadBE32(rec + 8);
-            cmap_length = ReadBE32(rec + 12);
+            cmap_offset = ReadU32BE(rec + 8);
+            cmap_length = ReadU32BE(rec + 12);
         }
     }
 
@@ -297,7 +297,7 @@ std::optional<std::vector<CodePointRange>> LoadSFNTUnicodeRanges(const std::stri
         return std::nullopt;
     }
 
-    uint16_t num_subtables = ReadBE16(cmap.data() + 2);
+    uint16_t num_subtables = ReadU16BE(cmap.data() + 2);
     if (4 + static_cast<size_t>(num_subtables) * 8 > cmap.size()) {
         return ranges;
     }
@@ -306,13 +306,13 @@ std::optional<std::vector<CodePointRange>> LoadSFNTUnicodeRanges(const std::stri
     uint32_t format4_off = 0;
     for (uint16_t i = 0; i < num_subtables; i++) {
         const uint8_t* rec = cmap.data() + 4 + static_cast<size_t>(i) * 8;
-        uint16_t platform_id = ReadBE16(rec);
-        uint16_t encoding_id = ReadBE16(rec + 2);
-        uint32_t sub_off = ReadBE32(rec + 4);
+        uint16_t platform_id = ReadU16BE(rec);
+        uint16_t encoding_id = ReadU16BE(rec + 2);
+        uint32_t sub_off = ReadU32BE(rec + 4);
         if (sub_off + 2 > cmap.size()) {
             continue;
         }
-        uint16_t format = ReadBE16(cmap.data() + sub_off);
+        uint16_t format = ReadU16BE(cmap.data() + sub_off);
         bool is_unicode_full = (platform_id == 3 && encoding_id == 10) || (platform_id == 0 && encoding_id == 4);
         bool is_unicode_bmp = (platform_id == 3 && encoding_id == 1) || (platform_id == 0 && encoding_id == 3);
         if (format == 12 && is_unicode_full && format12_off == 0) {

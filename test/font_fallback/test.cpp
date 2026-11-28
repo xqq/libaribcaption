@@ -44,6 +44,7 @@
     #ifndef NOMINMAX
         #define NOMINMAX
     #endif
+    #include <dwrite_3.h>
     #include "renderer/font_provider_directwrite.hpp"
 #endif
 #if defined(ARIBCC_IS_ANDROID)
@@ -1861,6 +1862,63 @@ void RunDirectWriteTests(Context& ctx) {
         }
     }
 }
+
+uint64_t BitmapAlphaSum(const Bitmap& bmp) {
+    uint64_t sum = 0;
+    for (int y = 0; y < bmp.height(); y++) {
+        for (int x = 0; x < bmp.width(); x++) {
+            sum += bmp.GetPixelAt(x, y)->a;
+        }
+    }
+    return sum;
+}
+
+// Windows 11's "Noto Sans JP" is a variable font whose default instance is Thin. face_index must carry
+// the named instance DirectWrite selected, otherwise FreeType draws the default instance.
+void RunDirectWriteVariableInstanceTests(Context& ctx) {
+    printf("Running DirectWrite variable font instance tests...\n");
+
+    FontProviderDirectWrite fp(ctx);
+    bool fp_ok = fp.Initialize();
+    CHECK(fp_ok);
+    if (!fp_ok) {
+        return;
+    }
+    fp.SetLanguage(ThreeCC("jpn"));
+
+    auto res = fp.GetFontFace("Noto Sans JP");
+    ComPtr<IDWriteFontFace5> fontface5;
+    if (res.is_err() ||
+        FAILED(static_cast<FontfaceInfoPrivateDirectWrite*>(res.value().provider_priv.get())->fontface.As(&fontface5)) ||
+        !fontface5->HasVariations()) {
+        printf("Variable font \"Noto Sans JP\" not available, skipped\n");
+        return;
+    }
+    CHECK((res.value().face_index >> 16) != 0);
+
+#if defined(ARIBCC_USE_FREETYPE)
+    // Same instance in both renderers, so only rasterization may differ (about 0.4 when FreeType draws Thin)
+    const TextRendererType renderer_types[2] = {TextRendererType::kFreetype, TextRendererType::kDirectWrite};
+    uint64_t ink[2] = {};
+    for (int i = 0; i < 2; i++) {
+        auto tr = TextRenderer::Create(renderer_types[i], ctx, fp);
+        CHECK(tr && tr->Initialize());
+        if (!tr) {
+            return;
+        }
+        tr->SetLanguage(ThreeCC("jpn"));
+        tr->SetFontFamily({"Noto Sans JP"});
+        Bitmap bmp(64, 64, PixelFormat::kRGBA8888);
+        CHECK(DrawSingleChar(*tr, 0x6C38, TextRenderFallbackPolicy::kFailOnCodePointNotFound, &bmp) ==
+              TextRenderStatus::kOK);
+        ink[i] = BitmapAlphaSum(bmp);
+    }
+    printf("U+6C38 ink FreeType/DirectWrite: %llu / %llu\n",
+           static_cast<unsigned long long>(ink[0]),
+           static_cast<unsigned long long>(ink[1]));
+    CHECK(ink[1] > 0 && ink[0] * 5 >= ink[1] * 4 && ink[0] * 4 <= ink[1] * 5);
+#endif
+}
 #endif
 
 #if defined(ARIBCC_IS_ANDROID) && defined(ARIBCC_USE_FREETYPE)
@@ -2293,6 +2351,7 @@ int main() {
         RunRealPlatformTests(ctx, FontProviderType::kDirectWrite, TextRendererType::kDirectWrite, "DirectWrite",
                              expect_os_fallback);
         RunDirectWriteTests(ctx);
+        RunDirectWriteVariableInstanceTests(ctx);
     }
 #endif
 

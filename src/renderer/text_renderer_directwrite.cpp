@@ -586,6 +586,24 @@ auto TextRendererDirectWrite::TryDrawCharWithSlot(TextRenderContext& render_ctx,
     double em_size = static_cast<double>(char_height) * face_info_priv->scale;
     int ascent = static_cast<int>(std::lround(font_metrics.ascent * em_size / font_metrics.designUnitsPerEm));
 
+    if (!slot.icf_resolved) {
+        slot.icf_bounds = CalculateICFInkBounds(face_info_priv->fontface.Get());
+        slot.icf_resolved = true;
+    }
+
+    // Baseline from the top of the character box: center the ICF ink like TextRendererFreetype,
+    // or ascent + descent without lineGap for fonts lacking ideographic and kana glyphs
+    int baseline = 0;
+    if (slot.icf_bounds) {
+        double pixels_per_unit = em_size / font_metrics.designUnitsPerEm;
+        int icf_top = static_cast<int>(std::ceil(slot.icf_bounds->top * pixels_per_unit));
+        int icf_bottom = static_cast<int>(std::floor(slot.icf_bounds->bottom * pixels_per_unit));
+        baseline = (char_height - (icf_top - icf_bottom)) / 2 + icf_top;
+    } else {
+        int descent = static_cast<int>(std::lround(font_metrics.descent * em_size / font_metrics.designUnitsPerEm));
+        baseline = (char_height - (ascent + descent)) / 2 + ascent;
+    }
+
     bool is_requesting_halfwidth = floating::AlmostEquals(aspect_ratio, 0.5f, 0.05f);
     bool needless_horizontal_scaling = is_requesting_halfwidth && unicode::IsHalfwidthCharacter(ucs4);
 
@@ -645,9 +663,15 @@ auto TextRendererDirectWrite::TryDrawCharWithSlot(TextRenderContext& render_ctx,
     // Adjust x coordinate for reserve spaces
     target_x -= margin_x;
 
-    // Adjust target_y based on actual text bitmap height
-    int y_adjust = (char_height - charbox_height) / 2;
-    target_y += y_adjust;
+    DWRITE_LINE_METRICS line_metrics = {0};
+    UINT32 line_count = 0;
+    hr = text_layout->GetLineMetrics(&line_metrics, 1, &line_count);
+    if (FAILED(hr) || line_count == 0) {
+        log_->e("TextRendererDirectWrite: GetLineMetrics() failed");
+        return TextRenderStatus::kOtherError;
+    }
+    // DirectWrite places the baseline at line_metrics.baseline below the layout origin
+    float origin_y = static_cast<float>(target_y + baseline) - line_metrics.baseline;
 
     auto render_ctx_priv = static_cast<TextRenderContextPrivateDirectWrite*>(render_ctx.GetPrivate());
     Bitmap& target_bmp = render_ctx.GetBitmap();
@@ -659,7 +683,7 @@ auto TextRendererDirectWrite::TryDrawCharWithSlot(TextRenderContext& render_ctx,
     hr = text_layout->Draw(nullptr,
                            outline_text_renderer.Get(),
                            static_cast<float>(target_x + margin_x),
-                           static_cast<float>(target_y + margin_y));
+                           origin_y);
     if (FAILED(hr)) {
         log_->e("TextRendererDirectWrite: IDWriteTextLayout::Draw() failed");
         return TextRenderStatus::kOtherError;
@@ -1056,6 +1080,33 @@ bool TextRendererDirectWrite::FontfaceHasCharacter(FontfaceInfo& fontface, uint3
     HRESULT hr = face_info_priv->font->HasCharacter(ucs4, &ucs4_exists);
 
     return SUCCEEDED(hr) && ucs4_exists;
+}
+
+auto TextRendererDirectWrite::CalculateICFInkBounds(IDWriteFontFace* fontface) -> std::optional<ICFInkBounds> {
+    // Same Ideographic Character Face (ICF) estimation as TextRendererFreetype: the OpenType
+    // specification permits it when the BASE table, which is not parsed yet, provides no ICF values
+    static constexpr UINT32 kReferenceChars[] = {
+        0x6C38,  // CJK ideograph "永"
+        0x56FD,  // CJK ideograph "国"
+        0x3042,  // Hiragana "あ"
+    };
+
+    for (UINT32 ch : kReferenceChars) {
+        UINT16 glyph_index = 0;
+        DWRITE_GLYPH_METRICS glyph_metrics = {0};
+        if (FAILED(fontface->GetGlyphIndices(&ch, 1, &glyph_index)) || glyph_index == 0 ||
+            FAILED(fontface->GetDesignGlyphMetrics(&glyph_index, 1, &glyph_metrics, FALSE))) {
+            continue;
+        }
+
+        int top = glyph_metrics.verticalOriginY - glyph_metrics.topSideBearing;
+        int bottom = glyph_metrics.verticalOriginY -
+                     (static_cast<int>(glyph_metrics.advanceHeight) - glyph_metrics.bottomSideBearing);
+        if (top > bottom) {
+            return ICFInkBounds{top, bottom};
+        }
+    }
+    return std::nullopt;
 }
 
 }  // namespace aribcaption

@@ -61,11 +61,19 @@ private:
         kUnavailable
     };
 
+    // Design units, y-up from the baseline
+    struct ICFInkBounds {
+        int top = 0;
+        int bottom = 0;
+    };
+
     struct FontSlot {
         SlotState state = SlotState::kUnloaded;
         FontfaceInfo faceinfo;
         ComPtr<IDWriteTextFormat> text_format;
         int pixel_height = 0;
+        bool icf_resolved = false;
+        std::optional<ICFInkBounds> icf_bounds;
         uint32_t slot_id = 0;
         uint64_t last_used = 0;
     };
@@ -98,6 +106,7 @@ private:
 private:
     static D2D1_COLOR_F RGBAToD2DColor(ColorRGBA color);
     static bool FontfaceHasCharacter(FontfaceInfo& fontface, uint32_t ucs4);
+    static auto CalculateICFInkBounds(IDWriteFontFace* fontface) -> std::optional<ICFInkBounds>;
 private:
     std::shared_ptr<Logger> log_;
 

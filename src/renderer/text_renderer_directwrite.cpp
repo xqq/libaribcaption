@@ -1086,9 +1086,9 @@ auto TextRendererDirectWrite::CalculateICFInkBounds(IDWriteFontFace* fontface) -
     // Same Ideographic Character Face (ICF) estimation as TextRendererFreetype: the OpenType
     // specification permits it when the BASE table, which is not parsed yet, provides no ICF values
     static constexpr UINT32 kReferenceChars[] = {
-        0x6C38,  // CJK ideograph "永"
-        0x56FD,  // CJK ideograph "国"
-        0x3042,  // Hiragana "あ"
+        0x6C38,  // CJK ideograph "eternity", the traditional reference glyph with all basic strokes
+        0x56FD,  // CJK ideograph "country", an enclosed glyph spanning the full ideographic face
+        0x3042,  // Hiragana letter A, for fonts with kana but no ideographs
     };
 
     for (UINT32 ch : kReferenceChars) {
